@@ -1,7 +1,9 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 import argparse
 import logging
 import sys
+import luigi
+import sciluigi as sl
 
 from subcommands import refpkg
 
@@ -21,6 +23,14 @@ class MALIAMPI:
                 action='store_true',
             )
 
+            parser.add_argument(
+                '--workers',
+                help="""How many concurrent workers to use""",
+                type=int,
+                default=1,
+            )
+
+
             self.__subparsers__ = parser.add_subparsers(
                 title='command',
                 dest='command'
@@ -39,7 +49,43 @@ class MALIAMPI:
 
     def refpkg(self):
         """Make a reference package appropriate for pplacer or other pipelines."""
-        print(self.__args__)
+        args = self.__args__
+
+        sl.run_local(
+            main_task_cls=refpkg.WorkflowMakeRefpkg,
+            cmdline_args=[
+                '--sequence-variants-path={}'.format(
+                    args.sequence_variants
+                    ),
+                '--repo-seqs-filtered={}'.format(
+                    args.repo_seqs_filtered
+                    ),
+                '--new-refpkg-path={}'.format(
+                    args.refpkg_destdir
+                    ),
+                '--new-refpkg-name={}'.format(
+                    args.refpkg_name
+                    ),
+                '--working-dir={}'.format(
+                    args.working_dir
+                    ),
+                '--min-id-types={}'.format(
+                    args.min_id_types
+                    ),
+                '--min-id-filtered={}'.format(
+                    args.min_id_filtered
+                    ),
+                '--min-id-unnamed={}'.format(
+                    args.min_id_unnamed
+                    ),
+                '--min-best={}'.format(
+                    args.min_best
+                    ),
+                '--workers={}'.format(
+                    args.workers
+                ),
+            ]
+        )
 
 
 def main():
