@@ -90,7 +90,9 @@ class ContainerHelpers():
         Returns a dict of the paths for the targets as they would be seen 
         if the common prefix is mounted within the container at the container_base_path
         """
-        common_prefix = os.path.commonprefix(list(paths.values()))
+        common_prefix = os.path.commonprefix(
+            [os.path.dirname(p) for p in paths.values()]
+        )
         container_paths = {
             i: os.path.join(
                 container_base_path, 
@@ -118,6 +120,8 @@ class ContainerHelpers():
                 input_paths,
                 container_base_path='/mnt/inputs'
             )
+            print(input_host_path_ca)
+            print(input_container_paths)
             container_paths.update(input_container_paths)
             mounts[input_host_path_ca]={'bind': '/mnt/inputs', 'mode': 'ro'}
         
