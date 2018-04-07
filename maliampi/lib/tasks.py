@@ -2,6 +2,7 @@ import luigi
 import sciluigi as sl
 from lib.containertask import ContainerTask, ContainerInfo
 import os
+from string import Template
 
 
 # Tasks
@@ -60,40 +61,28 @@ class SearchRepoForMatches(ContainerTask):
         return sl.TargetInfo(self, self.matched_repo_seqs_path)
 
     def run(self):
-        input_paths = [
-            self.in_exp_seqs().path,
-            self.in_repo_seqs().path,
-        ]
-        output_paths = [
-            self.matched_repo_seqs_path,
-            self.unmatched_exp_seqs_path,
-            self.matches_uc_path,
-        ]
-        input_common_prefix = os.path.commonprefix(input_paths)
-        output_common_prefix = os.path.commonprefix(output_paths)
+        input_paths = {
+            'exp_seqs': self.in_exp_seqs().path,
+            'repo_seqs': self.in_repo_seqs().path,
+        }
 
-        self.ex(command=
-                'vsearch' +
-                ' --threads={}'.format(self.num_cpu) +
-                ' --usearch_global {}'.format(
-                    os.path.join('/mnt/input', os.path.relpath(self.in_exp_seqs().path, input_common_prefix))) +
-                ' --db={}'.format(
-                    os.path.join('/mnt/input', os.path.relpath(self.in_repo_seqs().path, input_common_prefix))) +
-                ' --id={}'.format(self.min_id) +
-                ' --strand both' +
-                ' --uc={} --uc_allhits'.format(os.path.join('/mnt/output', os.path.relpath(
-                    self.out_matches_uc().path,
-                    output_common_prefix))) +
-                ' --notmatched={}'.format(os.path.join('/mnt/output', os.path.relpath(
-                    self.out_unmatched_exp_seqs().path,
-                    output_common_prefix))) +
-                ' --dbmatched={}'.format(os.path.join('/mnt/output', os.path.relpath(
-                        self.out_matched_repo_seqs().path,
-                        output_common_prefix))) +
-                ' --maxaccepts={}'.format(self.maxaccepts),
-                mounts={
-                    os.path.abspath(input_common_prefix): {'bind': '/mnt/input', 'mode': 'ro'},
-                    os.path.abspath(output_common_prefix): {'bind': '/mnt/output', 'mode': 'rw'}
-                }
+        output_paths = {
+            'matched_repo': self.matched_repo_seqs_path,
+            'unmatched_exp': self.unmatched_exp_seqs_path,
+            'uc': self.matches_uc_path,
+        }
 
+        self.ex(
+            command='vsearch '+
+                  ' --threads=%s' % self.num_cpu+
+                  ' --usearch_global $exp_seqs'+
+                  ' --db=$repo_seqs'+
+                  ' --id=%s' % self.min_id+
+                  ' --strand both'+
+                  ' --uc=$uc --uc_allhits'+
+                  ' --notmatched=$unmatched_exp'+
+                  ' --dbmatched=$matched_repo'+
+                  ' --maxaccepts=%s' % self.maxaccepts,
+            input_paths=input_paths,
+            output_paths=output_paths,
             )
