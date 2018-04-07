@@ -33,7 +33,7 @@ class SearchRepoForMatches(ContainerTask):
     # A Task that uses vsearch to find matches for experimental sequences in a repo of sequences
 
     # Define the container (in docker-style repo format) to complete this task
-    __container__ = 'golob/vsearch'
+    container = 'golob/vsearch'
     num_cpu = 1
 
     in_exp_seqs = None  # Experimental seqs for this task
@@ -72,53 +72,28 @@ class SearchRepoForMatches(ContainerTask):
         input_common_prefix = os.path.commonprefix(input_paths)
         output_common_prefix = os.path.commonprefix(output_paths)
 
-        command = 'vsearch' + \
-                ' --threads={}'.format(self.num_cpu) + \
-                ' --usearch_global {}'.format(
-                        os.path.relpath(
-                            self.in_exp_seqs().path,
-                            input_common_prefix)) + \
-                ' --db={}'.format(os.path.relpath(
-                    self.in_repo_seqs().path,
-                    input_common_prefix)) + \
-                ' --id={}'.format(self.min_id) + \
-                ' --strand both' + \
-                ' --uc={} --uc_allhits'.format(os.path.relpath(
-                    self.out_matches_uc().path,
-                    output_common_prefix)) + \
-                ' --notmatched={}'.format(os.path.relpath(
-                    self.out_unmatched_exp_seqs().path,
-                    output_common_prefix)) + \
-                ' --dbmatched={}'.format(os.path.relpath(
-                        self.out_matched_repo_seqs().path,
-                        output_common_prefix)) + \
-                ' --maxaccepts={}'.format(self.maxaccepts)
-
-        print(command)
-        print(input_common_prefix)
-        print(output_common_prefix)
-
         self.ex(command=
                 'vsearch' +
                 ' --threads={}'.format(self.num_cpu) +
                 ' --usearch_global {}'.format(
-                    os.path.relpath(self.in_exp_seqs().path, input_common_prefix)) +
-                ' --db={}'.format(os.path.relpath(self.in_repo_seqs().path, input_common_prefix)) +
+                    os.path.join('/mnt/input', os.path.relpath(self.in_exp_seqs().path, input_common_prefix))) +
+                ' --db={}'.format(
+                    os.path.join('/mnt/input', os.path.relpath(self.in_repo_seqs().path, input_common_prefix))) +
                 ' --id={}'.format(self.min_id) +
                 ' --strand both' +
-                ' --uc={} --uc_allhits'.format(os.path.relpath(
+                ' --uc={} --uc_allhits'.format(os.path.join('/mnt/output', os.path.relpath(
                     self.out_matches_uc().path,
-                    output_common_prefix)) +
-                ' --notmatched={}'.format(os.path.relpath(
+                    output_common_prefix))) +
+                ' --notmatched={}'.format(os.path.join('/mnt/output', os.path.relpath(
                     self.out_unmatched_exp_seqs().path,
-                    output_common_prefix)) +
-                ' --dbmatched={}'.format(os.path.relpath(
+                    output_common_prefix))) +
+                ' --dbmatched={}'.format(os.path.join('/mnt/output', os.path.relpath(
                         self.out_matched_repo_seqs().path,
-                        output_common_prefix)) +
+                        output_common_prefix))) +
                 ' --maxaccepts={}'.format(self.maxaccepts),
                 mounts={
-                    input_common_prefix: {'bind': '/mnt/input', 'mode': 'ro'},
-                    output_common_prefix: {'bind': '/mnt/output', 'mode': 'rw'}
+                    os.path.abspath(input_common_prefix): {'bind': '/mnt/input', 'mode': 'ro'},
+                    os.path.abspath(output_common_prefix): {'bind': '/mnt/output', 'mode': 'rw'}
                 }
 
             )

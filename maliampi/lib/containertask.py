@@ -71,7 +71,7 @@ class ContainerHelpers():
     # Some guidance to whatever eventually runs the container
     # containerinfo = ContainerInfoParameter(default=None)
     # The ID of the container (docker registry style).
-    __container__ = None
+    container = None
 
     def ex(self, command, mounts={}):
         return self.ex_docker(command, mounts)
@@ -87,10 +87,10 @@ class ContainerHelpers():
         try:
             log.info("Attempting to run {} in {}".format(
                 command,
-                self.__container__
+                self.container
             ))
             stdout = client.containers.run(
-                image=self.__container__,
+                image=self.container,
                 command=command,
                 volumes=mounts,
             )
