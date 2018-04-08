@@ -101,13 +101,13 @@ class ContainerHelpers():
         }
         return os.path.abspath(common_prefix), container_paths
 
-    def ex(self, command, input_paths={}, output_paths={}, mounts={}):
+    def ex(self, command, input_paths={}, output_paths={}, mounts={}, inputs_mode='ro', outputs_mode='rw'):
         if self.engine == 'docker':
-            return self.ex_docker(command, input_paths, output_paths, mounts)
+            return self.ex_docker(command, input_paths, output_paths, mounts, inputs_mode, outputs_mode)
         else:
             raise Exception("Container engine {} is invalid".format(self.engine))
 
-    def ex_docker(self, command, input_paths={}, output_paths={}, mounts={}):
+    def ex_docker(self, command, input_paths={}, output_paths={}, mounts={}, inputs_mode='ro', outputs_mode='rw'):
         """
         Run command in the container using docker, with mountpoints
         command is assumed to be in python template substitution format
@@ -120,10 +120,8 @@ class ContainerHelpers():
                 input_paths,
                 container_base_path='/mnt/inputs'
             )
-            print(input_host_path_ca)
-            print(input_container_paths)
             container_paths.update(input_container_paths)
-            mounts[input_host_path_ca]={'bind': '/mnt/inputs', 'mode': 'ro'}
+            mounts[input_host_path_ca]={'bind': '/mnt/inputs', 'mode': inputs_mode}
         
         if len(output_paths) > 0:
             output_host_path_ca, output_container_paths = self.map_paths_to_container(
@@ -131,7 +129,7 @@ class ContainerHelpers():
                 container_base_path='/mnt/outputs'
             )
             container_paths.update(output_container_paths)
-            mounts[output_host_path_ca]={'bind': '/mnt/outputs', 'mode': 'rw'}
+            mounts[output_host_path_ca]={'bind': '/mnt/outputs', 'mode': outputs_mode}
 
         command = Template(command).substitute(container_paths)
 

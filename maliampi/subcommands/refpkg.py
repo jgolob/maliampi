@@ -1,7 +1,7 @@
 #!/usr/bin/python
 import luigi
 import sciluigi as sl
-from lib.tasks import LoadFastaSeqs, SearchRepoForMatches, ListVsearchOptions
+from lib.tasks import LoadFastaSeqs, SearchRepoForMatches, CMAlignSeqs, RAxMLTree
 from lib.containertask import ContainerInfo
 import os
 
@@ -48,22 +48,52 @@ class WorkflowMakeRefpkg(sl.WorkflowTask):
         # Search the sequence variants in filtered repository
         #
 
-        search_sv_filtered = self.new_task(
-            'search_sv_filtered',
+        filtered_search_sv = self.new_task(
+            'filtered_search_sv',
             SearchRepoForMatches,
             matches_uc_path=os.path.join(self.working_dir,
-                                         'repo_matches.types.uc'),
+                                         'repo_matches.filtered.uc'),
             unmatched_exp_seqs_path=os.path.join(self.working_dir, 
-                                                 'exp_seqs_unmatched.types.fasta'),
+                                                 'exp_seqs_unmatched.filtered.fasta'),
             matched_repo_seqs_path=os.path.join(self.working_dir, 
-                                                'recruited_repo_seqs.types.fasta'),
-            min_id=self.min_id_types,
+                                                'recruited_repo_seqs.filtered.fasta'),
+            min_id=self.min_id_filtered,
             maxaccepts=10,  # likewise, should be a parameter in a config file. For, take the top 10 (roughly corresponding to a 95% id for most)
         )
-        search_sv_filtered.in_exp_seqs = sequence_variants.out_seqs
-        search_sv_filtered.in_repo_seqs = repo_seqs_filtered.out_seqs
+        filtered_search_sv.in_exp_seqs = sequence_variants.out_seqs
+        filtered_search_sv.in_repo_seqs = repo_seqs_filtered.out_seqs
 
-        return(search_sv_filtered)
+        #
+        # Align the recruited repo sequences
+        #
+
+        filtered_align_recruits = self.new_task(
+            'filtered_align_recruits',
+            CMAlignSeqs,
+            alignment_path=os.path.join(
+                self.working_dir,
+                'aln/filtered'
+            ),
+            alignment_score_path=os.path.join(
+                self.working_dir,
+                'aln/filtered.scores'
+            ),
+        )
+        filtered_align_recruits.in_seqs=filtered_search_sv.out_matched_repo_seqs
+
+        raxml_tree = self.new_task(
+            'raxml_tree',
+            RAxMLTree,
+            tree_path=os.path.join(self.working_dir,
+                                         'refpkg.tre'),
+            tree_stats_path=os.path.join(self.working_dir,
+                                         'refpkg.tre.info'),
+            raxml_working_dir=os.path.join(self.working_dir,
+                                         'refpkg_workdir/'),
+        )
+        raxml_tree.in_alignment_fasta = filtered_align_recruits.out_align_fasta
+
+        return(raxml_tree)
 
 
 def build_args(parser):
