@@ -6,12 +6,20 @@ from string import Template
 from Bio import AlignIO
 import shutil
 
+
 # Tasks
 class LoadFastaSeqs(sl.ExternalTask):
     fasta_seq_path = sl.Parameter()
 
     def out_seqs(self):
         return sl.TargetInfo(self, self.fasta_seq_path)
+
+
+class LoadFile(sl.ExternalTask):
+    path = sl.Parameter()
+
+    def out(self):
+        return sl.TargetInfo(self, self.path)
 
 
 class SearchRepoForMatches(ContainerTask):
@@ -51,6 +59,7 @@ class SearchRepoForMatches(ContainerTask):
             'repo_seqs': self.in_repo_seqs().path,
         }
 
+        print(self.out_matched_repo_seqs().path)
         output_paths = {
             'matched_repo': self.out_matched_repo_seqs().path,
             'unmatched_exp': self.out_unmatched_exp_seqs().path,
@@ -71,6 +80,10 @@ class SearchRepoForMatches(ContainerTask):
             input_paths=input_paths,
             output_paths=output_paths,
             )
+
+
+class FillLonely(sl.Task):
+    pass
 
 
 class CMAlignSeqs(ContainerTask):

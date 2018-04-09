@@ -57,6 +57,9 @@ class MALIAMPI:
                 '--sequence-variants-path={}'.format(
                     args.sequence_variants
                     ),
+                '--repo-seq-info={}'.format(
+                    args.repo_seq_info
+                    ),
                 '--repo-seqs-filtered={}'.format(
                     args.repo_seqs_filtered
                     ),

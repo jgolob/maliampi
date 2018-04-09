@@ -122,7 +122,7 @@ class ContainerHelpers():
             )
             container_paths.update(input_container_paths)
             mounts[input_host_path_ca]={'bind': '/mnt/inputs', 'mode': inputs_mode}
-        
+ 
         if len(output_paths) > 0:
             output_host_path_ca, output_container_paths = self.map_paths_to_container(
                 output_paths,
