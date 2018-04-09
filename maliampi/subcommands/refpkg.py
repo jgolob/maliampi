@@ -2,7 +2,7 @@
 import luigi
 import sciluigi as sl
 from lib.tasks import LoadFastaSeqs, SearchRepoForMatches, CMAlignSeqs, RAxMLTree, LoadFile
-from lib.containertask import ContainerInfo
+from lib.tasks import AlignmentStoToFasta
 import os
 
 
@@ -62,6 +62,11 @@ class WorkflowMakeRefpkg(sl.WorkflowTask):
         filtered_search_sv = self.new_task(
             'filtered_search_sv',
             SearchRepoForMatches,
+            containerinfo=sl.ContainerInfo(
+                vcpu=2,
+                mem=4096,
+                container_cache=self.working_dir
+            ),
             matches_uc_path=os.path.join(self.working_dir,
                                          'repo_matches.filtered.uc'),
             unmatched_exp_seqs_path=os.path.join(self.working_dir,
@@ -73,12 +78,6 @@ class WorkflowMakeRefpkg(sl.WorkflowTask):
         )
         filtered_search_sv.in_exp_seqs = sequence_variants.out_seqs
         filtered_search_sv.in_repo_seqs = repo_seqs_filtered.out_seqs
-
-        #
-        # Get the seq_info for the recruited repository sequences
-        #
-
-
 
         #
         # Fill 'lonely' recruits (where only one species represented for a genus in the recruits
@@ -93,24 +92,47 @@ class WorkflowMakeRefpkg(sl.WorkflowTask):
         #
         # Align the recruited repo sequences
         #
-
         filtered_align_recruits = self.new_task(
             'filtered_align_recruits',
             CMAlignSeqs,
-            alignment_path=os.path.join(
-                self.working_dir,
-                'aln/filtered'
+            containerinfo=sl.ContainerInfo(
+                vcpu=2,
+                mem=4096,
+                container_cache=self.working_dir
             ),
-            alignment_score_path=os.path.join(
+            alignment_sto_fn=os.path.join(
                 self.working_dir,
-                'aln/filtered.scores'
+                'filtered.aln.sto'
+            ),
+            alignment_score_fn=os.path.join(
+                self.working_dir,
+                'filtered.aln.scores'
             ),
         )
         filtered_align_recruits.in_seqs = filtered_search_sv.out_matched_repo_seqs
 
+        #
+        # Make a fasta version of the alignment
+        #
+
+        filtered_align_fasta = self.new_task(
+            'filtered_align_fasta',
+            AlignmentStoToFasta,
+            align_fasta_fn=os.path.join(
+                self.working_dir,
+                'filtered.aln.fasta'
+            ),
+        )
+        filtered_align_fasta.in_align_sto = filtered_align_recruits.out_align_sto
+
         raxml_tree = self.new_task(
             'raxml_tree',
             RAxMLTree,
+            containerinfo=sl.ContainerInfo(
+                vcpu=2,
+                mem=4096,
+                container_cache=self.working_dir
+            ),
             tree_path=os.path.join(self.working_dir,
                                    'refpkg.tre'),
             tree_stats_path=os.path.join(self.working_dir,
@@ -118,7 +140,7 @@ class WorkflowMakeRefpkg(sl.WorkflowTask):
             raxml_working_dir=os.path.join(self.working_dir,
                                            'refpkg_workdir/'),
         )
-        raxml_tree.in_alignment_fasta = filtered_align_recruits.out_align_fasta
+        raxml_tree.in_align_fasta = filtered_align_fasta.out_align_fasta
 
         return(raxml_tree)
 

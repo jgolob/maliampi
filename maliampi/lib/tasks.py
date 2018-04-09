@@ -1,6 +1,5 @@
 import luigi
 import sciluigi as sl
-from lib.containertask import ContainerTask, ContainerInfo
 import os
 from string import Template
 from Bio import AlignIO
@@ -22,12 +21,11 @@ class LoadFile(sl.ExternalTask):
         return sl.TargetInfo(self, self.path)
 
 
-class SearchRepoForMatches(ContainerTask):
+class SearchRepoForMatches(sl.ContainerTask):
     # A Task that uses vsearch to find matches for experimental sequences in a repo of sequences
 
     # Define the container (in docker-style repo format) to complete this task
     container = 'golob/vsearch'
-    num_cpu = sl.Parameter(default=1)
 
     in_exp_seqs = None  # Experimental seqs for this task
     in_repo_seqs = None  # Repository seqs
@@ -68,7 +66,7 @@ class SearchRepoForMatches(ContainerTask):
 
         self.ex(
             command='vsearch '+
-                  ' --threads=%s' % self.num_cpu+
+                  ' --threads=%s' % self.containerinfo.vcpu +
                   ' --usearch_global $exp_seqs'+
                   ' --db=$repo_seqs'+
                   ' --id=%s' % self.min_id+
@@ -86,38 +84,31 @@ class FillLonely(sl.Task):
     pass
 
 
-class CMAlignSeqs(ContainerTask):
+class CMAlignSeqs(sl.ContainerTask):
     # A Task that uses CMAlign to make an alignment
     # Define the container (in docker-style repo format) to complete this task
     container = 'golob/infernal'
 
-    num_cpu = sl.Parameter(default=1)
-    
     in_seqs = None  # Seqs to align
-    
+
     # Where to put the alignment (both sto and fasta created) include prefix but not file extension
 
-    alignment_path = sl.Parameter()
-    
+    alignment_sto_fn = sl.Parameter()
+
     # FULL path where to store the alignment scores. Include extension
-    alignment_score_path = sl.Parameter()
-        
+    alignment_score_fn = sl.Parameter()
+
     # cmalign parameters
-    # max memory to use in MB. 
+    # max memory to use in MB.
     cmalign_mxsize = sl.Parameter(default=8196)
-    
+
     def out_alignscores(self):
-        return sl.TargetInfo(self,"%s" % self.alignment_score_path)
-    
-    def out_align_stockholm(self):
-        return sl.TargetInfo(self,"%s.sto" % self.alignment_path)
-    
-    def out_align_fasta(self):
-        return sl.TargetInfo(self,"%s.fasta" % self.alignment_path)
-        
+        return sl.TargetInfo(self, self.alignment_score_fn)
+
+    def out_align_sto(self):
+        return sl.TargetInfo(self, self.alignment_sto_fn)
+
     def run(self):
-        if not os.path.exists(self.alignment_path):
-            os.makedirs(self.alignment_path)
 
         # Get our host paths for inputs and outputs
         input_paths = {
@@ -125,52 +116,60 @@ class CMAlignSeqs(ContainerTask):
         }
 
         output_paths = {
-            'align_sto': self.out_align_stockholm().path,
+            'align_sto': self.out_align_sto().path,
             'alignscores': self.out_alignscores().path,
         }
 
         self.ex(
-            command='cmalign'+
-            ' --cpu %s --noprob --dnaout --mxsize %d' % (self.num_cpu, self.cmalign_mxsize)+
-            ' --sfile $alignscores -o $align_sto '+
+            command='cmalign' +
+            ' --cpu %s --noprob --dnaout --mxsize %d' % (self.containerinfo.vcpu, self.cmalign_mxsize) +
+            ' --sfile $alignscores -o $align_sto ' +
             ' /cmalign/data/SSU_rRNA_bacteria.cm $in_seqs',
             input_paths=input_paths,
             output_paths=output_paths
         )
-        
+
+
+class AlignmentStoToFasta(sl.Task):
+    # Alignment in stockholm format
+    in_align_sto = None
+
+    align_fasta_fn = sl.Parameter()
+
+    def out_align_fasta(self):
+        return sl.TargetInfo(self, self.align_fasta_fn)
+
+    def run(self):
         # Use biopython to convert from stockholm to fasta output
-        AlignIO.write(AlignIO.read(self.out_align_stockholm().path, 'stockholm'), self.out_align_fasta().path, 'fasta')
+        AlignIO.write(AlignIO.read(self.in_align_sto().open(), 'stockholm'), self.out_align_fasta().path, 'fasta')
 
 
-class RAxMLTree(ContainerTask):
+class RAxMLTree(sl.ContainerTask):
     # A task that uses RAxML to generate a tree from an alignment
-    
+
     # Define the container (in docker-style repo format) to complete this task
     container = 'golob/raxml'
 
-    num_cpu = sl.Parameter(default=1)
-
     # Input of an alignment in FASTA format
-    in_alignment_fasta = None
-    
+    in_align_fasta = None
+
     # Parameter: Path + filename where the resultant tree should go
-    tree_path       = sl.Parameter()
+    tree_path = sl.Parameter()
     tree_stats_path = sl.Parameter()
     # DIRECTORY where the intermediate RAxML files should go
     raxml_working_dir = sl.Parameter()
     
     # Parameters for RAxML
-    
-    raxml_model             = sl.Parameter(default='GTRGAMMA')
-    raxml_parsimony_seed    = sl.Parameter(default=12345)
-    
-    
+
+    raxml_model = sl.Parameter(default='GTRGAMMA')
+    raxml_parsimony_seed = sl.Parameter(default=12345)
+
     def out_tree(self):
-        return sl.TargetInfo(self,self.tree_path)
-    
+        return sl.TargetInfo(self, self.tree_path)
+
     def out_tree_stats(self):
-        return sl.TargetInfo(self,self.tree_stats_path)
-    
+        return sl.TargetInfo(self, self.tree_stats_path)
+
     def run(self):
         # Lots of filesystem throat-clearing
         name = os.path.basename(os.path.splitext(self.tree_path)[0])
@@ -181,32 +180,29 @@ class RAxMLTree(ContainerTask):
         # Get our host paths for inputs and outputs
         # To be mapped into the container as appropriate
         input_paths = {
-            'in_alignment_fasta': self.in_alignment_fasta().path,
+            'in_align_fasta': self.in_align_fasta().path,
         }
 
         output_paths = {
             'out_tree': self.out_tree().path,
             'out_tree_stats': self.out_tree_stats().path,
             'raxml_working_dir': self.raxml_working_dir,
-        }        
-        
+        }
+
         self.ex(
-            command = 'raxml'
-                      ' -n %s' % name+  # Prefix/name to use for the output files
-                      ' -m %s' % self.raxml_model+  # Model to use 
-                      ' -s $in_alignment_fasta'+  # Path to input alignment
-                      ' -p %d' % self.raxml_parsimony_seed+
-                      ' -T %d' % max([int(self.num_cpu),2]) + # threads (min 2)
-                      ' -w $raxml_working_dir',  # working directory
+            command='raxml'
+                    ' -n %s' % name +  # Prefix/name to use for the output files
+                    ' -m %s' % self.raxml_model +  # Model to use
+                    ' -s $in_align_fasta' +  # Path to input alignment
+                    ' -p %d' % self.raxml_parsimony_seed +
+                    ' -T %d' % max([int(self.containerinfo.vcpu), 2]) +  # threads (min 2)
+                    ' -w $raxml_working_dir',  # working directory
             input_paths=input_paths,
             output_paths=output_paths,
             inputs_mode='rw',
         )
-        
+
         # Move the resultant tree to our specified path
         shutil.copy(os.path.join(raxml_working_dir,"RAxML_bestTree.%s" % name), self.out_tree().path)
         # And stats
         shutil.copy(os.path.join(raxml_working_dir,"RAxML_info.%s" % name), self.out_tree_stats().path)
-        
-        # Clean up the working directory
-        #shutil.rmtree(self.raxml_working_dir)
