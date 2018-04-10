@@ -25,7 +25,7 @@ class SearchRepoForMatches(sl.ContainerTask):
     # A Task that uses vsearch to find matches for experimental sequences in a repo of sequences
 
     # Define the container (in docker-style repo format) to complete this task
-    container = 'golob/vsearch'
+    container = 'docker://golob/vsearch'
 
     in_exp_seqs = None  # Experimental seqs for this task
     in_repo_seqs = None  # Repository seqs
@@ -65,16 +65,16 @@ class SearchRepoForMatches(sl.ContainerTask):
         }
 
         self.ex(
-            command='vsearch '+
-                  ' --threads=%s' % self.containerinfo.vcpu +
-                  ' --usearch_global $exp_seqs'+
-                  ' --db=$repo_seqs'+
-                  ' --id=%s' % self.min_id+
-                  ' --strand both'+
-                  ' --uc=$uc --uc_allhits'+
-                  ' --notmatched=$unmatched_exp'+
-                  ' --dbmatched=$matched_repo'+
-                  ' --maxaccepts=%s' % self.maxaccepts,
+            command='vsearch ' +
+                    ' --threads=%s' % self.containerinfo.vcpu +
+                    ' --usearch_global $exp_seqs' +
+                    ' --db=$repo_seqs' +
+                    ' --id=%s' % self.min_id +
+                    ' --strand both' +
+                    ' --uc=$uc --uc_allhits' +
+                    ' --notmatched=$unmatched_exp' +
+                    ' --dbmatched=$matched_repo' +
+                    ' --maxaccepts=%s' % self.maxaccepts,
             input_paths=input_paths,
             output_paths=output_paths,
             )
@@ -203,6 +203,6 @@ class RAxMLTree(sl.ContainerTask):
         )
 
         # Move the resultant tree to our specified path
-        shutil.copy(os.path.join(raxml_working_dir,"RAxML_bestTree.%s" % name), self.out_tree().path)
+        shutil.copy(os.path.join(raxml_working_dir, "RAxML_bestTree.%s" % name), self.out_tree().path)
         # And stats
-        shutil.copy(os.path.join(raxml_working_dir,"RAxML_info.%s" % name), self.out_tree_stats().path)
+        shutil.copy(os.path.join(raxml_working_dir, "RAxML_info.%s" % name), self.out_tree_stats().path)

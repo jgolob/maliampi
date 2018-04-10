@@ -65,7 +65,8 @@ class WorkflowMakeRefpkg(sl.WorkflowTask):
             containerinfo=sl.ContainerInfo(
                 vcpu=2,
                 mem=4096,
-                container_cache=self.working_dir
+                container_cache=os.path.join(self.working_dir,'containers/'),
+                engine='singularity_slurm',
             ),
             matches_uc_path=os.path.join(self.working_dir,
                                          'repo_matches.filtered.uc'),
@@ -79,6 +80,8 @@ class WorkflowMakeRefpkg(sl.WorkflowTask):
         filtered_search_sv.in_exp_seqs = sequence_variants.out_seqs
         filtered_search_sv.in_repo_seqs = repo_seqs_filtered.out_seqs
 
+        return(filtered_search_sv)
+
         #
         # Fill 'lonely' recruits (where only one species represented for a genus in the recruits
         #
@@ -87,7 +90,6 @@ class WorkflowMakeRefpkg(sl.WorkflowTask):
         #    'fill_lonely_recruits',
         #    FillLonely,
         #)
-
 
         #
         # Align the recruited repo sequences
