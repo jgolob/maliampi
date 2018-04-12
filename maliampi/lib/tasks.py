@@ -11,14 +11,14 @@ class LoadFastaSeqs(sl.ExternalTask):
     fasta_seq_path = sl.Parameter()
 
     def out_seqs(self):
-        return sl.TargetInfo(self, self.fasta_seq_path)
+        return sl.ContainerTargetInfo(self, self.fasta_seq_path)
 
 
 class LoadFile(sl.ExternalTask):
     path = sl.Parameter()
 
     def out(self):
-        return sl.TargetInfo(self, self.path)
+        return sl.ContainerTargetInfo(self, self.path)
 
 
 class SearchRepoForMatches(sl.ContainerTask):
@@ -42,13 +42,13 @@ class SearchRepoForMatches(sl.ContainerTask):
     maxaccepts = sl.Parameter(default=1)  # by default, stop searching after the first
 
     def out_matches_uc(self):
-        return sl.TargetInfo(self, self.matches_uc_path)
+        return sl.ContainerTargetInfo(self, self.matches_uc_path)
 
     def out_unmatched_exp_seqs(self):
-        return sl.TargetInfo(self, self.unmatched_exp_seqs_path)
+        return sl.ContainerTargetInfo(self, self.unmatched_exp_seqs_path)
 
     def out_matched_repo_seqs(self):
-        return sl.TargetInfo(self, self.matched_repo_seqs_path)
+        return sl.ContainerTargetInfo(self, self.matched_repo_seqs_path)
 
     def run(self):
         # Get our host paths for inputs and outputs
@@ -103,10 +103,10 @@ class CMAlignSeqs(sl.ContainerTask):
     cmalign_mxsize = sl.Parameter(default=8196)
 
     def out_alignscores(self):
-        return sl.TargetInfo(self, self.alignment_score_fn)
+        return sl.ContainerTargetInfo(self, self.alignment_score_fn)
 
     def out_align_sto(self):
-        return sl.TargetInfo(self, self.alignment_sto_fn)
+        return sl.ContainerTargetInfo(self, self.alignment_sto_fn)
 
     def run(self):
 
@@ -137,7 +137,7 @@ class AlignmentStoToFasta(sl.Task):
     align_fasta_fn = sl.Parameter()
 
     def out_align_fasta(self):
-        return sl.TargetInfo(self, self.align_fasta_fn)
+        return sl.ContainerTargetInfo(self, self.align_fasta_fn)
 
     def run(self):
         # Use biopython to convert from stockholm to fasta output
@@ -165,10 +165,10 @@ class RAxMLTree(sl.ContainerTask):
     raxml_parsimony_seed = sl.Parameter(default=12345)
 
     def out_tree(self):
-        return sl.TargetInfo(self, self.tree_path)
+        return sl.ContainerTargetInfo(self, self.tree_path)
 
     def out_tree_stats(self):
-        return sl.TargetInfo(self, self.tree_stats_path)
+        return sl.ContainerTargetInfo(self, self.tree_stats_path)
 
     def run(self):
         # Lots of filesystem throat-clearing

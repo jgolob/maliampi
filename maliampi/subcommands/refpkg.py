@@ -65,8 +65,8 @@ class WorkflowMakeRefpkg(sl.WorkflowTask):
             containerinfo=sl.ContainerInfo(
                 vcpu=2,
                 mem=4096,
-                container_cache=os.path.join(self.working_dir,'containers/'),
-                engine='singularity_slurm',
+                container_cache=os.path.join(self.working_dir, 'containers/'),
+                engine='docker',
             ),
             matches_uc_path=os.path.join(self.working_dir,
                                          'repo_matches.filtered.uc'),
