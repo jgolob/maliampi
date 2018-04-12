@@ -25,7 +25,7 @@ class SearchRepoForMatches(sl.ContainerTask):
     # A Task that uses vsearch to find matches for experimental sequences in a repo of sequences
 
     # Define the container (in docker-style repo format) to complete this task
-    container = 'docker://golob/vsearch'
+    container = 'docker://golob/vsearch:v2.7.1_bcw'
 
     in_exp_seqs = None  # Experimental seqs for this task
     in_repo_seqs = None  # Repository seqs
