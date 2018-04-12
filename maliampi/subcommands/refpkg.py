@@ -1,8 +1,8 @@
 #!/usr/bin/python
 import luigi
 import sciluigi as sl
-from lib.tasks import LoadFastaSeqs, SearchRepoForMatches, CMAlignSeqs, RAxMLTree
-from lib.containertask import ContainerInfo
+from lib.tasks import LoadFastaSeqs, SearchRepoForMatches, CMAlignSeqs, RAxMLTree, LoadFile
+from lib.tasks import AlignmentStoToFasta
 import os
 
 
@@ -19,6 +19,7 @@ class WorkflowMakeRefpkg(sl.WorkflowTask):
     sequence_variants_path = sl.Parameter()
     new_refpkg_path = sl.Parameter()
     new_refpkg_name = sl.Parameter()
+    repo_seq_info = sl.Parameter()
     repo_seqs_filtered = sl.Parameter()
     min_id_types = sl.Parameter()
     min_id_filtered = sl.Parameter()
@@ -44,6 +45,16 @@ class WorkflowMakeRefpkg(sl.WorkflowTask):
             fasta_seq_path=self.repo_seqs_filtered
         )
 
+        # 
+        # Load the repository seq_info (that has the taxonomic information, etc)
+        #
+
+        repo_seq_info = self.new_task(
+            'load_repo_seq_info',
+            LoadFile,
+            path=self.repo_seq_info
+        )
+
         #
         # Search the sequence variants in filtered repository
         #
@@ -51,47 +62,87 @@ class WorkflowMakeRefpkg(sl.WorkflowTask):
         filtered_search_sv = self.new_task(
             'filtered_search_sv',
             SearchRepoForMatches,
+            containerinfo=sl.ContainerInfo(
+                vcpu=2,
+                mem=4096,
+                container_cache=os.path.join(self.working_dir,'containers/'),
+                engine='singularity_slurm',
+            ),
             matches_uc_path=os.path.join(self.working_dir,
                                          'repo_matches.filtered.uc'),
-            unmatched_exp_seqs_path=os.path.join(self.working_dir, 
+            unmatched_exp_seqs_path=os.path.join(self.working_dir,
                                                  'exp_seqs_unmatched.filtered.fasta'),
-            matched_repo_seqs_path=os.path.join(self.working_dir, 
+            matched_repo_seqs_path=os.path.join(self.working_dir,
                                                 'recruited_repo_seqs.filtered.fasta'),
             min_id=self.min_id_filtered,
-            maxaccepts=10,  # likewise, should be a parameter in a config file. For, take the top 10 (roughly corresponding to a 95% id for most)
+            maxaccepts=10,  # Default take the top 10 (roughly corresponding to a 95% id for most)
         )
         filtered_search_sv.in_exp_seqs = sequence_variants.out_seqs
         filtered_search_sv.in_repo_seqs = repo_seqs_filtered.out_seqs
 
+        return(filtered_search_sv)
+
+        #
+        # Fill 'lonely' recruits (where only one species represented for a genus in the recruits
+        #
+
+        # fill_lonely_recruits = self.new_task(
+        #    'fill_lonely_recruits',
+        #    FillLonely,
+        #)
+
         #
         # Align the recruited repo sequences
         #
-
         filtered_align_recruits = self.new_task(
             'filtered_align_recruits',
             CMAlignSeqs,
-            alignment_path=os.path.join(
-                self.working_dir,
-                'aln/filtered'
+            containerinfo=sl.ContainerInfo(
+                vcpu=2,
+                mem=4096,
+                container_cache=self.working_dir
             ),
-            alignment_score_path=os.path.join(
+            alignment_sto_fn=os.path.join(
                 self.working_dir,
-                'aln/filtered.scores'
+                'filtered.aln.sto'
+            ),
+            alignment_score_fn=os.path.join(
+                self.working_dir,
+                'filtered.aln.scores'
             ),
         )
-        filtered_align_recruits.in_seqs=filtered_search_sv.out_matched_repo_seqs
+        filtered_align_recruits.in_seqs = filtered_search_sv.out_matched_repo_seqs
+
+        #
+        # Make a fasta version of the alignment
+        #
+
+        filtered_align_fasta = self.new_task(
+            'filtered_align_fasta',
+            AlignmentStoToFasta,
+            align_fasta_fn=os.path.join(
+                self.working_dir,
+                'filtered.aln.fasta'
+            ),
+        )
+        filtered_align_fasta.in_align_sto = filtered_align_recruits.out_align_sto
 
         raxml_tree = self.new_task(
             'raxml_tree',
             RAxMLTree,
+            containerinfo=sl.ContainerInfo(
+                vcpu=2,
+                mem=4096,
+                container_cache=self.working_dir
+            ),
             tree_path=os.path.join(self.working_dir,
-                                         'refpkg.tre'),
+                                   'refpkg.tre'),
             tree_stats_path=os.path.join(self.working_dir,
                                          'refpkg.tre.info'),
             raxml_working_dir=os.path.join(self.working_dir,
-                                         'refpkg_workdir/'),
+                                           'refpkg_workdir/'),
         )
-        raxml_tree.in_alignment_fasta = filtered_align_recruits.out_align_fasta
+        raxml_tree.in_align_fasta = filtered_align_fasta.out_align_fasta
 
         return(raxml_tree)
 
@@ -101,6 +152,13 @@ def build_args(parser):
         '--sequence-variants',
         help="""Path to sequence variants (in FASTA format)
             for which we need a reference set created""",
+        required=True
+        )
+    parser.add_argument(
+        '--repo-seq-info',
+        help="""Path to repository sequences information
+            csv format expected""",
+        type=str,
         required=True
         )
     parser.add_argument(
