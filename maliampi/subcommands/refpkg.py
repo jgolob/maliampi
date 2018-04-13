@@ -66,7 +66,7 @@ class WorkflowMakeRefpkg(sl.WorkflowTask):
                 vcpu=2,
                 mem=4096,
                 container_cache=os.path.join(self.working_dir, 'containers/'),
-                engine='docker',
+                engine='aws_batch',
             ),
             matches_uc_path=os.path.join(self.working_dir,
                                          'repo_matches.filtered.uc'),
