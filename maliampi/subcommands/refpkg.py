@@ -67,6 +67,7 @@ class WorkflowMakeRefpkg(sl.WorkflowTask):
                 mem=4096,
                 container_cache=os.path.join(self.working_dir, 'containers/'),
                 engine='aws_batch',
+                aws_s3_scratch_loc='s3://fh-pi-fredricks-d/lab/golob/sl_temp/'
             ),
             matches_uc_path=os.path.join(self.working_dir,
                                          'repo_matches.filtered.uc'),

@@ -56,8 +56,6 @@ class SearchRepoForMatches(sl.ContainerTask):
             'exp_seqs': self.in_exp_seqs().path,
             'repo_seqs': self.in_repo_seqs().path,
         }
-
-        print(self.out_matched_repo_seqs().path)
         output_paths = {
             'matched_repo': self.out_matched_repo_seqs().path,
             'unmatched_exp': self.out_unmatched_exp_seqs().path,
