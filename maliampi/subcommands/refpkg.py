@@ -67,7 +67,9 @@ class WorkflowMakeRefpkg(sl.WorkflowTask):
                 mem=4096,
                 container_cache=os.path.join(self.working_dir, 'containers/'),
                 engine='aws_batch',
-                aws_s3_scratch_loc='s3://fh-pi-fredricks-d/lab/golob/sl_temp/'
+                aws_s3_scratch_loc='s3://fh-pi-fredricks-d/lab/golob/sl_temp/',
+                aws_jobRoleArn='arn:aws:iam::064561331775:role/fh-pi-fredricks-d-batchtask',
+                aws_batch_job_queue='optimal',
             ),
             matches_uc_path=os.path.join(self.working_dir,
                                          'repo_matches.filtered.uc'),
@@ -80,8 +82,6 @@ class WorkflowMakeRefpkg(sl.WorkflowTask):
         )
         filtered_search_sv.in_exp_seqs = sequence_variants.out_seqs
         filtered_search_sv.in_repo_seqs = repo_seqs_filtered.out_seqs
-
-        return(filtered_search_sv)
 
         #
         # Fill 'lonely' recruits (where only one species represented for a genus in the recruits
@@ -101,7 +101,11 @@ class WorkflowMakeRefpkg(sl.WorkflowTask):
             containerinfo=sl.ContainerInfo(
                 vcpu=2,
                 mem=4096,
-                container_cache=self.working_dir
+                container_cache=os.path.join(self.working_dir, 'containers/'),
+                engine='aws_batch',
+                aws_s3_scratch_loc='s3://fh-pi-fredricks-d/lab/golob/sl_temp/',
+                aws_jobRoleArn='arn:aws:iam::064561331775:role/fh-pi-fredricks-d-batchtask',
+                aws_batch_job_queue='optimal',
             ),
             alignment_sto_fn=os.path.join(
                 self.working_dir,
@@ -134,7 +138,11 @@ class WorkflowMakeRefpkg(sl.WorkflowTask):
             containerinfo=sl.ContainerInfo(
                 vcpu=2,
                 mem=4096,
-                container_cache=self.working_dir
+                container_cache=os.path.join(self.working_dir, 'containers/'),
+                engine='aws_batch',
+                aws_s3_scratch_loc='s3://fh-pi-fredricks-d/lab/golob/sl_temp/',
+                aws_jobRoleArn='arn:aws:iam::064561331775:role/fh-pi-fredricks-d-batchtask',
+                aws_batch_job_queue='optimal',
             ),
             tree_path=os.path.join(self.working_dir,
                                    'refpkg.tre'),

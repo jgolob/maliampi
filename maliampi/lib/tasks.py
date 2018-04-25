@@ -85,7 +85,7 @@ class FillLonely(sl.Task):
 class CMAlignSeqs(sl.ContainerTask):
     # A Task that uses CMAlign to make an alignment
     # Define the container (in docker-style repo format) to complete this task
-    container = 'golob/infernal'
+    container = 'golob/infernal:1.1.2_bcw'
 
     in_seqs = None  # Seqs to align
 
@@ -146,7 +146,7 @@ class RAxMLTree(sl.ContainerTask):
     # A task that uses RAxML to generate a tree from an alignment
 
     # Define the container (in docker-style repo format) to complete this task
-    container = 'golob/raxml'
+    container = 'golob/raxml:8.2.11_bcw'
 
     # Input of an alignment in FASTA format
     in_align_fasta = None
@@ -171,8 +171,8 @@ class RAxMLTree(sl.ContainerTask):
     def run(self):
         # Lots of filesystem throat-clearing
         name = os.path.basename(os.path.splitext(self.tree_path)[0])
-        if not os.path.exists(self.raxml_working_dir):
-            os.makedirs(self.raxml_working_dir)
+#        if not os.path.exists(self.raxml_working_dir):
+#            os.makedirs(self.raxml_working_dir)
         raxml_working_dir = os.path.abspath(self.raxml_working_dir)
 
         # Get our host paths for inputs and outputs
@@ -184,23 +184,21 @@ class RAxMLTree(sl.ContainerTask):
         output_paths = {
             'out_tree': self.out_tree().path,
             'out_tree_stats': self.out_tree_stats().path,
-            'raxml_working_dir': self.raxml_working_dir,
         }
 
         self.ex(
-            command='raxml'
+            command='mkdir -p $raxml_working_dir && raxml'
                     ' -n %s' % name +  # Prefix/name to use for the output files
                     ' -m %s' % self.raxml_model +  # Model to use
                     ' -s $in_align_fasta' +  # Path to input alignment
                     ' -p %d' % self.raxml_parsimony_seed +
                     ' -T %d' % max([int(self.containerinfo.vcpu), 2]) +  # threads (min 2)
-                    ' -w $raxml_working_dir',  # working directory
+                    ' -w $raxml_working_dir' +  # working directory
+                    ' && cp $raxml_working_dir/RAxML_bestTree.%s $out_tree' % name +
+                    ' && cp $raxml_working_dir/RAxML_info.%s $out_tree_stats' % name,
             input_paths=input_paths,
             output_paths=output_paths,
+            extra_params={'raxml_working_dir': self.raxml_working_dir},
             inputs_mode='rw',
         )
 
-        # Move the resultant tree to our specified path
-        shutil.copy(os.path.join(raxml_working_dir, "RAxML_bestTree.%s" % name), self.out_tree().path)
-        # And stats
-        shutil.copy(os.path.join(raxml_working_dir, "RAxML_info.%s" % name), self.out_tree_stats().path)
