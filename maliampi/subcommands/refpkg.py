@@ -5,6 +5,7 @@ from lib.tasks import LoadFastaSeqs, SearchRepoForMatches, CMAlignSeqs, RAxMLTre
 from lib.tasks import AlignmentStoToFasta
 import os
 
+ENGINE = 'aws_batch'
 
 # Workflow
 class WorkflowMakeRefpkg(sl.WorkflowTask):
@@ -66,7 +67,7 @@ class WorkflowMakeRefpkg(sl.WorkflowTask):
                 vcpu=2,
                 mem=4096,
                 container_cache=os.path.join(self.working_dir, 'containers/'),
-                engine='aws_batch',
+                engine=ENGINE,
                 aws_s3_scratch_loc='s3://fh-pi-fredricks-d/lab/golob/sl_temp/',
                 aws_jobRoleArn='arn:aws:iam::064561331775:role/fh-pi-fredricks-d-batchtask',
                 aws_batch_job_queue='optimal',
@@ -102,7 +103,7 @@ class WorkflowMakeRefpkg(sl.WorkflowTask):
                 vcpu=2,
                 mem=4096,
                 container_cache=os.path.join(self.working_dir, 'containers/'),
-                engine='aws_batch',
+                engine=ENGINE,
                 aws_s3_scratch_loc='s3://fh-pi-fredricks-d/lab/golob/sl_temp/',
                 aws_jobRoleArn='arn:aws:iam::064561331775:role/fh-pi-fredricks-d-batchtask',
                 aws_batch_job_queue='optimal',
@@ -139,7 +140,7 @@ class WorkflowMakeRefpkg(sl.WorkflowTask):
                 vcpu=2,
                 mem=4096,
                 container_cache=os.path.join(self.working_dir, 'containers/'),
-                engine='aws_batch',
+                engine=ENGINE,
                 aws_s3_scratch_loc='s3://fh-pi-fredricks-d/lab/golob/sl_temp/',
                 aws_jobRoleArn='arn:aws:iam::064561331775:role/fh-pi-fredricks-d-batchtask',
                 aws_batch_job_queue='optimal',
