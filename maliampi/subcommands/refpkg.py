@@ -5,7 +5,6 @@ from lib.tasks import LoadFastaSeqs, SearchRepoForMatches, CMAlignSeqs, RAxMLTre
 from lib.tasks import AlignmentStoToFasta
 import os
 
-#ENGINE = 'aws_batch'
 ENGINE = 'docker'
 
 # Workflow

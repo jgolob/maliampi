@@ -52,14 +52,14 @@ class SearchRepoForMatches(sl.ContainerTask):
 
     def run(self):
         # Get our host paths for inputs and outputs
-        input_paths = {
-            'exp_seqs': self.in_exp_seqs().path,
-            'repo_seqs': self.in_repo_seqs().path,
+        input_targets = {
+            'exp_seqs': self.in_exp_seqs(),
+            'repo_seqs': self.in_repo_seqs(),
         }
-        output_paths = {
-            'matched_repo': self.out_matched_repo_seqs().path,
-            'unmatched_exp': self.out_unmatched_exp_seqs().path,
-            'uc': self.out_matches_uc().path,
+        output_targets = {
+            'matched_repo': self.out_matched_repo_seqs(),
+            'unmatched_exp': self.out_unmatched_exp_seqs(),
+            'uc': self.out_matches_uc(),
         }
 
         self.ex(
@@ -73,8 +73,8 @@ class SearchRepoForMatches(sl.ContainerTask):
                     ' --notmatched=$unmatched_exp' +
                     ' --dbmatched=$matched_repo' +
                     ' --maxaccepts=%s' % self.maxaccepts,
-            input_paths=input_paths,
-            output_paths=output_paths,
+            input_targets=input_targets,
+            output_targets=output_targets,
             )
 
 
@@ -109,13 +109,13 @@ class CMAlignSeqs(sl.ContainerTask):
     def run(self):
 
         # Get our host paths for inputs and outputs
-        input_paths = {
-            'in_seqs': self.in_seqs().path,
+        input_targets = {
+            'in_seqs': self.in_seqs(),
         }
 
-        output_paths = {
-            'align_sto': self.out_align_sto().path,
-            'alignscores': self.out_alignscores().path,
+        output_targets = {
+            'align_sto': self.out_align_sto(),
+            'alignscores': self.out_alignscores(),
         }
 
         self.ex(
@@ -123,8 +123,8 @@ class CMAlignSeqs(sl.ContainerTask):
             ' --cpu %s --noprob --dnaout --mxsize %d' % (self.containerinfo.vcpu, self.cmalign_mxsize) +
             ' --sfile $alignscores -o $align_sto ' +
             ' /cmalign/data/SSU_rRNA_bacteria.cm $in_seqs',
-            input_paths=input_paths,
-            output_paths=output_paths
+            input_targets=input_targets,
+            output_targets=output_targets
         )
 
 
@@ -139,7 +139,12 @@ class AlignmentStoToFasta(sl.Task):
 
     def run(self):
         # Use biopython to convert from stockholm to fasta output
-        AlignIO.write(AlignIO.read(self.in_align_sto().open(), 'stockholm'), self.out_align_fasta().path, 'fasta')
+        with self.out_align_fasta().open('w') as out_h:
+            AlignIO.write(
+                        AlignIO.read(self.in_align_sto().open('r'), 'stockholm'),
+                        out_h,
+                        'fasta'
+            )
 
 
 class RAxMLTree(sl.ContainerTask):
@@ -177,13 +182,13 @@ class RAxMLTree(sl.ContainerTask):
 
         # Get our host paths for inputs and outputs
         # To be mapped into the container as appropriate
-        input_paths = {
-            'in_align_fasta': self.in_align_fasta().path,
+        input_targets = {
+            'in_align_fasta': self.in_align_fasta(),
         }
 
-        output_paths = {
-            'out_tree': self.out_tree().path,
-            'out_tree_stats': self.out_tree_stats().path,
+        output_targets = {
+            'out_tree': self.out_tree(),
+            'out_tree_stats': self.out_tree_stats(),
         }
 
         self.ex(
@@ -196,8 +201,8 @@ class RAxMLTree(sl.ContainerTask):
                     ' -w $raxml_working_dir' +  # working directory
                     ' && cp $raxml_working_dir/RAxML_bestTree.%s $out_tree' % name +
                     ' && cp $raxml_working_dir/RAxML_info.%s $out_tree_stats' % name,
-            input_paths=input_paths,
-            output_paths=output_paths,
+            input_targets=input_targets,
+            output_targets=output_targets,
             extra_params={'raxml_working_dir': self.raxml_working_dir},
             inputs_mode='rw',
         )
