@@ -25,7 +25,7 @@ class SearchRepoForMatches(sl.ContainerTask):
     # A Task that uses vsearch to find matches for experimental sequences in a repo of sequences
 
     # Define the container (in docker-style repo format) to complete this task
-    container = 'golob/vsearch:2.7.1_bcw_0.1.0a'
+    container = 'golob/vsearch:2.7.1_bcw_0.1.0b'
 
     in_exp_seqs = None  # Experimental seqs for this task
     in_repo_seqs = None  # Repository seqs
@@ -85,7 +85,7 @@ class FillLonely(sl.Task):
 class CMAlignSeqs(sl.ContainerTask):
     # A Task that uses CMAlign to make an alignment
     # Define the container (in docker-style repo format) to complete this task
-    container = 'golob/infernal:1.1.2_bcw_0.1.0a'
+    container = 'golob/infernal:1.1.2_bcw_0.1.0b'
 
     in_seqs = None  # Seqs to align
 
@@ -151,7 +151,7 @@ class RAxMLTree(sl.ContainerTask):
     # A task that uses RAxML to generate a tree from an alignment
 
     # Define the container (in docker-style repo format) to complete this task
-    container = 'golob/raxml:8.2.11_bcw_0.1.0b'
+    container = 'golob/raxml:8.2.11_bcw_0.1.0c'
 
     # Input of an alignment in FASTA format
     in_align_fasta = None
