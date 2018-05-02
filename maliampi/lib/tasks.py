@@ -160,7 +160,7 @@ class RAxMLTree(sl.ContainerTask):
     tree_path = sl.Parameter()
     tree_stats_path = sl.Parameter()
     # DIRECTORY where the intermediate RAxML files should go (container fs space)
-    raxml_working_dir = sl.Parameter(default='/working')
+    raxml_working_dir = sl.Parameter(default='/scratch')
 
     # Parameters for RAxML
 
@@ -189,7 +189,7 @@ class RAxMLTree(sl.ContainerTask):
         }
 
         self.ex(
-            command='mkdir -p $raxml_working_dir && raxml'
+            command='mkdir -p $raxml_working_dir && raxmlHPC-PTHREADS'
                     ' -n %s' % name +  # Prefix/name to use for the output files
                     ' -m %s' % self.raxml_model +  # Model to use
                     ' -s $in_align_fasta' +  # Path to input alignment
@@ -203,4 +203,3 @@ class RAxMLTree(sl.ContainerTask):
             extra_params={'raxml_working_dir': self.raxml_working_dir},
             inputs_mode='rw',
         )
-

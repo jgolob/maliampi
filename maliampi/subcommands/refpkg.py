@@ -35,7 +35,7 @@ class WorkflowMakeRefpkg(sl.WorkflowTask):
                 aws_s3_scratch_loc='s3://fh-pi-fredricks-d/lab/golob/sl_temp/',
                 aws_jobRoleArn='arn:aws:iam::064561331775:role/fh-pi-fredricks-d-batchtask',
                 aws_batch_job_queue='optimal',
-                #slurm_partition='boneyard'
+                slurm_partition='boneyard'
             )
 
     def workflow(self):
