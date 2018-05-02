@@ -5,7 +5,7 @@ from lib.tasks import LoadFastaSeqs, SearchRepoForMatches, CMAlignSeqs, RAxMLTre
 from lib.tasks import AlignmentStoToFasta
 import os
 
-ENGINE = 'singularity_slurm'
+ENGINE = 'aws_batch'
 
 # Workflow
 class WorkflowMakeRefpkg(sl.WorkflowTask):
