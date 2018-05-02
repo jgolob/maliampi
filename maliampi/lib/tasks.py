@@ -160,7 +160,7 @@ class RAxMLTree(sl.ContainerTask):
     tree_path = sl.Parameter()
     tree_stats_path = sl.Parameter()
     # DIRECTORY where the intermediate RAxML files should go (container fs space)
-    raxml_working_dir = sl.Parameter(default='/working/raxml')
+    raxml_working_dir = sl.Parameter(default='/working')
 
     # Parameters for RAxML
 
