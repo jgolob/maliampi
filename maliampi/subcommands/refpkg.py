@@ -5,7 +5,7 @@ from lib.tasks import LoadFastaSeqs, SearchRepoForMatches, CMAlignSeqs, RAxMLTre
 from lib.tasks import AlignmentStoToFasta
 import os
 
-ENGINE = 'docker'
+ENGINE = 'singularity_slurm'
 
 # Workflow
 class WorkflowMakeRefpkg(sl.WorkflowTask):
@@ -26,6 +26,17 @@ class WorkflowMakeRefpkg(sl.WorkflowTask):
     min_id_filtered = sl.Parameter()
     min_id_unnamed = sl.Parameter()
     min_best = sl.Parameter()
+
+    test_containerinfo = sl.ContainerInfo(
+                vcpu=2,
+                mem=4096,
+                container_cache=os.path.abspath(os.path.join('../working', 'containers/')),
+                engine=ENGINE,
+                aws_s3_scratch_loc='s3://fh-pi-fredricks-d/lab/golob/sl_temp/',
+                aws_jobRoleArn='arn:aws:iam::064561331775:role/fh-pi-fredricks-d-batchtask',
+                aws_batch_job_queue='optimal',
+                #slurm_partition='boneyard'
+            )
 
     def workflow(self):
         #
@@ -63,15 +74,7 @@ class WorkflowMakeRefpkg(sl.WorkflowTask):
         filtered_search_sv = self.new_task(
             'filtered_search_sv',
             SearchRepoForMatches,
-            containerinfo=sl.ContainerInfo(
-                vcpu=2,
-                mem=4096,
-                container_cache=os.path.join(self.working_dir, 'containers/'),
-                engine=ENGINE,
-                aws_s3_scratch_loc='s3://fh-pi-fredricks-d/lab/golob/sl_temp/',
-                aws_jobRoleArn='arn:aws:iam::064561331775:role/fh-pi-fredricks-d-batchtask',
-                aws_batch_job_queue='optimal',
-            ),
+            containerinfo=self.test_containerinfo,
             matches_uc_path=os.path.join(self.working_dir,
                                          'repo_matches.filtered.uc'),
             unmatched_exp_seqs_path=os.path.join(self.working_dir,
@@ -99,15 +102,7 @@ class WorkflowMakeRefpkg(sl.WorkflowTask):
         filtered_align_recruits = self.new_task(
             'filtered_align_recruits',
             CMAlignSeqs,
-            containerinfo=sl.ContainerInfo(
-                vcpu=2,
-                mem=4096,
-                container_cache=os.path.join(self.working_dir, 'containers/'),
-                engine=ENGINE,
-                aws_s3_scratch_loc='s3://fh-pi-fredricks-d/lab/golob/sl_temp/',
-                aws_jobRoleArn='arn:aws:iam::064561331775:role/fh-pi-fredricks-d-batchtask',
-                aws_batch_job_queue='optimal',
-            ),
+            containerinfo=self.test_containerinfo,
             alignment_sto_fn=os.path.join(
                 self.working_dir,
                 'filtered.aln.sto'
@@ -136,21 +131,11 @@ class WorkflowMakeRefpkg(sl.WorkflowTask):
         raxml_tree = self.new_task(
             'raxml_tree',
             RAxMLTree,
-            containerinfo=sl.ContainerInfo(
-                vcpu=2,
-                mem=4096,
-                container_cache=os.path.join(self.working_dir, 'containers/'),
-                engine=ENGINE,
-                aws_s3_scratch_loc='s3://fh-pi-fredricks-d/lab/golob/sl_temp/',
-                aws_jobRoleArn='arn:aws:iam::064561331775:role/fh-pi-fredricks-d-batchtask',
-                aws_batch_job_queue='optimal',
-            ),
+            containerinfo=self.test_containerinfo,
             tree_path=os.path.join(self.working_dir,
                                    'refpkg.tre'),
             tree_stats_path=os.path.join(self.working_dir,
                                          'refpkg.tre.info'),
-            raxml_working_dir=os.path.join(self.working_dir,
-                                           'refpkg_workdir/'),
         )
         raxml_tree.in_align_fasta = filtered_align_fasta.out_align_fasta
 

@@ -25,7 +25,7 @@ class SearchRepoForMatches(sl.ContainerTask):
     # A Task that uses vsearch to find matches for experimental sequences in a repo of sequences
 
     # Define the container (in docker-style repo format) to complete this task
-    container = 'golob/vsearch:2.7.1_bcw_0.1.0'
+    container = 'golob/vsearch:2.7.1_bcw_0.1.0a'
 
     in_exp_seqs = None  # Experimental seqs for this task
     in_repo_seqs = None  # Repository seqs
@@ -85,7 +85,7 @@ class FillLonely(sl.Task):
 class CMAlignSeqs(sl.ContainerTask):
     # A Task that uses CMAlign to make an alignment
     # Define the container (in docker-style repo format) to complete this task
-    container = 'golob/infernal:1.1.2_bcw_0.1.0'
+    container = 'golob/infernal:1.1.2_bcw_0.1.0a'
 
     in_seqs = None  # Seqs to align
 
@@ -151,7 +151,7 @@ class RAxMLTree(sl.ContainerTask):
     # A task that uses RAxML to generate a tree from an alignment
 
     # Define the container (in docker-style repo format) to complete this task
-    container = 'golob/raxml:8.2.11_bcw_0.1.0'
+    container = 'golob/raxml:8.2.11_bcw_0.1.0b'
 
     # Input of an alignment in FASTA format
     in_align_fasta = None
@@ -159,9 +159,9 @@ class RAxMLTree(sl.ContainerTask):
     # Parameter: Path + filename where the resultant tree should go
     tree_path = sl.Parameter()
     tree_stats_path = sl.Parameter()
-    # DIRECTORY where the intermediate RAxML files should go
-    raxml_working_dir = sl.Parameter()
-    
+    # DIRECTORY where the intermediate RAxML files should go (container fs space)
+    raxml_working_dir = sl.Parameter(default='/working/raxml')
+
     # Parameters for RAxML
 
     raxml_model = sl.Parameter(default='GTRGAMMA')
@@ -176,9 +176,6 @@ class RAxMLTree(sl.ContainerTask):
     def run(self):
         # Lots of filesystem throat-clearing
         name = os.path.basename(os.path.splitext(self.tree_path)[0])
-#        if not os.path.exists(self.raxml_working_dir):
-#            os.makedirs(self.raxml_working_dir)
-        raxml_working_dir = os.path.abspath(self.raxml_working_dir)
 
         # Get our host paths for inputs and outputs
         # To be mapped into the container as appropriate
