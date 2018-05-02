@@ -189,7 +189,7 @@ class RAxMLTree(sl.ContainerTask):
         }
 
         self.ex(
-            command='mkdir -p $raxml_working_dir && raxmlHPC-PTHREADS'
+            command='mkdir -p $raxml_working_dir && raxml'
                     ' -n %s' % name +  # Prefix/name to use for the output files
                     ' -m %s' % self.raxml_model +  # Model to use
                     ' -s $in_align_fasta' +  # Path to input alignment
