@@ -4,6 +4,17 @@ import os
 from string import Template
 from Bio import AlignIO
 import shutil
+from .targets import NCBI_Repo_Entries_TargetInfo,  NCBI_Repo_Filled_TargetInfo
+from lib.ExtractGenbank import ExtractGenbank
+import csv
+import uuid
+import json
+from collections import defaultdict
+import logging
+from datetime import datetime
+import pytz
+
+log = logging.getLogger('sciluigi-interface')
 
 
 # Tasks
@@ -17,7 +28,7 @@ class LoadFastaSeqs(sl.ExternalTask):
 class LoadFile(sl.ExternalTask):
     path = sl.Parameter()
 
-    def out(self):
+    def out_file(self):
         return sl.ContainerTargetInfo(self, self.path)
 
 
@@ -25,7 +36,7 @@ class SearchRepoForMatches(sl.ContainerTask):
     # A Task that uses vsearch to find matches for experimental sequences in a repo of sequences
 
     # Define the container (in docker-style repo format) to complete this task
-    container = 'golob/vsearch:2.7.1_bcw_0.1.0b'
+    container = 'golob/vsearch:2.7.1_bcw_0.2.0'
 
     in_exp_seqs = None  # Experimental seqs for this task
     in_repo_seqs = None  # Repository seqs
@@ -85,7 +96,7 @@ class FillLonely(sl.Task):
 class CMAlignSeqs(sl.ContainerTask):
     # A Task that uses CMAlign to make an alignment
     # Define the container (in docker-style repo format) to complete this task
-    container = 'golob/infernal:1.1.2_bcw_0.1.0b'
+    container = 'golob/infernal:1.1.2_bcw_0.2.0'
 
     in_seqs = None  # Seqs to align
 
@@ -151,7 +162,7 @@ class RAxMLTree(sl.ContainerTask):
     # A task that uses RAxML to generate a tree from an alignment
 
     # Define the container (in docker-style repo format) to complete this task
-    container = 'golob/raxml:8.2.11_bcw_0.1.0c'
+    container = 'golob/raxml:8.2.11_bcw_0.2.0'
 
     # Input of an alignment in FASTA format
     in_align_fasta = None
@@ -203,3 +214,167 @@ class RAxMLTree(sl.ContainerTask):
             extra_params={'raxml_working_dir': self.raxml_working_dir},
             inputs_mode='rw',
         )
+
+
+class NT_AccessionsForQuery(sl.ContainerTask):
+    # A task that takes a query and returns all of the NCBI NT accessions
+    # matching
+    container = 'golob/medirect:0.9.0_BCW_0.2.0a'
+
+    query = sl.Parameter()
+    email = sl.Parameter()
+    ncbi_concurrent_connections = sl.Parameter(default=3)
+    retry_max = sl.Parameter(default=1)
+    retry_delay = sl.Parameter(default=60000)
+
+    accessions_fn = sl.Parameter()
+
+    def out_accessions(self):
+        return sl.ContainerTargetInfo(self, self.accessions_fn)
+
+    def run(self):
+        if (self.out_accessions().scheme == 'file'):
+            os.makedirs(os.path.dirname(self.out_accessions().path))
+        output_targets = {
+            'accessions': self.out_accessions()
+        }
+
+        self.ex(
+            command='ncbi_get_nt_accessions_for_query' +
+                    ' --email %s' % self.email +
+                    ' --query "%s"' % self.query +
+                    ' --ncbi_concurrent_connections %d ' % self.ncbi_concurrent_connections +
+                    ' --retry_max %d' % self.retry_max +
+                    ' --retry_delay %d' % self.retry_delay +
+                    ' --out $accessions',
+            output_targets=output_targets
+        )
+
+
+class NT_Repo_Update_Accessions(sl.Task):
+    # Takes a file with accesions. Inserts new entries into the repo
+    in_accessions = None
+    in_repo_url = None
+
+    extra_values = sl.Parameter(default={})
+
+    def get_accessions(self):
+        if not self.in_accessions().target.exists():
+            return -1
+        else:
+            return {
+                r[0] for r
+                in csv.reader(self.in_accessions().open())
+            }
+
+    def out_repo(self):
+        return NCBI_Repo_Entries_TargetInfo(
+            self,
+            self.in_repo_url().open().read().strip(),
+            self.get_accessions()
+            )
+
+    def run(self):
+        self.out_repo().target.repo.add_new_versions(
+            self.get_accessions(),
+            extra_values=json.loads(self.extra_values)
+            )
+
+
+class NT_Repo_Fill(sl.ContainerTask):
+    """Finds skeletal entries in our repo, and retrieves the entry from genbank
+    """
+    container = 'golob/medirect:0.9.0_BCW_0.2.0a'
+    # Takes a file with accesions. Inserts new entries into the repo
+    in_repo = None
+
+    constraints = sl.Parameter(default={})
+    debug = sl.Parameter(default=False)
+    ncbi_threads_after_hours = sl.Parameter(default=10)
+    ncbi_threads_peak_hours = sl.Parameter(default=3)
+    working_dir = sl.Parameter()
+    email = sl.Parameter()
+
+    chunk_size = sl.Parameter(default=100)
+
+    def out_repo(self):
+        return NCBI_Repo_Filled_TargetInfo(
+            self,
+            self.in_repo().path,
+            )
+
+    def chunks(self, l, n):
+        for i in range(0, len(l), n):
+            yield l[i:i + n]
+
+    def work_on_chunk(self, chunk_versions, gb_needed, raw_gb):
+        ncbi_threads = 3
+        ncbi_tz = pytz.timezone('US/Eastern')
+        with gb_needed.open('w') as gb_needed_h:
+                gb_needed_w = csv.writer(gb_needed_h)
+                gb_needed_w.writerow(['id'])
+                for v in chunk_versions:
+                    gb_needed_w.writerow([v])
+
+        # Figure out if we are after hours for NCBI
+        ncbi_time = datetime.now(ncbi_tz)
+        # Is it a weekend?
+        if ncbi_time.weekday() >= 5:
+            ncbi_threads = self.ncbi_threads_after_hours
+        elif ((ncbi_time.hour <= 18) and (ncbi_time.hour > 6)):
+            # It's a weekday, and between 6 am - 6pm, not after hours
+            ncbi_threads = self.ncbi_threads_peak_hours
+        else:
+            # After hours on a weekday
+            ncbi_threads = self.ncbi_threads_after_hours
+
+        self.ex(
+            command="mefetch -id $gb_needed" +
+                    " -db nucleotide -format gbwithparts -mode text -csv -retmax 1" +
+                    " -email %s" % self.email +
+                    " -proc %d" % int(ncbi_threads) +
+                    " -out $raw_gb",
+            input_targets={'gb_needed': gb_needed},
+            output_targets={'raw_gb': raw_gb}
+        )
+
+        records = ExtractGenbank(raw_gb.open('r'))
+
+        for version, record in records.get_records().items():
+            logging.info("Updating document for {}".format(version))
+            self.out_repo().target.repo.add_entry(record)
+
+    def run(self):
+        # Determine when this is running to see how hard we can hit NCBI
+        versions_need_fill = self.out_repo().target.repo.versions_needing_data(
+            self.constraints
+        )
+        versions_need_fill = list(versions_need_fill)
+        if self.debug:
+            versions_need_fill = versions_need_fill[0:2]
+        random_dir = str(uuid.uuid4())
+        gb_needed = sl.ContainerTargetInfo(
+            self,
+            os.path.join(
+                self.working_dir,
+                'gb',
+                random_dir,
+                'needed.csv'
+            ))
+        raw_gb = sl.ContainerTargetInfo(
+            self,
+            os.path.join(
+                self.working_dir,
+                'gb',
+                random_dir,
+                'raw_gb.csv'
+            ))
+        for chunk_i, chunk_versions in enumerate(self.chunks(
+                versions_need_fill,
+                int(self.chunk_size))
+                ):
+            log.info("Updating chunk {} of {}".format(
+                chunk_i+1,
+                int(len(versions_need_fill) / self.chunk_size))
+            )
+            self.work_on_chunk(chunk_versions, gb_needed, raw_gb)

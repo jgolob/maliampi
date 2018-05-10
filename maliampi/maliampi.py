@@ -5,8 +5,7 @@ import sys
 import luigi
 import sciluigi as sl
 
-from subcommands import refpkg
-
+from subcommands import refpkg, ncbi_16s
 
 class MALIAMPI:
     def __init__(self):
@@ -30,7 +29,6 @@ class MALIAMPI:
                 default=1,
             )
 
-
             self.__subparsers__ = parser.add_subparsers(
                 title='command',
                 dest='command'
@@ -43,15 +41,30 @@ class MALIAMPI:
                                 appropriate for pplacer or other pipelines.""")
             refpkg.build_args(subparser_refpkg)
 
+            # repo_16s command
+            subparser_ncbi_16s = self.__subparsers__.add_parser(
+                'ncbi_16s',
+                description="""Update a repository of 16S sequences from NCBI NT.
+                """)
+            ncbi_16s.build_args(subparser_ncbi_16s)
+
             self.__args__ = parser.parse_args()
             if self.__args__.command == 'refpkg':
                 self.refpkg()
+            if self.__args__.command == 'ncbi_16s':
+                self.ncbi_16s()
 
     def refpkg(self):
         """Make a reference package appropriate for pplacer or other pipelines."""
         args = self.__args__
 
-        sl.run_local(
+        if args.luigi_manager:
+            local_scheduler = False
+        else:
+            local_scheduler = True
+
+        sl.run(
+            local_scheduler=local_scheduler,
             main_task_cls=refpkg.WorkflowMakeRefpkg,
             cmdline_args=[
                 '--sequence-variants-path={}'.format(
@@ -83,6 +96,35 @@ class MALIAMPI:
                     ),
                 '--min-best={}'.format(
                     args.min_best
+                    ),
+                '--workers={}'.format(
+                    args.workers
+                ),
+            ]
+        )
+
+    def ncbi_16s(self):
+        """Update a repository of 16S sequences from NCBI NT."""
+        print("Starting NCBI_16s")
+        args = self.__args__
+
+        if args.luigi_manager:
+            local_scheduler = False
+        else:
+            local_scheduler = True
+
+        sl.run(
+            local_scheduler=local_scheduler,
+            main_task_cls=ncbi_16s.Workflow_NCBI_16s,
+            cmdline_args=[
+                '--ncbi-email={}'.format(
+                    args.ncbi_email
+                    ),
+                '--repo-url={}'.format(
+                    args.repo_secret
+                ),
+                '--working-dir={}'.format(
+                    args.working_dir
                     ),
                 '--workers={}'.format(
                     args.workers
