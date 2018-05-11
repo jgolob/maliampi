@@ -13,6 +13,10 @@ from collections import defaultdict
 import logging
 from datetime import datetime
 import pytz
+import tarfile
+import io
+import gzip
+import json
 
 log = logging.getLogger('sciluigi-interface')
 
@@ -27,9 +31,15 @@ class LoadFastaSeqs(sl.ExternalTask):
 
 class LoadFile(sl.ExternalTask):
     path = sl.Parameter()
+    file_format = sl.Parameter(default=None)
 
     def out_file(self):
-        return sl.ContainerTargetInfo(self, self.path)
+        if self.file_format == 'gzip':
+            file_format = luigi.format.Gzip
+        else:
+            file_format = None
+
+        return sl.ContainerTargetInfo(self, self.path, format=file_format)
 
 
 class SearchRepoForMatches(sl.ContainerTask):
@@ -514,7 +524,8 @@ class CombineRefpkg(sl.ContainerTask):
             os.path.join(
                 self.refpkg_path,
                 "{}.tgz".format(self.refpkg_name_ver())
-            )
+            ),
+            format=luigi.format.Gzip,
         )
 
     def refpkg_name_ver(self):
@@ -550,4 +561,362 @@ class CombineRefpkg(sl.ContainerTask):
             input_targets=input_targets,
             output_targets=output_targets,
             extra_params={'refpkg_name': self.refpkg_name_ver()}
+        )
+
+
+class ExtractRefpkgAlignment(sl.Task):
+    # When given a refpkg in tar.gz format, unpack to the relevant outputs
+
+    in_refpkg_tgz = None
+
+    # Where to extract our alignments
+    aln_fasta_fn = sl.Parameter()
+    aln_sto_fn = sl.Parameter()
+
+    def out_aln_fasta(self):
+        return sl.ContainerTargetInfo(
+            self,
+            self.aln_fasta_fn
+        )
+
+    def out_aln_sto(self):
+        return sl.ContainerTargetInfo(
+            self,
+            self.aln_sto_fn
+        )
+
+    def run(self):
+        # Open the tarfile
+        with self.in_refpkg_tgz().target.open('rb') as refpkg_tgz_h:
+            tar_h = tarfile.open(
+                mode='r:*',
+                fileobj=io.BytesIO(refpkg_tgz_h.read())
+            )
+            # Get the contents keyed by the filenames, excluding dirs
+            tar_contents_dict = {os.path.basename(f.name): f for f in tar_h.getmembers()}
+            contents = json.load(tar_h.extractfile(tar_contents_dict['CONTENTS.json']))
+            aln_fasta_intgz = contents['files'].get('aln_fasta')
+            aln_sto_intgz = contents['files'].get('aln_sto')
+
+            if aln_fasta_intgz and aln_sto_intgz:
+                # Both version of the alignment are in the refpkg
+                with self.out_aln_fasta().open('w') as out_aln_fasta_h:
+                    out_aln_fasta_h.write(
+                        tar_h.extractfile(
+                            tar_contents_dict[aln_fasta_intgz]
+                        ).read().decode('utf-8')
+                    )
+                with self.out_aln_sto().open('w') as out_aln_sto_h:
+                    out_aln_sto_h.write(
+                        tar_h.extractfile(
+                            tar_contents_dict[aln_sto_intgz]
+                        ).read().decode('utf-8')
+                    )
+            elif aln_fasta_intgz:
+                # Only fasta exists
+                with self.out_aln_fasta().open('w') as out_aln_fasta_h:
+                    out_aln_fasta_h.write(
+                        tar_h.extractfile(
+                            tar_contents_dict[aln_fasta_intgz]
+                        ).read().decode('utf-8')
+                    )
+                # And convert to sto format
+                with self.out_aln_sto().open('w') as out_aln_sto_h:
+                    AlignIO.write(
+                        AlignIO.read(
+                            tar_h.extractfile(tar_contents_dict[aln_fasta_intgz]),
+                            'fasta'),
+                        out_aln_sto_h,
+                        'stockholm'
+                    )
+            elif aln_sto_intgz:
+                # Only STO exists
+                with self.out_aln_sto().open('w') as out_aln_sto_h:
+                    out_aln_sto_h.write(
+                        tar_h.extractfile(
+                            tar_contents_dict[aln_sto_intgz]
+                        ).read().decode('utf-8')
+                    )
+                with self.out_aln_fasta().open('w') as out_aln_fasta_h:
+                    AlignIO.write(
+                        AlignIO.read(
+                                     tar_h.extractfile(tar_contents_dict[aln_sto_intgz]),
+                                     'stockholm'),
+                        out_aln_fasta_h,
+                        'fasta'
+                    )
+            else:
+                # NO alignment present
+                raise Exception("Refset at {} does not contain an alignment".format(
+                    self.in_refpkg_tgz
+                ))
+
+
+class CombineAlignmentsSTO(sl.ContainerTask):
+    # Grab the cm alignment file from the cmalign container
+    container = 'golob/infernal:1.1.2_bcw_0.2.0'
+
+    in_aln_sto_1 = None
+    in_aln_sto_2 = None
+
+    combined_aln_sto_fn = sl.Parameter()
+
+    def out_aln_sto(self):
+        return sl.ContainerTargetInfo(self, self.combined_aln_sto_fn)
+
+    def run(self):
+        input_targets = {
+            'in_aln_1': self.in_aln_sto_1(),
+            'in_aln_2': self.in_aln_sto_2()
+        }
+        output_targets = {
+            'out_aln': self.out_aln_sto()
+        }
+
+        self.ex(
+            command='esl-alimerge --dna' +
+                    ' -o $out_aln' +
+                    ' $in_aln_1 $in_aln_2',
+            input_targets=input_targets,
+            output_targets=output_targets
+        )
+
+
+class PPLACER_PlaceAlignment(sl.ContainerTask):
+    # Place aligned refpkg and sv onto a refpkg tree
+    container = 'golob/pplacer:1.1alpha19rc_BCW_0.3.0'
+
+    #  Where to put the resultant jplace output
+    jplace_fn = sl.Parameter()
+    # pplacer parameters
+    pplacer_prior_lower = sl.Parameter(default=0.01)
+
+    #  Dependencies
+    in_refpkg_tgz = None
+    in_merged_aln_sto = None
+
+    def out_jplace(self):
+        return sl.ContainerTargetInfo(self, self.jplace_fn)
+
+    def run(self):
+        input_targets = {
+            'refpkg_tgz': self.in_refpkg_tgz(),
+            'merged_aln': self.in_merged_aln_sto(),
+        }
+        output_targets = {
+            'jplace': self.out_jplace()
+        }
+
+        # Have to figure a bit out how our refpkg is put together
+        with self.in_refpkg_tgz().target.open('rb') as refpkg_tgz_h:
+            refpkg_tar_h = tarfile.open(
+                mode='r:*',
+                fileobj=io.BytesIO(refpkg_tgz_h.read())
+            )
+            refpkg_rel_path = os.path.dirname(refpkg_tar_h.getnames()[0])
+
+        self.ex(
+            command='mkdir -p /refpkg && cd /refpkg && tar xzvf $refpkg_tgz -C /refpkg/ ' +
+                    ' && pplacer -p --inform-prior --prior-lower $prior_lower --map-identity' +
+                    ' -j $nproc' +
+                    ' -c /refpkg/$refpkg_rel_path' +
+                    ' $merged_aln' +
+                    ' -o $jplace',
+            input_targets=input_targets,
+            output_targets=output_targets,
+            extra_params={
+                'prior_lower': self.pplacer_prior_lower,
+                'nproc': self.containerinfo.vcpu,
+                'refpkg_rel_path': refpkg_rel_path,
+            }
+        )
+
+
+class Jplace_Reduplicate(sl.ContainerTask):
+    # Reduplicate a jplace
+    container = 'golob/pplacer:1.1alpha19rc_BCW_0.3.0'
+
+    # Parameters
+    jplace_fn = sl.Parameter()
+
+    # Dependencies
+    in_jplace = None
+    in_weights = None
+
+    def out_jplace(self):
+        # Gzip format by default
+        return sl.ContainerTargetInfo(
+                                self,
+                                self.jplace_fn,
+                                format=luigi.format.Gzip,
+        )
+
+    def run(self):
+        input_targets = {
+            'in_jplace': self.in_jplace(),
+            'weights': self.in_weights()
+        }
+        output_targets = {
+            'out_jplace': self.out_jplace()
+        }
+
+        self.ex(
+            command='guppy redup -m' +
+                    ' -o /dev/stdout' +
+                    ' -d $weights' +
+                    ' $in_jplace' +
+                    ' | gzip > $out_jplace',
+            input_targets=input_targets,
+            output_targets=output_targets
+        )
+
+
+class Jplace_PCA(sl.ContainerTask):
+    # Calculate EPCA for a JPLACE
+    container = 'golob/pplacer:1.1alpha19rc_BCW_0.3.0'
+
+    in_jplace = None
+    in_refpkg_tgz = None
+    in_seq_map = None
+
+    # Parameter for prefix / path
+    # guppy will take /path/to/prefix
+    # and create /path/to/prefix.proj
+    #           /path/to/prefix.trans
+    #           /path/to/prefix.xml
+    path = sl.Parameter()
+    pca = sl.Parameter()
+    prefix = sl.Parameter()
+
+    def out_proj(self):
+        return sl.ContainerTargetInfo(
+            self,
+            os.path.join(
+                self.path,
+                "{}.proj".format(self.prefix)
+            )
+        )
+
+    def out_trans(self):
+        return sl.ContainerTargetInfo(
+            self,
+            os.path.join(
+                self.path,
+                "{}.trans".format(self.prefix)
+            )
+        )
+
+    def out_xml(self):
+        return sl.ContainerTargetInfo(
+            self,
+            os.path.join(
+                self.path,
+                "{}.xml".format(self.prefix)
+            )
+        )
+
+    def run(self):
+        if not (self.pca.lower() == 'lpca' or self.pca.lower() == 'epca'):
+            raise Exception("{} is not a valid PCA type (EPCA or LPCA)".format(self.pca))
+        pca = self.pca.lower()
+        with self.in_refpkg_tgz().target.open('rb') as refpkg_tgz_h:
+            refpkg_tar_h = tarfile.open(
+                mode='r:*',
+                fileobj=io.BytesIO(refpkg_tgz_h.read())
+            )
+            refpkg_rel_path = os.path.dirname(refpkg_tar_h.getnames()[0])
+        input_targets = {
+            'jplace': self.in_jplace(),
+            'seq_map': self.in_seq_map(),
+            'refpkg_tgz': self.in_refpkg_tgz(),
+        }
+        output_targets = {
+            'proj': self.out_proj(),
+            'trans': self.out_trans(),
+            'xml': self.out_xml(),
+        }
+
+        self.ex(
+            command='mkdir -p /refpkg && cd /refpkg && tar xzvf $refpkg_tgz -C /refpkg/ '
+                    ' && mkdir -p /results '
+                    ' && guppy $pca' +
+                    ' $jplace:$seq_map ' +
+                    ' -c /refpkg/$refpkg_rel_path ' + 
+                    ' --out-dir /results --prefix $prefix' +
+                    ' && cp /results/$prefix.xml $xml' + 
+                    ' && cp /results/$prefix.proj $proj' + 
+                    ' && cp /results/$prefix.trans $trans',
+            input_targets=input_targets,
+            output_targets=output_targets,
+            extra_params={
+                'refpkg_rel_path': refpkg_rel_path,
+                'prefix': self.prefix,
+                'pca': pca
+            }
+        )
+
+
+class Jplace_ADCL(sl.ContainerTask):
+    # Calculate ADCL for a JPLACE
+    container = 'golob/pplacer:1.1alpha19rc_BCW_0.3.0'
+
+    in_jplace = None
+
+    adcl_fn = sl.Parameter()
+
+    def out_adcl_gz(self):
+        return sl.ContainerTargetInfo(
+                                self,
+                                self.adcl_fn,
+                                format=luigi.format.Gzip,
+        )
+
+    def run(self):
+        input_targets = {
+            'in_jplace': self.in_jplace()
+        }
+
+        output_targets = {
+            'adcl_gz': self.out_adcl_gz()
+        }
+
+        self.ex(
+            command='(echo name,adcl,weight && '
+                    ' guppy adcl --no-collapse $in_jplace -o /dev/stdout) | '
+                    ' gzip > $adcl_gz',
+            input_targets=input_targets,
+            output_targets=output_targets
+        )
+
+
+class Jplace_EDPL(sl.ContainerTask):
+    # Calculate ADCL for a JPLACE
+    container = 'golob/pplacer:1.1alpha19rc_BCW_0.3.0'
+
+    in_jplace = None
+
+    edpl_fn = sl.Parameter()
+
+    def out_edpl_gz(self):
+        return sl.ContainerTargetInfo(
+                                self,
+                                self.edpl_fn,
+                                format=luigi.format.Gzip,
+        )
+
+    def run(self):
+        input_targets = {
+            'in_jplace': self.in_jplace()
+        }
+
+        output_targets = {
+            'edpl_gz': self.out_edpl_gz()
+        }
+
+        self.ex(
+            command='(echo name,edpl && '
+                    ' guppy edpl --csv $in_jplace -o /dev/stdout) | '
+                    ' gzip > $edpl_gz',
+            input_targets=input_targets,
+            output_targets=output_targets
         )

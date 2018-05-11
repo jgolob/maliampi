@@ -5,7 +5,7 @@ import sys
 import luigi
 import sciluigi as sl
 
-from subcommands import refpkg, ncbi_16s
+from subcommands import refpkg, ncbi_16s, placement
 
 class MALIAMPI:
     def __init__(self):
@@ -48,11 +48,20 @@ class MALIAMPI:
                 """)
             ncbi_16s.build_args(subparser_ncbi_16s)
 
+            # placement command
+            subparser_placement = self.__subparsers__.add_parser(
+                'placement',
+                description="""Place sequence variants on a reference package
+                """)
+            placement.build_args(subparser_placement)
+
             self.__args__ = parser.parse_args()
             if self.__args__.command == 'refpkg':
                 self.refpkg()
             if self.__args__.command == 'ncbi_16s':
                 self.ncbi_16s()
+            if self.__args__.command == 'placement':
+                self.placement()
 
     def refpkg(self):
         """Make a reference package appropriate for pplacer or other pipelines."""
@@ -130,6 +139,49 @@ class MALIAMPI:
                     args.workers
                 ),
             ]
+        )
+
+    def placement(self):
+        """Place sequence variants on a reference package."""
+        args = self.__args__
+
+        if args.luigi_manager:
+            local_scheduler = False
+        else:
+            local_scheduler = True
+
+        cmdline_args = [
+                '--sv-fasta={}'.format(
+                    args.sequence_variants
+                    ),
+                '--working-dir={}'.format(
+                    args.working_dir
+                    ),
+                '--destination-dir={}'.format(
+                    args.destination_dir
+                    ),
+                '--refpkg-tgz={}'.format(
+                    args.refpkg_tgz
+                    ),
+                '--seq-map-csv={}'.format(
+                    args.seq_map_csv,
+                    ),
+                '--workers={}'.format(
+                    args.workers
+                ),
+            ]
+
+        if args.sv_weights_csv:
+            cmdline_args.append(
+                '--sv-weights-csv={}'.format(
+                    args.sv_weights_csv,
+                    ),
+            )
+
+        sl.run(
+            local_scheduler=local_scheduler,
+            main_task_cls=placement.Workflow_Placement,
+            cmdline_args=cmdline_args
         )
 
 
