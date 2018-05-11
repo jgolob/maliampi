@@ -2,7 +2,7 @@ import luigi
 import sciluigi as sl
 import os
 from string import Template
-from Bio import AlignIO
+from Bio import AlignIO, SeqIO
 import shutil
 from .targets import NCBI_Repo_Entries_TargetInfo,  NCBI_Repo_Filled_TargetInfo
 from lib.ExtractGenbank import ExtractGenbank
@@ -378,3 +378,176 @@ class NT_Repo_Fill(sl.ContainerTask):
                 int(len(versions_need_fill) / self.chunk_size))
             )
             self.work_on_chunk(chunk_versions, gb_needed, raw_gb)
+
+
+class BuildTaxtasticDB(sl.ContainerTask):
+    # A Task that uses vsearch to find matches for experimental sequences in a repo of sequences
+
+    # Define the container (in docker-style repo format) to complete this task
+    container = 'golob/pplacer:1.1alpha19rc_BCW_0.3.0'
+
+    # Where to put the sqlite database
+    tax_db_path = sl.Parameter()
+
+    def out_tax_db(self):
+        return sl.ContainerTargetInfo(self, self.tax_db_path)
+
+    def run(self):
+        # Get our host paths for inputs and outputs
+        output_targets = {
+            'tax_db': self.out_tax_db(),
+        }
+
+        self.ex(
+            command='taxit ' +
+                    ' new_database' +
+                    ' $tax_db',
+            output_targets=output_targets,
+            )
+
+
+class FilterSeqinfoToFASTA(sl.Task):
+    # Filter a sequence info csv to fit only sequences in a fasta file
+    in_fasta = None
+    in_seq_info = None
+
+    filtered_seq_info_fn = sl.Parameter()
+
+    def out_seq_info(self):
+        return sl.ContainerTargetInfo(self, self.filtered_seq_info_fn)
+
+    def run(self):
+        # Get the sequence IDs in the fasta file
+        seq_ids = {sr.id for sr in SeqIO.parse(self.in_fasta().open(), 'fasta')}
+
+        with self.in_seq_info().open('r') as seq_info_h:
+            seq_info_reader = csv.DictReader(seq_info_h)
+            with self.out_seq_info().open('w') as filtered_seq_info_h:
+                filtered_seq_info_w = csv.DictWriter(
+                    filtered_seq_info_h,
+                    fieldnames=seq_info_reader.fieldnames)
+                filtered_seq_info_w.writeheader()
+                for row in seq_info_reader:
+                    if row['seqname'] in seq_ids:
+                        filtered_seq_info_w.writerow(row)
+
+
+class TaxTableForSeqInfo(sl.ContainerTask):
+    # A Task that uses vsearch to find matches for experimental sequences in a repo of sequences
+
+    # Define the container (in docker-style repo format) to complete this task
+    container = 'golob/pplacer:1.1alpha19rc_BCW_0.3.0'
+
+    taxtable_path = sl.Parameter()
+
+    in_tax_db = None
+    in_seq_info = None
+
+    def out_taxtable(self):
+        return sl.ContainerTargetInfo(self, self.taxtable_path)
+
+    def run(self):
+        # Get our host paths for inputs and outputs
+        input_targets = {
+            'tax_db': self.in_tax_db(),
+            'seq_info': self.in_seq_info()
+        }
+        output_targets = {
+            'taxtable': self.out_taxtable(),
+        }
+
+        self.ex(
+            command='taxit ' +
+                    ' taxtable' +
+                    ' $tax_db' +
+                    ' --seq-info $seq_info' +
+                    ' --outfile $taxtable',
+            input_targets=input_targets,
+            output_targets=output_targets,
+            )
+
+
+class ObtainCM(sl.ContainerTask):
+    # Grab the cm alignment file from the cmalign container
+    container = 'golob/infernal:1.1.2_bcw_0.2.0'
+
+    cm_destination = sl.Parameter()
+
+    def out_cm(self):
+        return sl.ContainerTargetInfo(self, self.cm_destination)
+
+    def run(self):
+        output_targets = {
+            'cm_dest': self.out_cm()
+        }
+
+        self.ex(
+            command='cp /cmalign/data/SSU_rRNA_bacteria.cm $cm_dest',
+            output_targets=output_targets
+        )
+
+
+class CombineRefpkg(sl.ContainerTask):
+    # A task to take all the components of a refpkg and complete with a contents JSON
+    container = 'golob/pplacer:1.1alpha19rc_BCW_0.3.0'
+
+    # Parameters to tell us where the refpkg should be placed,
+    # as in: refpkg_path/refpkg_name.refpkg_version.refpkg
+    refpkg_path = sl.Parameter()
+    # what should we call this refpkg
+    refpkg_name = sl.Parameter()
+    # version, defaults to a timestamp of YYYYmmdd_HHMMSS
+    refpkg_version = sl.Parameter(default=datetime.now().strftime('%Y%m%d_%H%M%S'))
+
+    # dependencies
+    in_aln_fasta = None
+    in_aln_sto = None
+    in_tree = None
+    in_tree_stats = None
+    in_taxtable = None
+    in_seq_info = None
+    in_cm = None
+
+    def out_refpkg_tgz(self):
+        return sl.ContainerTargetInfo(
+            self,
+            os.path.join(
+                self.refpkg_path,
+                "{}.tgz".format(self.refpkg_name_ver())
+            )
+        )
+
+    def refpkg_name_ver(self):
+        return "{}.{}.refpkg".format(self.refpkg_name, self.refpkg_version)
+
+    def run(self):
+        input_targets = {
+            'aln_fasta': self.in_aln_fasta(),
+            'aln_sto': self.in_aln_sto(),
+            'tree': self.in_tree(),
+            'tree_stats': self.in_tree_stats(),
+            'taxtable': self.in_taxtable(),
+            'seq_info': self.in_seq_info(),
+            'cm': self.in_cm(),
+        }
+        output_targets = {
+            'refpkg_tgz': self.out_refpkg_tgz()
+        }
+        # how to handle directory target?
+
+        self.ex(
+            command='mkdir -p /scratch && cd /scratch && taxit' +
+            ' create --locus 16S' +
+            ' --package-name $refpkg_name --clobber' +
+            ' --aln-fasta $aln_fasta ' +
+            ' --aln-sto $aln_sto ' +
+            ' --tree-file $tree ' +
+            ' --tree-stats $tree_stats ' +
+            ' --taxonomy $taxtable ' +
+            ' --seq-info $seq_info ' +
+            ' --profile $cm ' +
+            ' && tar czvf $refpkg_tgz $refpkg_name/*',
+            input_targets=input_targets,
+            output_targets=output_targets,
+            extra_params={'refpkg_name': self.refpkg_name_ver()}
+        )

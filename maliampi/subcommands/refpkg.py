@@ -2,7 +2,8 @@
 import luigi
 import sciluigi as sl
 from lib.tasks import LoadFastaSeqs, SearchRepoForMatches, CMAlignSeqs, RAxMLTree, LoadFile
-from lib.tasks import AlignmentStoToFasta
+from lib.tasks import BuildTaxtasticDB, FilterSeqinfoToFASTA, TaxTableForSeqInfo, ObtainCM
+from lib.tasks import AlignmentStoToFasta, CombineRefpkg
 import os
 
 ENGINE = 'docker'
@@ -67,6 +68,17 @@ class WorkflowMakeRefpkg(sl.WorkflowTask):
             path=self.repo_seq_info
         )
 
+        taxonomy_db = self.new_task(
+            'taxonomy_db',
+            BuildTaxtasticDB,
+            containerinfo=self.test_containerinfo,
+            tax_db_path=os.path.join(
+                self.working_dir,
+                'refpkg',
+                'taxonomy.db'
+                )
+        )
+
         #
         # Search the sequence variants in filtered repository
         #
@@ -76,25 +88,19 @@ class WorkflowMakeRefpkg(sl.WorkflowTask):
             SearchRepoForMatches,
             containerinfo=self.test_containerinfo,
             matches_uc_path=os.path.join(self.working_dir,
+                                         'refpkg',
                                          'repo_matches.filtered.uc'),
             unmatched_exp_seqs_path=os.path.join(self.working_dir,
+                                                 'refpkg',
                                                  'exp_seqs_unmatched.filtered.fasta'),
             matched_repo_seqs_path=os.path.join(self.working_dir,
+                                                'refpkg',
                                                 'recruited_repo_seqs.filtered.fasta'),
             min_id=self.min_id_filtered,
             maxaccepts=10,  # Default take the top 10 (roughly corresponding to a 95% id for most)
         )
         filtered_search_sv.in_exp_seqs = sequence_variants.out_seqs
         filtered_search_sv.in_repo_seqs = repo_seqs_filtered.out_seqs
-
-        #
-        # Fill 'lonely' recruits (where only one species represented for a genus in the recruits
-        #
-
-        # fill_lonely_recruits = self.new_task(
-        #    'fill_lonely_recruits',
-        #    FillLonely,
-        #)
 
         #
         # Align the recruited repo sequences
@@ -105,10 +111,12 @@ class WorkflowMakeRefpkg(sl.WorkflowTask):
             containerinfo=self.test_containerinfo,
             alignment_sto_fn=os.path.join(
                 self.working_dir,
+                'refpkg',
                 'filtered.aln.sto'
             ),
             alignment_score_fn=os.path.join(
                 self.working_dir,
+                'refpkg',
                 'filtered.aln.scores'
             ),
         )
@@ -123,6 +131,7 @@ class WorkflowMakeRefpkg(sl.WorkflowTask):
             AlignmentStoToFasta,
             align_fasta_fn=os.path.join(
                 self.working_dir,
+                'refpkg',
                 'filtered.aln.fasta'
             ),
         )
@@ -133,13 +142,70 @@ class WorkflowMakeRefpkg(sl.WorkflowTask):
             RAxMLTree,
             containerinfo=self.test_containerinfo,
             tree_path=os.path.join(self.working_dir,
+                                   'refpkg',
                                    'refpkg.tre'),
             tree_stats_path=os.path.join(self.working_dir,
+                                         'refpkg',
                                          'refpkg.tre.info'),
         )
         raxml_tree.in_align_fasta = filtered_align_fasta.out_align_fasta
 
-        return(raxml_tree)
+        # Get the seqinfo only for these recruits
+        filtered_seq_info = self.new_task(
+            'filtered_seq_info',
+            FilterSeqinfoToFASTA,
+            filtered_seq_info_fn=os.path.join(
+                self.working_dir,
+                'refpkg',
+                'seq_info.filtered.csv'
+            )
+        )
+        filtered_seq_info.in_seq_info = repo_seq_info.out_file
+        filtered_seq_info.in_fasta = filtered_search_sv.out_matched_repo_seqs
+
+        refpkg_taxtable = self.new_task(
+            'refpkg_taxtable',
+            TaxTableForSeqInfo,
+            containerinfo=self.test_containerinfo,
+            taxtable_path=os.path.join(
+                self.working_dir,
+                'refpkg',
+                'taxtable.csv'
+            )
+        )
+        refpkg_taxtable.in_seq_info = filtered_seq_info.out_seq_info
+        refpkg_taxtable.in_tax_db = taxonomy_db.out_tax_db
+
+        obtain_cm = self.new_task(
+            'obtain_cm',
+            ObtainCM,
+            containerinfo=self.test_containerinfo,
+            cm_destination=os.path.join(
+                self.working_dir,
+                'refpkg',
+                'rRNA_16S_SSU.cm'
+            )
+        )
+
+        combine_refpgk = self.new_task(
+            'combine_refpkg',
+            CombineRefpkg,
+            containerinfo=self.test_containerinfo,
+            refpkg_path=os.path.join(
+                self.working_dir,
+                'refpkg',
+            ),
+            refpkg_name='test',
+        )
+        combine_refpgk.in_aln_fasta = filtered_align_fasta.out_align_fasta
+        combine_refpgk.in_aln_sto = filtered_align_recruits.out_align_sto
+        combine_refpgk.in_tree = raxml_tree.out_tree
+        combine_refpgk.in_tree_stats = raxml_tree.out_tree_stats
+        combine_refpgk.in_taxtable = refpkg_taxtable.out_taxtable
+        combine_refpgk.in_seq_info = filtered_seq_info.out_seq_info
+        combine_refpgk.in_cm = obtain_cm.out_cm
+
+        return(combine_refpgk)
 
 
 def build_args(parser):
