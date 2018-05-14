@@ -9,7 +9,7 @@ from lib.tasks import Jplace_Alpha_Diversity
 
 import os
 
-ENGINE = 'docker'
+ENGINE = 'aws_batch'
 
 
 # Workflow
