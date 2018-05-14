@@ -920,3 +920,96 @@ class Jplace_EDPL(sl.ContainerTask):
             input_targets=input_targets,
             output_targets=output_targets
         )
+
+
+class Jplace_KR_Distance(sl.ContainerTask):
+    # Calculate KR phylogenetic distance for a placement
+    container = 'golob/pplacer:1.1alpha19rc_BCW_0.3.0'
+
+    in_jplace = None
+    in_refpkg_tgz = None
+    in_seq_map = None
+
+    kr_fn = sl.Parameter()
+
+    def out_kr_distance(self):
+        return sl.ContainerTargetInfo(
+            self,
+            self.kr_fn
+        )
+
+    def run(self):
+        with self.in_refpkg_tgz().target.open('rb') as refpkg_tgz_h:
+            refpkg_tar_h = tarfile.open(
+                mode='r:*',
+                fileobj=io.BytesIO(refpkg_tgz_h.read())
+            )
+            refpkg_rel_path = os.path.dirname(refpkg_tar_h.getnames()[0])
+        input_targets = {
+            'jplace': self.in_jplace(),
+            'seq_map': self.in_seq_map(),
+            'refpkg_tgz': self.in_refpkg_tgz(),
+        }
+        output_targets = {
+            'kr_distance': self.out_kr_distance(),
+        }
+
+        self.ex(
+            command='mkdir -p /refpkg && cd /refpkg && tar xzvf $refpkg_tgz -C /refpkg/ '
+                    ' && guppy kr' +
+                    ' --list-out' +
+                    ' -c /refpkg/$refpkg_rel_path ' +
+                    ' $jplace:$seq_map ' +
+                    ' -o $kr_distance',
+            input_targets=input_targets,
+            output_targets=output_targets,
+            extra_params={
+                'refpkg_rel_path': refpkg_rel_path,
+            }
+        )
+
+
+class Jplace_Alpha_Diversity(sl.ContainerTask):
+    # Calculate alpha diversity for a placement
+    container = 'golob/pplacer:1.1alpha19rc_BCW_0.3.0'
+
+    in_jplace = None
+    in_seq_map = None
+
+    alpha_diversity_fn = sl.Parameter()
+
+    def out_alpha_diversity(self):
+        return sl.ContainerTargetInfo(
+            self,
+            self.alpha_diversity_fn
+        )
+
+    def run(self):
+        with self.in_refpkg_tgz().target.open('rb') as refpkg_tgz_h:
+            refpkg_tar_h = tarfile.open(
+                mode='r:*',
+                fileobj=io.BytesIO(refpkg_tgz_h.read())
+            )
+            refpkg_rel_path = os.path.dirname(refpkg_tar_h.getnames()[0])
+        input_targets = {
+            'jplace': self.in_jplace(),
+            'seq_map': self.in_seq_map(),
+            'refpkg_tgz': self.in_refpkg_tgz(),
+        }
+        output_targets = {
+            'alpha_diversity': self.out_alpha_diversity(),
+        }
+
+        self.ex(
+            command='guppy fpd' +
+                    ' --csv' +
+                    ' --include-pendant' +
+                    ' --chao-d 0,1,1.00001,2,3,4,5 '
+                    ' $jplace:$seq_map ' +
+                    ' -o $alpha_diversity',
+            input_targets=input_targets,
+            output_targets=output_targets,
+            extra_params={
+                'refpkg_rel_path': refpkg_rel_path,
+            }
+        )

@@ -4,7 +4,8 @@ import sciluigi as sl
 from lib.tasks import LoadFile, CMAlignSeqs, LoadFastaSeqs, AlignmentStoToFasta
 from lib.tasks import ExtractRefpkgAlignment, CombineAlignmentsSTO
 from lib.tasks import PPLACER_PlaceAlignment, Jplace_Reduplicate
-from lib.tasks import Jplace_PCA, Jplace_ADCL, Jplace_EDPL
+from lib.tasks import Jplace_PCA, Jplace_ADCL, Jplace_EDPL, Jplace_KR_Distance
+from lib.tasks import Jplace_Alpha_Diversity
 
 import os
 
@@ -147,7 +148,7 @@ class Workflow_Placement(sl.WorkflowTask):
             PPLACER_PlaceAlignment,
             containerinfo=self.test_containerinfo,
             jplace_fn=os.path.join(
-                self.working_dir,
+                self.destination_dir,
                 'placement',
                 'dedup.jplace'
             )
@@ -159,7 +160,6 @@ class Workflow_Placement(sl.WorkflowTask):
         #  Reduplicate
         #
 
-        # TBD
         if not sv_weights:
             redup_jplace = dedup_jplace
         else:
@@ -168,7 +168,7 @@ class Workflow_Placement(sl.WorkflowTask):
                 Jplace_Reduplicate,
                 containerinfo=self.test_containerinfo,
                 jplace_fn=os.path.join(
-                    self.working_dir,
+                    self.destination_dir,
                     'placement',
                     'redup.jplace.gz'
                 )
@@ -184,7 +184,7 @@ class Workflow_Placement(sl.WorkflowTask):
             Jplace_ADCL,
             containerinfo=self.test_containerinfo,
             adcl_fn=os.path.join(
-                self.working_dir,
+                self.destination_dir,
                 'placement',
                 'adcl.gz'
             )
@@ -200,7 +200,7 @@ class Workflow_Placement(sl.WorkflowTask):
             Jplace_EDPL,
             containerinfo=self.test_containerinfo,
             edpl_fn=os.path.join(
-                self.working_dir,
+                self.destination_dir,
                 'placement',
                 'edpl.gz'
             )
@@ -215,7 +215,7 @@ class Workflow_Placement(sl.WorkflowTask):
             Jplace_PCA,
             containerinfo=self.test_containerinfo,
             path=os.path.join(
-                self.working_dir,
+                self.destination_dir,
                 'placement',
                 'pca'
             ),
@@ -235,7 +235,7 @@ class Workflow_Placement(sl.WorkflowTask):
             Jplace_PCA,
             containerinfo=self.test_containerinfo,
             path=os.path.join(
-                self.working_dir,
+                self.destination_dir,
                 'placement',
                 'pca'
             ),
@@ -250,9 +250,39 @@ class Workflow_Placement(sl.WorkflowTask):
         #  KR-distance
         #
 
+        kr_distance = self.new_task(
+            'calculate_kr_distance',
+            Jplace_KR_Distance,
+            containerinfo=self.test_containerinfo,
+            kr_fn=os.path.join(
+                self.destination_dir,
+                'placement',
+                'kr_distance.csv'
+            ),
+        )
+        kr_distance.in_refpkg_tgz = refpkg_tgz.out_file
+        kr_distance.in_seq_map = seq_map.out_file
+        kr_distance.in_jplace = redup_jplace.out_jplace
 
+        # 
+        #  Alpha-Diversity
+        #
 
-        return(epca, lpca, adcl, edpl)
+        alpha_diversity = self.new_task(
+            'calculate_alpha_diversity',
+            Jplace_Alpha_Diversity,
+            containerinfo=self.test_containerinfo,
+            alpha_diversity_fn=os.path.join(
+                self.destination_dir,
+                'placement',
+                'alpha_diversity.csv'
+            ),
+        )
+        alpha_diversity.in_refpkg_tgz = refpkg_tgz.out_file
+        alpha_diversity.in_seq_map = seq_map.out_file
+        alpha_diversity.in_jplace = redup_jplace.out_jplace
+
+        return(epca, lpca, adcl, edpl, kr_distance, alpha_diversity)
 
 
 def build_args(parser):
