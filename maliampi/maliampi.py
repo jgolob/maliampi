@@ -5,7 +5,8 @@ import sys
 import luigi
 import sciluigi as sl
 
-from subcommands import refpkg, ncbi_16s, placement
+from subcommands import refpkg, ncbi_16s, placement, classify
+
 
 class MALIAMPI:
     def __init__(self):
@@ -34,19 +35,19 @@ class MALIAMPI:
                 dest='command'
             )
 
-            # refpkg command
-            subparser_refpkg = self.__subparsers__.add_parser(
-                'refpkg',
-                description="""Make a reference package
-                                appropriate for pplacer or other pipelines.""")
-            refpkg.build_args(subparser_refpkg)
-
             # repo_16s command
             subparser_ncbi_16s = self.__subparsers__.add_parser(
                 'ncbi_16s',
                 description="""Update a repository of 16S sequences from NCBI NT.
                 """)
             ncbi_16s.build_args(subparser_ncbi_16s)
+
+            # refpkg command
+            subparser_refpkg = self.__subparsers__.add_parser(
+                'refpkg',
+                description="""Make a reference package
+                                appropriate for pplacer or other pipelines.""")
+            refpkg.build_args(subparser_refpkg)
 
             # placement command
             subparser_placement = self.__subparsers__.add_parser(
@@ -55,13 +56,22 @@ class MALIAMPI:
                 """)
             placement.build_args(subparser_placement)
 
+            # classify command
+            subparser_classify = self.__subparsers__.add_parser(
+                'classify',
+                description="""Classify sequence variants using a placement
+                """)
+            classify.build_args(subparser_classify)
+
             self.__args__ = parser.parse_args()
             if self.__args__.command == 'refpkg':
                 self.refpkg()
-            if self.__args__.command == 'ncbi_16s':
+            elif self.__args__.command == 'ncbi_16s':
                 self.ncbi_16s()
-            if self.__args__.command == 'placement':
+            elif self.__args__.command == 'placement':
                 self.placement()
+            elif self.__args__.command == 'classify':
+                self.classify()
 
     def refpkg(self):
         """Make a reference package appropriate for pplacer or other pipelines."""
@@ -184,6 +194,58 @@ class MALIAMPI:
             cmdline_args=cmdline_args
         )
 
+    def classify(self):
+        """Classify sequence variants using a placement."""
+        args = self.__args__
+
+        if args.luigi_manager:
+            local_scheduler = False
+        else:
+            local_scheduler = True
+
+        cmdline_args = [
+                '--sv-fasta={}'.format(
+                    args.sequence_variants
+                    ),
+                '--working-dir={}'.format(
+                    args.working_dir
+                    ),
+                '--jplace={}'.format(
+                    args.jplace
+                ),
+                '--destination-dir={}'.format(
+                    args.destination_dir
+                    ),
+                '--refpkg-tgz={}'.format(
+                    args.refpkg_tgz
+                    ),
+                '--seq-map-csv={}'.format(
+                    args.seq_map_csv,
+                    ),
+                '--workers={}'.format(
+                    args.workers
+                ),
+            ]
+
+        if args.sv_weights_csv:
+            cmdline_args.append(
+                '--sv-weights-csv={}'.format(
+                    args.sv_weights_csv,
+                    ),
+            )
+
+        if args.labels:
+            cmdline_args.append(
+                '--labels={}'.format(
+                    args.labels,
+                    ),
+            )
+
+        sl.run(
+            local_scheduler=local_scheduler,
+            main_task_cls=classify.Workflow_Classify,
+            cmdline_args=cmdline_args
+        )
 
 def main():
     """Entrypoint for main script."""

@@ -5,6 +5,9 @@ from string import Template
 from Bio import AlignIO, SeqIO
 import shutil
 from .targets import NCBI_Repo_Entries_TargetInfo,  NCBI_Repo_Filled_TargetInfo
+from .targets import PlacementDB_Prepped_ContainerTargetInfo, RefpkgTGZ_ContainerTargetInfo
+from .targets import PlacementDB_Classified_ContainerTargetInfo
+from .targets import PlacementDB_MCC_ContainerTargetInfo, PlacementDB_SI_ContainerTargetInfo
 from lib.ExtractGenbank import ExtractGenbank
 import csv
 import uuid
@@ -40,6 +43,13 @@ class LoadFile(sl.ExternalTask):
             file_format = None
 
         return sl.ContainerTargetInfo(self, self.path, format=file_format)
+
+
+class LoadRefpkgTGZ(sl.ExternalTask):
+    path = sl.Parameter()
+
+    def out_refpkg_tgz(self):
+        return RefpkgTGZ_ContainerTargetInfo(self, self.path)
 
 
 class SearchRepoForMatches(sl.ContainerTask):
@@ -684,7 +694,7 @@ class CombineAlignmentsSTO(sl.ContainerTask):
 
 class PPLACER_PlaceAlignment(sl.ContainerTask):
     # Place aligned refpkg and sv onto a refpkg tree
-    container = 'golob/pplacer:1.1alpha19rc_BCW_0.3.0'
+    container = 'golob/pplacer:1.1alpha19rc_BCW_0.3.0c'
 
     #  Where to put the resultant jplace output
     jplace_fn = sl.Parameter()
@@ -707,13 +717,7 @@ class PPLACER_PlaceAlignment(sl.ContainerTask):
             'jplace': self.out_jplace()
         }
 
-        # Have to figure a bit out how our refpkg is put together
-        with self.in_refpkg_tgz().target.open('rb') as refpkg_tgz_h:
-            refpkg_tar_h = tarfile.open(
-                mode='r:*',
-                fileobj=io.BytesIO(refpkg_tgz_h.read())
-            )
-            refpkg_rel_path = os.path.dirname(refpkg_tar_h.getnames()[0])
+        refpkg_rel_path = self.in_refpkg_tgz().get_refpkg_rel_path()
 
         self.ex(
             command='mkdir -p /refpkg && cd /refpkg && tar xzvf $refpkg_tgz -C /refpkg/ ' +
@@ -734,7 +738,7 @@ class PPLACER_PlaceAlignment(sl.ContainerTask):
 
 class Jplace_Reduplicate(sl.ContainerTask):
     # Reduplicate a jplace
-    container = 'golob/pplacer:1.1alpha19rc_BCW_0.3.0'
+    container = 'golob/pplacer:1.1alpha19rc_BCW_0.3.0c'
 
     # Parameters
     jplace_fn = sl.Parameter()
@@ -773,7 +777,7 @@ class Jplace_Reduplicate(sl.ContainerTask):
 
 class Jplace_PCA(sl.ContainerTask):
     # Calculate EPCA for a JPLACE
-    container = 'golob/pplacer:1.1alpha19rc_BCW_0.3.0'
+    container = 'golob/pplacer:1.1alpha19rc_BCW_0.3.0c'
 
     in_jplace = None
     in_refpkg_tgz = None
@@ -819,12 +823,8 @@ class Jplace_PCA(sl.ContainerTask):
         if not (self.pca.lower() == 'lpca' or self.pca.lower() == 'epca'):
             raise Exception("{} is not a valid PCA type (EPCA or LPCA)".format(self.pca))
         pca = self.pca.lower()
-        with self.in_refpkg_tgz().target.open('rb') as refpkg_tgz_h:
-            refpkg_tar_h = tarfile.open(
-                mode='r:*',
-                fileobj=io.BytesIO(refpkg_tgz_h.read())
-            )
-            refpkg_rel_path = os.path.dirname(refpkg_tar_h.getnames()[0])
+
+        refpkg_rel_path = self.in_refpkg_tgz().get_refpkg_rel_path()
         input_targets = {
             'jplace': self.in_jplace(),
             'seq_map': self.in_seq_map(),
@@ -858,7 +858,7 @@ class Jplace_PCA(sl.ContainerTask):
 
 class Jplace_ADCL(sl.ContainerTask):
     # Calculate ADCL for a JPLACE
-    container = 'golob/pplacer:1.1alpha19rc_BCW_0.3.0'
+    container = 'golob/pplacer:1.1alpha19rc_BCW_0.3.0c'
 
     in_jplace = None
 
@@ -891,7 +891,7 @@ class Jplace_ADCL(sl.ContainerTask):
 
 class Jplace_EDPL(sl.ContainerTask):
     # Calculate ADCL for a JPLACE
-    container = 'golob/pplacer:1.1alpha19rc_BCW_0.3.0'
+    container = 'golob/pplacer:1.1alpha19rc_BCW_0.3.0c'
 
     in_jplace = None
 
@@ -924,7 +924,7 @@ class Jplace_EDPL(sl.ContainerTask):
 
 class Jplace_KR_Distance(sl.ContainerTask):
     # Calculate KR phylogenetic distance for a placement
-    container = 'golob/pplacer:1.1alpha19rc_BCW_0.3.0'
+    container = 'golob/pplacer:1.1alpha19rc_BCW_0.3.0c'
 
     in_jplace = None
     in_refpkg_tgz = None
@@ -939,12 +939,7 @@ class Jplace_KR_Distance(sl.ContainerTask):
         )
 
     def run(self):
-        with self.in_refpkg_tgz().target.open('rb') as refpkg_tgz_h:
-            refpkg_tar_h = tarfile.open(
-                mode='r:*',
-                fileobj=io.BytesIO(refpkg_tgz_h.read())
-            )
-            refpkg_rel_path = os.path.dirname(refpkg_tar_h.getnames()[0])
+        refpkg_rel_path = self.in_refpkg_tgz().get_refpkg_rel_path()
         input_targets = {
             'jplace': self.in_jplace(),
             'seq_map': self.in_seq_map(),
@@ -971,7 +966,7 @@ class Jplace_KR_Distance(sl.ContainerTask):
 
 class Jplace_Alpha_Diversity(sl.ContainerTask):
     # Calculate alpha diversity for a placement
-    container = 'golob/pplacer:1.1alpha19rc_BCW_0.3.0'
+    container = 'golob/pplacer:1.1alpha19rc_BCW_0.3.0c'
 
     in_jplace = None
     in_seq_map = None
@@ -985,16 +980,10 @@ class Jplace_Alpha_Diversity(sl.ContainerTask):
         )
 
     def run(self):
-        with self.in_refpkg_tgz().target.open('rb') as refpkg_tgz_h:
-            refpkg_tar_h = tarfile.open(
-                mode='r:*',
-                fileobj=io.BytesIO(refpkg_tgz_h.read())
-            )
-            refpkg_rel_path = os.path.dirname(refpkg_tar_h.getnames()[0])
+        refpkg_rel_path = self.in_refpkg_tgz().get_refpkg_rel_path()
         input_targets = {
             'jplace': self.in_jplace(),
             'seq_map': self.in_seq_map(),
-            'refpkg_tgz': self.in_refpkg_tgz(),
         }
         output_targets = {
             'alpha_diversity': self.out_alpha_diversity(),
@@ -1011,5 +1000,314 @@ class Jplace_Alpha_Diversity(sl.ContainerTask):
             output_targets=output_targets,
             extra_params={
                 'refpkg_rel_path': refpkg_rel_path,
+            }
+        )
+
+
+class PlacementDB_Prep(sl.ContainerTask):
+    # Prep a placement db
+    container = 'golob/pplacer:1.1alpha19rc_BCW_0.3.0c'
+
+    in_refpkg_tgz = None
+
+    placement_db_fn = sl.Parameter()
+
+    def out_placement_db(self):
+        tax_ids = self.in_refpkg_tgz().get_tax_ids()
+        ranks = self.in_refpkg_tgz().get_tax_ranks()
+        return PlacementDB_Prepped_ContainerTargetInfo(
+            self,
+            self.placement_db_fn,
+            expected_tax_ids=tax_ids,
+            expected_ranks=ranks,
+        )
+
+    def run(self):
+        refpkg_rel_path = self.in_refpkg_tgz().get_refpkg_rel_path()
+        input_targets = {
+            'refpkg_tgz': self.in_refpkg_tgz(),
+        }
+
+        output_targets = {
+            'placement_db': self.out_placement_db(),
+        }
+
+        self.ex(
+            command='mkdir -p /refpkg && cd /refpkg && tar xzvf $refpkg_tgz -C /refpkg/ '
+                    ' && rppr prep_db' +
+                    ' -c /refpkg/$refpkg_rel_path ' +
+                    ' --sqlite $placement_db',
+            input_targets=input_targets,
+            output_targets=output_targets,
+            extra_params={
+                'refpkg_rel_path': refpkg_rel_path,
+            }
+        )
+
+
+class PlacementDB_Classify_SV(sl.ContainerTask):
+    # Prep a placement db
+    container = 'golob/pplacer:1.1alpha19rc_BCW_0.3.0c'
+
+    # Dependencies
+    in_refpkg_tgz = None
+    in_sv_refpkg_aln_sto = None
+    in_placement_db = None
+    in_jplace = None
+
+    # Parameters
+    classifer = sl.Parameter(default='hybrid2')
+    seed = sl.Parameter(default='1')
+    likelihood_cutoff = sl.Parameter(default='0.9')
+    bayes_cutoff = sl.Parameter(default='1.0')
+    multiclass_min = sl.Parameter(default='0.2')
+    bootstrap_cutoff = sl.Parameter(default='0.8')
+    bootstrap_extension_cutoff = sl.Parameter(default='0.4')
+    nbc_word_length = sl.Parameter(default='8')
+    nbc_target_rank = sl.Parameter(default='genus')
+    nbc_boot = sl.Parameter(default='100')
+    use_posterior_prob = sl.Parameter(default=True)
+    no_pre_mask = sl.Parameter(default=False)
+    no_random_tie_break = sl.Parameter(default=False)
+
+    def out_placement_db(self):
+        return PlacementDB_Classified_ContainerTargetInfo(
+            self,
+            self.in_placement_db().path,
+            guppy_command=self.make_guppy_command(
+                    self.guppy_parameter_to_dict()
+                )
+        )
+
+    def guppy_parameter_to_dict(self):
+        return {
+            'classifier': self.classifer,
+            'nproc': self.containerinfo.vcpu,
+            'seed': self.seed,
+            'likelihood_cutoff': self.likelihood_cutoff,
+            'bayes_cutoff': self.bayes_cutoff,
+            'multiclass_min': self.multiclass_min,
+            'bootstrap_cutoff': self.bootstrap_cutoff,
+            'bootstrap_extension_cutoff': self.bootstrap_extension_cutoff,
+            'nbc_word_length': self.nbc_word_length,
+            'nbc_target_rank': self.nbc_target_rank,
+            'nbc_boot': self.nbc_boot,
+            }
+
+    def make_guppy_command(self, replace_dict=None):
+        s = (
+            ' guppy classify'
+            ' --classifier $classifier '
+            ' -j $nproc '
+            ' -c /refpkg/$refpkg_rel_path '
+            ' --nbc-sequences $sv_refpkg_aln_sto '
+            ' --sqlite $placement_db'
+            ' --seed $seed'
+            ' --cutoff $likelihood_cutoff'
+            ' --bayes-cutoff $bayes_cutoff'
+            ' --multiclass-min $multiclass_min'
+            ' --bootstrap-cutoff $bootstrap_cutoff'
+            ' --bootstrap-extension-cutoff $bootstrap_extension_cutoff'
+            ' --word-length $nbc_word_length'
+            ' --nbc-rank $nbc_target_rank'
+            ' --n-boot $nbc_boot'
+            ' $jplace'
+        )
+        if self.use_posterior_prob:
+            s += ' --pp'
+        if self.no_pre_mask:
+            s += ' --no-pre-mask'
+        if self.no_random_tie_break:
+            s += ' --no-random-tie-break'
+
+        if replace_dict:
+            return Template(s).safe_substitute(replace_dict)
+        else:
+            return s
+
+    def run(self):
+        refpkg_rel_path = self.in_refpkg_tgz().get_refpkg_rel_path()
+        input_targets = {
+            'refpkg_tgz': self.in_refpkg_tgz(),
+            'sv_refpkg_aln_sto': self.in_sv_refpkg_aln_sto(),
+            'jplace': self.in_jplace(),
+        }
+
+        output_targets = {
+            'placement_db': self.out_placement_db(),
+        }
+
+        extra_params = {
+                'refpkg_rel_path': refpkg_rel_path,
+            }
+        extra_params.update(self.guppy_parameter_to_dict())
+
+        self.ex(
+            command='mkdir -p /refpkg && cd /refpkg && tar xzvf $refpkg_tgz -C /refpkg/ &&' +
+                    self.make_guppy_command(),
+            input_targets=input_targets,
+            output_targets=output_targets,
+            extra_params=extra_params,
+        )
+
+
+class PlacementDB_MCC(sl.ContainerTask):
+    # Prep a placement db
+    container = 'golob/pplacer:1.1alpha19rc_BCW_0.3.0c'
+
+    in_placement_db = None
+    in_weights = None
+
+    def out_placement_db(self):
+        return PlacementDB_MCC_ContainerTargetInfo(
+            self,
+            self.in_placement_db().path,
+            expected_seq_ids=self.all_seq_ids()
+        )
+
+    def all_seq_ids(self):
+        with self.in_weights().open() as seq_weights_h:
+            return {
+                r[1] for r in csv.reader(seq_weights_h)
+            }
+
+    def run(self):  
+        input_targets = {
+            'weights': self.in_weights()
+        }
+
+        output_targets = {
+            'placement_db': self.out_placement_db(),
+        }
+
+        self.ex(
+            command=(
+                'multiclass_concat.py '
+                ' -k'
+                ' --dedup-info $weights'
+                ' $placement_db'
+            ),
+            input_targets=input_targets,
+            output_targets=output_targets,
+        )
+
+
+class PlacementDB_AddSI(sl.ContainerTask):
+    # Prep a placement db
+    container = 'golob/pplacer:1.1alpha19rc_BCW_0.3.0c'
+
+    in_placement_db = None
+    in_seq_map = None
+
+    def out_placement_db(self):
+        return PlacementDB_SI_ContainerTargetInfo(
+            self,
+            self.in_placement_db().path,
+            expected_seq_ids=self.all_seq_ids(),
+        )
+
+    def all_seq_ids(self):
+        with self.in_seq_map().open() as seq_map_h:
+            return {
+                r[0] for r in csv.reader(seq_map_h)
+            }
+
+    def run(self):
+        input_targets = {
+            'seq_map': self.in_seq_map()
+        }
+
+        output_targets = {
+            'placement_db': self.out_placement_db(),
+        }
+
+        self.ex(
+            command=(
+                '(echo "name,specimen"; cat $seq_map) | '
+                ' csvsql --table seq_info '
+                ' --insert --snifflimit 1000'
+                ' --db sqlite:///$placement_db'
+            ),
+            input_targets=input_targets,
+            output_targets=output_targets,
+        )
+
+
+class GenerateTables(sl.ContainerTask):
+    # by specimen tabular output
+    container = 'golob/pplacer:1.1alpha19rc_BCW_0.3.0c'
+
+    in_placement_db = None
+    in_seq_map = None
+    in_labels = None
+
+    tables_path = sl.Parameter()
+    rank = sl.Parameter()
+
+    def out_by_specimen(self):
+        return sl.ContainerTargetInfo(
+            self,
+            os.path.join(
+                self.tables_path,
+                'by_specimen.{}.csv'.format(self.rank)
+            )
+        )
+
+    def out_by_taxon(self):
+        return sl.ContainerTargetInfo(
+            self,
+            os.path.join(
+                self.tables_path,
+                'by_taxon.{}.csv'.format(self.rank)
+            )
+        )
+
+    def out_tallies_wide(self):
+        return sl.ContainerTargetInfo(
+            self,
+            os.path.join(
+                self.tables_path,
+                'tallies_wide.{}.csv'.format(self.rank)
+            )
+        )
+
+    def run(self):
+        input_targets = {
+            'placement_db': self.in_placement_db(),
+            'seq_map': self.in_seq_map(),
+        }
+
+        if self.in_labels:
+            input_targets['labels'] = self.in_labels()
+
+        output_targets = {
+            'by_specimen': self.out_by_specimen(),
+            'by_taxon': self.out_by_taxon(),
+            'tallies_wide': self.out_tallies_wide(),
+        }
+
+        command = (
+                'mkdir -p /working &&'
+                ' python2 /usr/bin/classif_table.py'
+                ' $placement_db'
+                ' /working/by_taxon.csv'
+                ' --rank $rank'
+                ' --specimen-map $seq_map'
+                ' --by-specimen /working/by_specimen.csv'
+                ' --tallies-wide /working/tallies_wide.csv'
+                ' && cp -r /working/by_taxon.csv $by_taxon'
+                ' && cp -r /working/by_specimen.csv $by_specimen'
+                ' && cp -r /working/tallies_wide.csv $tallies_wide'
+        )
+
+        if self.in_labels:
+            command += ' --metadata-map $labels'
+
+        self.ex(
+            command=command,
+            input_targets=input_targets,
+            output_targets=output_targets,
+            extra_params={
+                'rank': self.rank,
             }
         )

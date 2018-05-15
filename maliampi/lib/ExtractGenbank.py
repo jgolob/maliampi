@@ -45,7 +45,7 @@ class ExtractGenbank(object):
             raw_records = SeqIO.parse(record_file, 'genbank')
         except Exception as e:
             logging.error("Failed to load {} due to error {}".format(record_file, e))
-            raise(e)
+            raw_records = []
 
         for rec_i, raw_rec in enumerate(raw_records):
             try:

@@ -2,18 +2,20 @@
 import luigi
 import sciluigi as sl
 from lib.tasks import LoadFile, CMAlignSeqs, LoadFastaSeqs, AlignmentStoToFasta
+from lib.tasks import LoadRefpkgTGZ
 from lib.tasks import ExtractRefpkgAlignment, CombineAlignmentsSTO
-from lib.tasks import PPLACER_PlaceAlignment, Jplace_Reduplicate
-from lib.tasks import Jplace_PCA, Jplace_ADCL, Jplace_EDPL, Jplace_KR_Distance
-from lib.tasks import Jplace_Alpha_Diversity, LoadRefpkgTGZ
+from lib.tasks import PlacementDB_Prep, PlacementDB_Classify_SV, PlacementDB_MCC
+from lib.tasks import PlacementDB_AddSI
+from lib.tasks import GenerateTables
 
+import logging
 import os
 
 ENGINE = 'docker'
-
+log = logging.getLogger('sciluigi-interface')
 
 # Workflow
-class Workflow_Placement(sl.WorkflowTask):
+class Workflow_Classify(sl.WorkflowTask):
     #
     #  Take a suitable reference package and a set of sequence variants
     #  Place onto the maximum likelihood tree and return a jplace-format
@@ -23,9 +25,12 @@ class Workflow_Placement(sl.WorkflowTask):
     working_dir = sl.Parameter()
     destination_dir = sl.Parameter()
     sv_fasta = sl.Parameter()
+    jplace = sl.Parameter()
+
     refpkg_tgz = sl.Parameter()
     seq_map_csv = sl.Parameter()
     sv_weights_csv = sl.Parameter(default=None)
+    labels = sl.Parameter(default=None)
 
     test_containerinfo = sl.ContainerInfo(
                 vcpu=2,
@@ -49,6 +54,12 @@ class Workflow_Placement(sl.WorkflowTask):
             file_format='gzip',
         )
 
+        jplace = self.new_task(
+            'load_jplace',
+            LoadFile,
+            path=self.jplace,
+        )
+
         # Load the seq map
         seq_map = self.new_task(
             'load_seq_map',
@@ -65,6 +76,15 @@ class Workflow_Placement(sl.WorkflowTask):
             )
         else:
             sv_weights = None
+
+        if self.labels:
+            labels = self.new_task(
+                'load_labels',
+                LoadFile,
+                path=self.labels
+            )
+        else:
+            labels = None
 
         #  And unpack the refpkg to the relevant bits
         refpkg_alignments = self.new_task(
@@ -141,148 +161,81 @@ class Workflow_Placement(sl.WorkflowTask):
         sv_refpkg_aln_sto.in_aln_sto_2 = sv_aligned.out_align_sto
 
         #
-        #  Place the sequence variants using this combined aligment
+        #  Prep the placements.db using the refpkg
         #
-        dedup_jplace = self.new_task(
-            'make_dedup_jplace',
-            PPLACER_PlaceAlignment,
+
+        prepped_placementdb = self.new_task(
+            'prep_placementdb',
+            PlacementDB_Prep,
             containerinfo=self.test_containerinfo,
-            jplace_fn=os.path.join(
+            placement_db_fn=os.path.join(
                 self.destination_dir,
-                'placement',
-                'dedup.jplace'
+                'classification',
+                'placement.db'
             )
         )
-        dedup_jplace.in_refpkg_tgz = refpkg_tgz.out_refpkg_tgz
-        dedup_jplace.in_merged_aln_sto = sv_refpkg_aln_sto.out_aln_sto
+        prepped_placementdb.in_refpkg_tgz = refpkg_tgz.out_refpkg_tgz
 
         #
-        #  Reduplicate
+        #  Insert the seq_info / map of sv -> specimens
         #
 
-        if not sv_weights:
-            redup_jplace = dedup_jplace
-        else:
-            redup_jplace = self.new_task(
-                'reduplicate_jplace',
-                Jplace_Reduplicate,
+        placement_db_w_si = self.new_task(
+            'placement_db_add_si',
+            PlacementDB_AddSI,
+            containerinfo=self.test_containerinfo,
+        )
+        placement_db_w_si.in_placement_db = prepped_placementdb.out_placement_db
+        placement_db_w_si.in_seq_map = seq_map.out_file
+
+        #
+        #  Classify the sequence variants
+        #
+
+        placement_db_classified = self.new_task(
+            'classify_into_placement_db',
+            PlacementDB_Classify_SV,
+            containerinfo=self.test_containerinfo,
+        )
+        placement_db_classified.in_placement_db = placement_db_w_si.out_placement_db
+        placement_db_classified.in_refpkg_tgz = refpkg_tgz.out_refpkg_tgz
+        placement_db_classified.in_sv_refpkg_aln_sto = sv_refpkg_aln_sto.out_aln_sto
+        placement_db_classified.in_jplace = jplace.out_file
+
+        #
+        #  Multiclass concat names
+        #
+
+        placement_db_mcc = self.new_task(
+            'placement_db_multiclass_concat',
+            PlacementDB_MCC,
+            containerinfo=self.test_containerinfo,
+        )
+        placement_db_mcc.in_placement_db = placement_db_classified.out_placement_db
+        placement_db_mcc.in_weights = sv_weights.out_file
+
+        #
+        #  Tabular CSV outputs
+        #
+        tables_for_rank = {}
+        for rank in ['phylum', 'class', 'order', 'family', 'genus', 'species']:
+            tables_for_rank[rank] = self.new_task(
+                'by_specimen_{}'.format(rank),
+                GenerateTables,
                 containerinfo=self.test_containerinfo,
-                jplace_fn=os.path.join(
+                tables_path=os.path.join(
                     self.destination_dir,
-                    'placement',
-                    'redup.jplace.gz'
-                )
+                    'classification',
+                    'tables',
+                ),
+                rank=rank
             )
-            redup_jplace.in_jplace = dedup_jplace.out_jplace
-            redup_jplace.in_weights = sv_weights.out_file
+            tables_for_rank[rank].in_placement_db = placement_db_mcc.out_placement_db
+            tables_for_rank[rank].in_seq_map = seq_map.out_file
+            if labels:
+                tables_for_rank[rank].in_labels = labels.out_file
 
-        #
-        #  ADCL
-        #
-        adcl = self.new_task(
-            'create_adcl',
-            Jplace_ADCL,
-            containerinfo=self.test_containerinfo,
-            adcl_fn=os.path.join(
-                self.destination_dir,
-                'placement',
-                'adcl.gz'
-            )
-        )
-        adcl.in_jplace = redup_jplace.out_jplace
-
-        #
-        #  EDPL
-        #
-
-        edpl = self.new_task(
-            'calculate_edpl',
-            Jplace_EDPL,
-            containerinfo=self.test_containerinfo,
-            edpl_fn=os.path.join(
-                self.destination_dir,
-                'placement',
-                'edpl.gz'
-            )
-        )
-        edpl.in_jplace = redup_jplace.out_jplace
-
-        #
-        #  EPCA
-        #
-        epca = self.new_task(
-            'calculate_epca',
-            Jplace_PCA,
-            containerinfo=self.test_containerinfo,
-            path=os.path.join(
-                self.destination_dir,
-                'placement',
-                'pca'
-            ),
-            prefix='epca',
-            pca='epca'
-        )
-        epca.in_refpkg_tgz = refpkg_tgz.out_refpkg_tgz
-        epca.in_seq_map = seq_map.out_file
-        epca.in_jplace = redup_jplace.out_jplace
-
-        #
-        #  LPCA
-        #
-
-        lpca = self.new_task(
-            'calculate_lpca',
-            Jplace_PCA,
-            containerinfo=self.test_containerinfo,
-            path=os.path.join(
-                self.destination_dir,
-                'placement',
-                'pca'
-            ),
-            prefix='lpca',
-            pca='lpca'
-        )
-        lpca.in_refpkg_tgz = refpkg_tgz.out_refpkg_tgz
-        lpca.in_seq_map = seq_map.out_file
-        lpca.in_jplace = redup_jplace.out_jplace
-
-        #
-        #  KR-distance
-        #
-
-        kr_distance = self.new_task(
-            'calculate_kr_distance',
-            Jplace_KR_Distance,
-            containerinfo=self.test_containerinfo,
-            kr_fn=os.path.join(
-                self.destination_dir,
-                'placement',
-                'kr_distance.csv'
-            ),
-        )
-        kr_distance.in_refpkg_tgz = refpkg_tgz.out_refpkg_tgz
-        kr_distance.in_seq_map = seq_map.out_file
-        kr_distance.in_jplace = redup_jplace.out_jplace
-
-        # 
-        #  Alpha-Diversity
-        #
-
-        alpha_diversity = self.new_task(
-            'calculate_alpha_diversity',
-            Jplace_Alpha_Diversity,
-            containerinfo=self.test_containerinfo,
-            alpha_diversity_fn=os.path.join(
-                self.destination_dir,
-                'placement',
-                'alpha_diversity.csv'
-            ),
-        )
-        alpha_diversity.in_refpkg_tgz = refpkg_tgz.out_refpkg_tgz
-        alpha_diversity.in_seq_map = seq_map.out_file
-        alpha_diversity.in_jplace = redup_jplace.out_jplace
-
-        return(epca, lpca, adcl, edpl, kr_distance, alpha_diversity)
+        return (placement_db_mcc, tables_for_rank)
 
 
 def build_args(parser):
@@ -297,6 +250,13 @@ def build_args(parser):
         '--destination-dir',
         help="""Path of a suitable destination directory
         for the various placement outputs""",
+        type=str,
+        required=True,
+    )
+    parser.add_argument(
+        '-JP', '--jplace',
+        help="""Placements in jplace format
+        """,
         type=str,
         required=True,
     )
@@ -320,11 +280,19 @@ def build_args(parser):
         help="""Map of sequence IDs to specimens, headerless csv seqid, specimen
         """,
         type=str,
+        required=True,
     )
     parser.add_argument(
         '-weights', '--sv-weights-csv',
         help="""Weights of sequence variants for reduplication.
         Headerless csv: sv_id, seq_id, weight
+        (optional)
+        """,
+        type=str,
+    )
+    parser.add_argument(
+        '-L', '--labels',
+        help="""CSV of human-readable labels for specimens
         (optional)
         """,
         type=str,
