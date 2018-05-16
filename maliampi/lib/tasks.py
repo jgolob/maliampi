@@ -1355,4 +1355,10 @@ class LoadManifest(LoadFile):
         with self.out_file().open() as manifest_h:
             return {r.get('specimen') for r in csv.DictReader(manifest_h)}
 
+class BarCodeCopSpecimen(sl.ContainerTask):
+    container = 'golob/barcodecop:0.4.1__bcw_0.3.0'
 
+    in_manifest = None
+
+    dest_path = sl.Parameter()
+    specimens = sl.Parameter()
