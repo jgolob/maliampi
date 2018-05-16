@@ -1,8 +1,10 @@
 #!/usr/bin/python
 import luigi
 import sciluigi as sl
-from lib.tasks import LoadManifest
+from lib.tasks import LoadManifest, BarCodeCopSpecimen
 
+
+from collections import defaultdict
 import logging
 import os
 
@@ -20,6 +22,7 @@ class Workflow_DADA2(sl.WorkflowTask):
     working_dir = sl.Parameter()
     destination_dir = sl.Parameter()
     manifest = sl.Parameter()
+    barcodecop = sl.Parameter(default=True)
 
     test_containerinfo = sl.ContainerInfo(
                 vcpu=2,
@@ -41,6 +44,17 @@ class Workflow_DADA2(sl.WorkflowTask):
             LoadManifest,
             path=self.manifest,
         )
+
+        specimen_tasks = defaultdict(dict)
+        for specimen in manifest.get_specimens():
+            if self.barcodecop and manifest.has_index():
+                specimen_tasks[specimen]['verified_reads'] = self.new_task(
+                    'specimen_bcc_{}'.format(specimen),
+                    BarCodeCopSpecimen,
+                    containerinfo=test_containerinfo,
+
+                )
+
 
         return (manifest)
 

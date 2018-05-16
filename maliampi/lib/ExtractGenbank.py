@@ -43,38 +43,38 @@ class ExtractGenbank(object):
         download_date = download_date
         try:
             raw_records = SeqIO.parse(record_file, 'genbank')
+
+            for rec_i, raw_rec in enumerate(raw_records):
+                try:
+                    record = self.parse_record(
+                        raw_rec,
+                        focused_feature_table=focused_feature_table)
+
+                    record.update({'download_date': download_date})
+                    if gzip_seq:
+                        record.update({'seq': gzip.compress(
+                            str(raw_rec.seq).encode('utf8')
+                        )})
+                    else:
+                        record.update({'seq': str(raw_rec.seq)})
+                    refs = self.parse_references(raw_rec)
+                    record.update({'pubmed_refs': [ref['pubmed_id'] for ref in refs]})
+
+                    # refseqs
+                    if '_' in record['accession']:
+                        refseq = self.parse_refseq_source(raw_rec)
+                        record.update({"refseq__{}".format(rsk): refseq[rsk] for rsk in refseq})
+
+                    self.records[record['version']] = record
+
+                except Exception as e:
+                    logging.error("{} when working on {}th record".format(
+                        e,
+                        rec_i,
+                    ))
         except Exception as e:
             logging.error("Failed to load {} due to error {}".format(record_file, e))
             raw_records = []
-
-        for rec_i, raw_rec in enumerate(raw_records):
-            try:
-                record = self.parse_record(
-                    raw_rec,
-                    focused_feature_table=focused_feature_table)
-
-                record.update({'download_date': download_date})
-                if gzip_seq:
-                    record.update({'seq': gzip.compress(
-                        str(raw_rec.seq).encode('utf8')
-                    )})
-                else:
-                    record.update({'seq': str(raw_rec.seq)})
-                refs = self.parse_references(raw_rec)
-                record.update({'pubmed_refs': [ref['pubmed_id'] for ref in refs]})
-
-                # refseqs
-                if '_' in record['accession']:
-                    refseq = self.parse_refseq_source(raw_rec)
-                    record.update({"refseq__{}".format(rsk): refseq[rsk] for rsk in refseq})
-
-                self.records[record['version']] = record
-
-            except Exception as e:
-                logging.error("{} when working on {}th record".format(
-                    e,
-                    rec_i,
-                ))
 
     def get_records(self):
         return self.records

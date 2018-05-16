@@ -46,14 +46,6 @@ class LoadFile(sl.ExternalTask):
         return sl.ContainerTargetInfo(self, self.path, format=file_format)
 
 
-class LoadManifest(LoadFile):
-    
-    def manifest(self, parameter_list):
-        # Load manifest as csv and return as a list of dicts
-        with self.out_file().open() as manifest_h:
-            return [r for r in csv.DictReader(manifest_h)]
-
-
 class LoadRefpkgTGZ(sl.ExternalTask):
     path = sl.Parameter()
 
@@ -263,7 +255,10 @@ class NT_AccessionsForQuery(sl.ContainerTask):
 
     def run(self):
         if (self.out_accessions().scheme == 'file'):
-            os.makedirs(os.path.dirname(self.out_accessions().path))
+            try:
+                os.makedirs(os.path.dirname(self.out_accessions().path))
+            except FileExistsError:
+                pass
         output_targets = {
             'accessions': self.out_accessions()
         }
@@ -398,7 +393,6 @@ class NT_Repo_Fill(sl.ContainerTask):
                 random_dir,
                 'raw_gb.csv'
             ))
-        from mem_top import mem_top
         for chunk_i, chunk_versions in enumerate(self.chunks(
                 versions_need_fill,
                 int(self.chunk_size))
@@ -408,7 +402,6 @@ class NT_Repo_Fill(sl.ContainerTask):
                 int(len(versions_need_fill) / self.chunk_size))
             )
             self.work_on_chunk(chunk_versions, gb_needed, raw_gb)
-            log.info(mem_top())
             gc.collect()
 
 
@@ -1323,3 +1316,43 @@ class GenerateTables(sl.ContainerTask):
                 'rank': self.rank,
             }
         )
+
+
+class LoadManifest(LoadFile):
+
+    def manifest(self):
+        # Load manifest as csv and return as a list of dicts
+        with self.out_file().open() as manifest_h:
+            return [r for r in csv.DictReader(manifest_h)]
+
+    def get_columns(self):
+        with self.out_file().open() as manifest_h:
+            return set(csv.DictReader(manifest_h).fieldnames)
+
+    def is_paired(self):
+        return 'read__2' in self.get_columns()
+
+    def has_index(self):
+        columns = self.get_columns()
+        if 'read__2' in columns and 'index__2' in columns and 'index__1' in columns:
+            return True
+        elif 'index__1' in columns:
+            return True
+        else:
+            return False
+
+    def is_valid(self):
+        columns = self.get_columns()
+        if 'read__1' in columns and 'specmen' in columns:
+            return True
+        else:
+            return False
+
+    def has_batches(self):
+        return 'batch' in self.get_columns()
+
+    def get_specimens(self):
+        with self.out_file().open() as manifest_h:
+            return {r.get('specimen') for r in csv.DictReader(manifest_h)}
+
+
