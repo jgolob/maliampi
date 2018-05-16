@@ -5,7 +5,7 @@ import sys
 import luigi
 import sciluigi as sl
 
-from subcommands import refpkg, ncbi_16s, placement, classify
+from subcommands import refpkg, ncbi_16s, placement, classify, sv_dada2
 
 
 class MALIAMPI:
@@ -42,6 +42,13 @@ class MALIAMPI:
                 """)
             ncbi_16s.build_args(subparser_ncbi_16s)
 
+            # sequence_variants_dada2
+            subparser_sv_dada2 = self.__subparsers__.add_parser(
+                'sv_dada2',
+                description="""Make sequence variants using DADA2
+                """)
+            sv_dada2.build_args(subparser_sv_dada2)
+
             # refpkg command
             subparser_refpkg = self.__subparsers__.add_parser(
                 'refpkg',
@@ -72,6 +79,36 @@ class MALIAMPI:
                 self.placement()
             elif self.__args__.command == 'classify':
                 self.classify()
+            elif self.__args__.command == 'sv_dada2':
+                self.sv_dada2()
+
+    def sv_dada2(self):
+        """Generate sequence variants using DADA2."""
+        args = self.__args__
+
+        if args.luigi_manager:
+            local_scheduler = False
+        else:
+            local_scheduler = True
+
+        sl.run(
+            local_scheduler=local_scheduler,
+            main_task_cls=sv_dada2.Workflow_DADA2,
+            cmdline_args=[
+                '--workers={}'.format(
+                    args.workers
+                    ),
+                '--working-dir={}'.format(
+                    args.working_dir
+                    ),
+                '--destination-dir={}'.format(
+                    args.destination_dir
+                    ),
+                '--manifest={}'.format(
+                    args.manifest
+                    ),
+            ]
+        )
 
     def refpkg(self):
         """Make a reference package appropriate for pplacer or other pipelines."""

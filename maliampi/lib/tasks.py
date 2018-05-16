@@ -20,6 +20,7 @@ import tarfile
 import io
 import gzip
 import json
+import gc
 
 log = logging.getLogger('sciluigi-interface')
 
@@ -43,6 +44,14 @@ class LoadFile(sl.ExternalTask):
             file_format = None
 
         return sl.ContainerTargetInfo(self, self.path, format=file_format)
+
+
+class LoadManifest(LoadFile):
+    
+    def manifest(self, parameter_list):
+        # Load manifest as csv and return as a list of dicts
+        with self.out_file().open() as manifest_h:
+            return [r for r in csv.DictReader(manifest_h)]
 
 
 class LoadRefpkgTGZ(sl.ExternalTask):
@@ -389,6 +398,7 @@ class NT_Repo_Fill(sl.ContainerTask):
                 random_dir,
                 'raw_gb.csv'
             ))
+        from mem_top import mem_top
         for chunk_i, chunk_versions in enumerate(self.chunks(
                 versions_need_fill,
                 int(self.chunk_size))
@@ -398,6 +408,8 @@ class NT_Repo_Fill(sl.ContainerTask):
                 int(len(versions_need_fill) / self.chunk_size))
             )
             self.work_on_chunk(chunk_versions, gb_needed, raw_gb)
+            log.info(mem_top())
+            gc.collect()
 
 
 class BuildTaxtasticDB(sl.ContainerTask):
