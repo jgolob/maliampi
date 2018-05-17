@@ -1355,10 +1355,271 @@ class LoadManifest(LoadFile):
         with self.out_file().open() as manifest_h:
             return {r.get('specimen') for r in csv.DictReader(manifest_h)}
 
-class BarCodeCopSpecimen(sl.ContainerTask):
+class LoadSpecimenReads(sl.ExternalTask):
+    # Given a manifest and a specimen ID to target, load the read(s)
+    in_manifest = None
+    specimen = sl.Parameter()
+
+    def specimen_manifest(self):
+        with self.in_manifest().open() as manifest_h:
+            for r in csv.DictReader(manifest_h):
+                if r.get('specimen') == self.specimen:
+                    return r
+        # Implicit else we didn't find the specimen...
+        raise Exception("Could not find specimen {} in the manifest".format(
+            self.specimen
+        ))
+
+    def out_reads(self):
+        reads_dict = {}
+        specimen_manifest = self.specimen_manifest()
+        if not 'read__1' in specimen_manifest:
+            raise Exception("No forward / primary read for specimen {}".format(
+                self.specimen
+            ))
+        reads_dict['R1'] = sl.ContainerTargetInfo(
+            self,
+            specimen_manifest['read__1'],
+            format=luigi.format.Nop
+        )
+        if 'read__2' in specimen_manifest:
+            reads_dict['R2'] = sl.ContainerTargetInfo(
+                self,
+                specimen_manifest['read__2'],
+                format=luigi.format.Nop
+            )
+        if 'index__1' in specimen_manifest:
+            reads_dict['I1'] = sl.ContainerTargetInfo(
+                self,
+                specimen_manifest['index__1'],
+                format=luigi.format.Nop
+            )
+        if 'index__2' in specimen_manifest:
+            reads_dict['I2'] = sl.ContainerTargetInfo(
+                self,
+                specimen_manifest['index__2'],
+                format=luigi.format.Nop
+            )
+        return reads_dict
+
+
+class BCCSpecimenReads(sl.ContainerTask):
+    # Use barcodecop to verify reads were properly demultiplexed
     container = 'golob/barcodecop:0.4.1__bcw_0.3.0'
 
-    in_manifest = None
+    # For dependencies
+    in_reads = None
 
-    dest_path = sl.Parameter()
-    specimens = sl.Parameter()
+    specimen = sl.Parameter()
+    path = sl.Parameter()
+
+    def out_reads(self):
+        reads_dict = {}
+        reads_dict['R1'] = sl.ContainerTargetInfo(
+            self,
+            os.path.join(
+                self.path,
+                "{}.R1.bcc.fq.gz".format(self.specimen)
+            ),
+            format=luigi.format.Nop
+        )
+        reads_dict['R2'] = sl.ContainerTargetInfo(
+            self,
+            os.path.join(
+                self.path,
+                "{}.R2.bcc.fq.gz".format(self.specimen)
+            ),
+            format=luigi.format.Nop
+        )
+        return reads_dict
+    """
+    def out_stats(self):
+        stats_dict = {}
+        stats_dict['R1'] = sl.ContainerTargetInfo(
+            self,
+            os.path.join(
+                self.path,
+                "{}.R1.bcc.stats.csv".format(self.specimen)
+            ),
+            format=luigi.format.Nop
+        )
+        stats_dict['R2'] = sl.ContainerTargetInfo(
+            self,
+            os.path.join(
+                self.path,
+                "{}.R2.bcc.stats.csv".format(self.specimen)
+            ),
+            format=luigi.format.Nop
+        )
+        return stats_dict
+    """
+
+    def run(self):
+        input_targets={
+            'read_1': self.in_reads().get('R1'),
+            'read_2': self.in_reads().get('R2'),
+            'index_1': self.in_reads().get('I1'),
+            'index_2': self.in_reads().get('I2'),
+        }
+        output_targets={
+            'bcc_read_1': self.out_reads()['R1'],
+            'bcc_read_2': self.out_reads()['R2'],
+            #'bcc_stat_1': self.out_stats()['R1'],
+            #'bcc_stat_2': self.out_stats()['R2']
+        }
+        self.ex(
+            command=(
+                'barcodecop'
+                ' $index_1 $index_2'
+                ' --match-filter'
+                ' -f $read_1'
+                ' -o $bcc_read_1'
+            #    ' -C $bcc_stat_1'
+                ' && barcodecop'
+                ' $index_1 $index_2'
+                ' --match-filter'
+                ' -f $read_2'
+                ' -o $bcc_read_2'
+            #    ' -C $bcc_stat_2'
+            ),
+            input_targets=input_targets,
+            output_targets=output_targets,
+        )
+
+class DADA2_FilterAndTrim(sl.ContainerTask):
+    # DADA2 filter and trim for a specimen (F and R)
+    container = 'golob/dada2:1.6.0__bcw.0.3.0'
+
+    # Dependencies
+    in_reads = None
+
+    # Parameters
+    specimen = sl.Parameter()
+    path = sl.Parameter()
+    # DADA2 parameters
+    maxN = sl.Parameter(default=1)
+    maxEE = sl.Parameter(default='Inf')
+    f_trunc = sl.Parameter(default=280)
+    r_trunc = sl.Parameter(default=250)
+    trim_left = sl.Parameter(default=15)
+    trunc_Q = sl.Parameter(default=2)
+
+    def out_reads(self):
+        reads_dict = {}
+        reads_dict['R1'] = sl.ContainerTargetInfo(
+            self,
+            os.path.join(
+                self.path,
+                "{}.R1.ft.fq.gz".format(self.specimen)
+            ),
+            format=luigi.format.Nop
+        )
+        reads_dict['R2'] = sl.ContainerTargetInfo(
+            self,
+            os.path.join(
+                self.path,
+                "{}.R2.ft.fq.gz".format(self.specimen)
+            ),
+            format=luigi.format.Nop
+        )
+        return reads_dict
+    
+    def run(self):
+        input_targets = {
+            'read_1': self.in_reads()['R1'],
+            'read_2': self.in_reads()['R2']
+        }
+        output_targets = {
+            'read_1_ft': self.out_reads()['R1'],
+            'read_2_ft': self.out_reads()['R2']
+        }
+
+        self.ex(
+            command=(
+                'Rscript -e "'
+                "library('dada2'); "
+                'filterAndTrim('
+                "'$read_1', '$read_1_ft', "
+                "'$read_2', '$read_2_ft', "
+                'trimLeft = $trim_left, '
+                'maxN = $maxN, '
+                'maxEE = c($maxEE, $maxEE), '
+                'truncLen = c($f_trunc, $r_trunc), '
+                'truncQ = $trunc_Q, '
+                'compress = TRUE, '
+                'multithread = $vcpu)'
+                '"'
+            ),
+            input_targets=input_targets,
+            output_targets=output_targets,
+            extra_params={
+                'trim_left': self.trim_left,
+                'maxN': self.maxN,
+                'maxEE': self.maxEE,
+                'f_trunc': self.f_trunc,
+                'r_trunc': self.r_trunc,
+                'trunc_Q': self.trunc_Q,
+                'vcpu': self.containerinfo.vcpu
+            }
+        )
+class DADA2_Dereplicate(sl.ContainerTask):
+    # DADA2 filter and trim for a specimen (F and R)
+    container = 'golob/dada2:1.6.0__bcw.0.3.0'
+
+    # Dependencies
+    in_reads = None
+
+    # Parameters
+    specimen = sl.Parameter()
+    path = sl.Parameter()
+    # DADA2 parameters
+    maxN = sl.Parameter(default=1)
+    maxEE = sl.Parameter(default='Inf')
+    f_trunc = sl.Parameter(default=280)
+    r_trunc = sl.Parameter(default=250)
+    trim_left = sl.Parameter(default=15)
+    trunc_Q = sl.Parameter(default=2)
+
+    def out_rds(self):
+        rds_dict = {}
+        rds_dict['R1'] = sl.ContainerTargetInfo(
+            self,
+            os.path.join(
+                self.path,
+                "{}.R1.derep.rds".format(self.specimen)
+            ),
+            format=luigi.format.Nop
+        )
+        rds_dict['R2'] = sl.ContainerTargetInfo(
+            self,
+            os.path.join(
+                self.path,
+                "{}.R2.derep.rds".format(self.specimen)
+            ),
+            format=luigi.format.Nop
+        )
+        return rds_dict
+    
+    def run(self):
+        input_targets = {
+            'read_1': self.in_reads()['R1'],
+            'read_2': self.in_reads()['R2']
+        }
+        output_targets = {
+            'derep_1': self.out_rds()['R1'],
+            'derep_2': self.out_rds()['R2']
+        }
+
+        self.ex(
+            command=(
+                'Rscript -e "'
+                "library('dada2'); "
+                "derep1 <- derepFastq('$read_1'); "
+                "saveRDS(derep1, '$derep_1'); "
+                "derep2 <- derepFastq('$read_2'); "
+                "saveRDS(derep2, '$derep_2'); "
+                '"'
+            ),
+            input_targets=input_targets,
+            output_targets=output_targets,
+        )
