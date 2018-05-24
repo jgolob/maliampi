@@ -1736,7 +1736,7 @@ class DADA2_LearnError(sl.ContainerTask):
         )
 
 
-class DADA2_DADA2(sl.ContainerTask):
+class DADA2_DADA(sl.ContainerTask):
     # DADA2 filter and trim for a specimen (F and R)
     container = 'golob/dada2:1.6.0__bcw.0.3.0'
 
@@ -1754,7 +1754,7 @@ class DADA2_DADA2(sl.ContainerTask):
             self,
             os.path.join(
                 self.path,
-                "{}.R1.dada2.rds".format(self.specimen)
+                "{}.R1.dada.rds".format(self.specimen)
             ),
             format=luigi.format.Nop
         )
@@ -1762,7 +1762,7 @@ class DADA2_DADA2(sl.ContainerTask):
             self,
             os.path.join(
                 self.path,
-                "{}.R2.dada2.rds".format(self.specimen)
+                "{}.R2.dada.rds".format(self.specimen)
             ),
             format=luigi.format.Nop
         )
