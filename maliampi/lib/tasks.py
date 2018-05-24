@@ -1325,6 +1325,19 @@ class LoadManifest(LoadFile):
         with self.out_file().open() as manifest_h:
             return [r for r in csv.DictReader(manifest_h)]
 
+    def batched_specimens(self):
+        manifest = self.manifest()
+        batches = {r.get('batch') for r in manifest}
+        log.info("{} batches".format(
+            len(batches))
+            )
+        
+        for batch in batches:
+            yield((batch, {
+                r['specimen'] for r in manifest
+                if r.get('batch') == batch
+            }))
+
     def get_columns(self):
         with self.out_file().open() as manifest_h:
             return set(csv.DictReader(manifest_h).fieldnames)
@@ -1562,6 +1575,8 @@ class DADA2_FilterAndTrim(sl.ContainerTask):
                 'vcpu': self.containerinfo.vcpu
             }
         )
+
+
 class DADA2_Dereplicate(sl.ContainerTask):
     # DADA2 filter and trim for a specimen (F and R)
     container = 'golob/dada2:1.6.0__bcw.0.3.0'
@@ -1618,6 +1633,218 @@ class DADA2_Dereplicate(sl.ContainerTask):
                 "saveRDS(derep1, '$derep_1'); "
                 "derep2 <- derepFastq('$read_2'); "
                 "saveRDS(derep2, '$derep_2'); "
+                '"'
+            ),
+            input_targets=input_targets,
+            output_targets=output_targets,
+        )
+
+
+class DADA2_LearnError(sl.ContainerTask):
+    # DADA2 filter and trim for a specimen (F and R)
+    container = 'golob/dada2:1.6.0__bcw.0.3.0'
+
+    # Dependencies
+    # Should be a LIST of DICTS 
+    # of filter-trimmed read targets
+    in_reads = None
+
+    # Parameters
+    batch = sl.Parameter()
+    path = sl.Parameter()
+
+    def out_rds(self):
+        rds_dict = {}
+        rds_dict['R1'] = sl.ContainerTargetInfo(
+            self,
+            os.path.join(
+                self.path,
+                "{}.R1.err.rds".format(self.batch)
+            ),
+            format=luigi.format.Nop
+        )
+        rds_dict['R2'] = sl.ContainerTargetInfo(
+            self,
+            os.path.join(
+                self.path,
+                "{}.R2.err.rds".format(self.batch)
+            ),
+            format=luigi.format.Nop
+        )
+        return rds_dict
+
+    def out_csv(self):
+        rds_dict = {}
+        rds_dict['R1'] = sl.ContainerTargetInfo(
+            self,
+            os.path.join(
+                self.path,
+                "{}.R1.err.csv".format(self.batch)
+            ),
+        )
+        rds_dict['R2'] = sl.ContainerTargetInfo(
+            self,
+            os.path.join(
+                self.path,
+                "{}.R2.err.csv".format(self.batch)
+            ),
+        )
+        return rds_dict
+    
+    def run(self):
+        input_targets = {
+            'read_{}_1'.format(r_i): read_t()['R1']
+            for r_i, read_t in enumerate(self.in_reads)
+        }
+        input_targets.update({
+            'read_{}_2'.format(r_i): read_t()['R2']
+            for r_i, read_t in enumerate(self.in_reads)
+        })
+        output_targets = {
+            'err_1': self.out_rds()['R1'],
+            'err_2': self.out_rds()['R2'],
+            'err_csv_1': self.out_csv()['R1'],
+            'err_csv_2': self.out_csv()['R2'],
+        }
+        command = (
+                'Rscript -e "'
+                "library('dada2'); "
+        )
+        # Forward
+        command += 'errF <- learnErrors(c('
+        command += ",".join(["'$read_{}_1'".format(i) for i in range(len(self.in_reads))])
+        command += (
+            '), multithread=$vcpu'
+            "); saveRDS(errF, '$err_1'); "
+            "write.csv(errF, '$err_csv_1');"
+        )
+        # Reverse
+        command += 'errR <- learnErrors(c('
+        command += ",".join(["'$read_{}_2'".format(i) for i in range(len(self.in_reads))])
+        command += (
+            '), multithread=$vcpu'
+            "); saveRDS(errR, '$err_2'); "
+            "write.csv(errR, '$err_csv_2');"
+        )
+        command+='"'
+
+        self.ex(
+            command=command,
+            input_targets=input_targets,
+            output_targets=output_targets,
+            extra_params={'vcpu': self.containerinfo.vcpu}
+        )
+
+
+class DADA2_DADA2(sl.ContainerTask):
+    # DADA2 filter and trim for a specimen (F and R)
+    container = 'golob/dada2:1.6.0__bcw.0.3.0'
+
+    # Dependencies
+    in_derep = None
+    in_errM = None
+
+    # Parameters
+    specimen = sl.Parameter()
+    path = sl.Parameter()
+
+    def out_rds(self):
+        rds_dict = {}
+        rds_dict['R1'] = sl.ContainerTargetInfo(
+            self,
+            os.path.join(
+                self.path,
+                "{}.R1.dada2.rds".format(self.specimen)
+            ),
+            format=luigi.format.Nop
+        )
+        rds_dict['R2'] = sl.ContainerTargetInfo(
+            self,
+            os.path.join(
+                self.path,
+                "{}.R2.dada2.rds".format(self.specimen)
+            ),
+            format=luigi.format.Nop
+        )
+        return rds_dict
+    
+    def run(self):
+        input_targets = {
+            'derep_1': self.in_derep()['R1'],
+            'derep_2': self.in_derep()['R2'],
+            'errM_1': self.in_errM()['R1'],
+            'errM_2': self.in_errM()['R2'],
+        }
+        output_targets = {
+            'dada_1': self.out_rds()['R1'],
+            'dada_2': self.out_rds()['R2']
+        }
+
+        self.ex(
+            command=(
+                'Rscript -e "'
+                "library('dada2'); "
+                "errM_1 <- readRDS('$errM_1'); "
+                "derep_1 <- readRDS('$derep_1'); "
+                "dadaResult_1 <- dada(derep_1, err=errM_1, multithread=$vcpu); "
+                "saveRDS(dadaResult_1, '$dada_1'); "
+                "errM_2 <- readRDS('$errM_2'); "
+                "derep_2 <- readRDS('$derep_2'); "
+                "dadaResult_2 <- dada(derep_2, err=errM_2, multithread=$vcpu); "
+                "saveRDS(dadaResult_2, '$dada_2'); "
+                '"'
+            ),
+            input_targets=input_targets,
+            output_targets=output_targets,
+            extra_params={'vcpu': self.containerinfo.vcpu}
+        )
+
+
+class DADA2_Merge(sl.ContainerTask):
+    # DADA2 filter and trim for a specimen (F and R)
+    container = 'golob/dada2:1.6.0__bcw.0.3.0'
+
+    # Dependencies
+    in_derep = None
+    in_dada = None
+
+    # Parameters
+    specimen = sl.Parameter()
+    path = sl.Parameter()
+
+    def out_rds(self):
+        return sl.ContainerTargetInfo(
+            self,
+            os.path.join(
+                self.path,
+                "{}.merge.rds".format(self.specimen)
+            ),
+            format=luigi.format.Nop
+        )
+    
+    def run(self):
+        input_targets = {
+            'derep_1': self.in_derep()['R1'],
+            'derep_2': self.in_derep()['R2'],
+            'dada_1': self.in_dada()['R1'],
+            'dada_2': self.in_dada()['R2'],
+        }
+        output_targets = {
+            'merger': self.out_rds(),
+        }
+
+        self.ex(
+            command=(
+                'Rscript -e "'
+                "library('dada2'); "
+                "dada_1 <- readRDS('$dada_1'); "
+                "derep_1 <- readRDS('$derep_1'); "
+                "dada_2 <- readRDS('$dada_2'); "
+                "derep_2 <- readRDS('$derep_2'); "
+                'merger <- mergePairs('
+                'dada_1, derep_1, '
+                'dada_2, derep_2); '
+                "saveRDS(merger, '$merger'); "
                 '"'
             ),
             input_targets=input_targets,

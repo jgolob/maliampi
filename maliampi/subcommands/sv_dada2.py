@@ -2,7 +2,8 @@
 import luigi
 import sciluigi as sl
 from lib.tasks import LoadManifest, LoadSpecimenReads, BCCSpecimenReads
-from lib.tasks import DADA2_FilterAndTrim, DADA2_Dereplicate
+from lib.tasks import DADA2_FilterAndTrim, DADA2_Dereplicate, DADA2_LearnError
+from lib.tasks import DADA2_DADA, DADA2_Merge
 
 
 from collections import defaultdict
@@ -48,7 +49,8 @@ class Workflow_DADA2(sl.WorkflowTask):
 
         # For each specimen....
         specimen_tasks = defaultdict(dict)
-        for specimen in manifest.get_specimens():
+        specimens = manifest.get_specimens()
+        for specimen in specimens:
             # Load the specimen reads. 
             specimen_tasks[specimen]['reads'] = self.new_task(
                 'specimen_load_{}'.format(specimen),
@@ -100,9 +102,67 @@ class Workflow_DADA2(sl.WorkflowTask):
                 )
             )
             specimen_tasks[specimen]['dada2_derep'].in_reads = specimen_tasks[specimen]['dada2_ft'].out_reads
-            
 
-        return (manifest, specimen_tasks)
+        # Now we need the specimens grouped by batch to create error models. 
+        batch_errModels = {}
+        for batch, batched_specimens in manifest.batched_specimens():
+            batch_errModels[batch] = self.new_task(
+                'dada2_learn_error_batch_{}'.format(batch),
+                DADA2_LearnError,
+                containerinfo=self.test_containerinfo,
+                batch=batch,
+                path=os.path.join(
+                    self.working_dir,
+                    'sv',
+                    'dada2',
+                    'errM'
+                )
+            )
+            batch_errModels[batch].in_reads = [
+                specimen_tasks[s]['dada2_ft'].out_reads
+                for s in specimen_tasks
+                if s in batched_specimens
+            ]
+            for specimen in batched_specimens:
+                specimen_tasks[specimen]['dada2_errM'] = batch_errModels[batch]
+
+        # Back to for each specimen...
+        for specimen in specimens:
+            # DADA
+            specimen_tasks[specimen]['dada2_dada'] = self.new_task(
+                'dada2_dada_{}'.format(specimen),
+                DADA2_DADA,
+                containerinfo=self.test_containerinfo,
+                specimen=specimen,
+                path=os.path.join(
+                    self.working_dir,
+                    'sv',
+                    'dada2',
+                    'dada'
+                )
+            )
+            specimen_tasks[specimen]['dada2_dada'].in_derep = specimen_tasks[specimen]['dada2_derep'].out_rds
+            specimen_tasks[specimen]['dada2_dada'].in_errM = specimen_tasks[specimen]['dada2_errM'].out_rds
+
+            # MERGE
+            specimen_tasks[specimen]['dada2_merge'] = self.new_task(
+                'dada2_merge_{}'.format(specimen),
+                DADA2_Merge,
+                containerinfo=self.test_containerinfo,
+                specimen=specimen,
+                path=os.path.join(
+                    self.working_dir,
+                    'sv',
+                    'dada2',
+                    'merged'
+                )
+            )
+            specimen_tasks[specimen]['dada2_merge'].in_dada = specimen_tasks[specimen]['dada2_dada'].out_rds
+            specimen_tasks[specimen]['dada2_merge'].in_derep = specimen_tasks[specimen]['dada2_derep'].out_rds
+
+            # Seqtab
+
+        return (manifest, specimen_tasks, batch_errModels)
 
 
 def build_args(parser):
