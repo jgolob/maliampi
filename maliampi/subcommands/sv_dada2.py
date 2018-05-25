@@ -3,8 +3,7 @@ import luigi
 import sciluigi as sl
 from lib.tasks import LoadManifest, LoadSpecimenReads, BCCSpecimenReads
 from lib.tasks import DADA2_FilterAndTrim, DADA2_Dereplicate, DADA2_LearnError
-from lib.tasks import DADA2_DADA, DADA2_Merge
-
+from lib.tasks import DADA2_DADA, DADA2_Merge, DADA2_Specimen_Seqtab, DADA2_Combine_Seqtabs
 
 from collections import defaultdict
 import logging
@@ -12,6 +11,7 @@ import os
 
 ENGINE = 'docker'
 log = logging.getLogger('sciluigi-interface')
+
 
 # Workflow
 class Workflow_DADA2(sl.WorkflowTask):
@@ -51,7 +51,7 @@ class Workflow_DADA2(sl.WorkflowTask):
         specimen_tasks = defaultdict(dict)
         specimens = manifest.get_specimens()
         for specimen in specimens:
-            # Load the specimen reads. 
+            # Load the specimen reads.
             specimen_tasks[specimen]['reads'] = self.new_task(
                 'specimen_load_{}'.format(specimen),
                 LoadSpecimenReads,
@@ -161,8 +161,38 @@ class Workflow_DADA2(sl.WorkflowTask):
             specimen_tasks[specimen]['dada2_merge'].in_derep = specimen_tasks[specimen]['dada2_derep'].out_rds
 
             # Seqtab
-
-        return (manifest, specimen_tasks, batch_errModels)
+            specimen_tasks[specimen]['dada2_seqtab'] = self.new_task(
+                'dada2_seqtab_{}'.format(specimen),
+                DADA2_Specimen_Seqtab,
+                containerinfo=self.test_containerinfo,
+                specimen=specimen,
+                path=os.path.join(
+                    self.working_dir,
+                    'sv',
+                    'dada2',
+                    'seqtab'
+                )
+            )
+            specimen_tasks[specimen]['dada2_seqtab'].in_merge = specimen_tasks[specimen]['dada2_merge'].out_rds
+    
+        # Combine seqtabs
+        combined_seqtab = self.new_task(
+            'combine_seqtabs',
+            DADA2_Combine_Seqtabs,
+            containerinfo=self.test_containerinfo,
+            fn=os.path.join(
+                        self.working_dir,
+                        'sv',
+                        'dada2',
+                        'seqtab.merged.rds'
+                    )
+        )
+        combined_seqtab.in_seqtabs = [
+                specimen_tasks[s]['dada2_seqtab'].out_rds
+                for s in specimens
+            ]
+        
+        return (combined_seqtab)
 
 
 def build_args(parser):

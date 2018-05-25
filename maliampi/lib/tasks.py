@@ -1801,7 +1801,7 @@ class DADA2_DADA(sl.ContainerTask):
 
 
 class DADA2_Merge(sl.ContainerTask):
-    # DADA2 filter and trim for a specimen (F and R)
+    # DADA2 Merge forward and reverse reads
     container = 'golob/dada2:1.6.0__bcw.0.3.0'
 
     # Dependencies
@@ -1829,6 +1829,7 @@ class DADA2_Merge(sl.ContainerTask):
             'dada_1': self.in_dada()['R1'],
             'dada_2': self.in_dada()['R2'],
         }
+
         output_targets = {
             'merger': self.out_rds(),
         }
@@ -1847,6 +1848,117 @@ class DADA2_Merge(sl.ContainerTask):
                 "saveRDS(merger, '$merger'); "
                 '"'
             ),
+            input_targets=input_targets,
+            output_targets=output_targets,
+        )
+
+class DADA2_Specimen_Seqtab(sl.ContainerTask):
+    # DADA2 Make a sequence table for a specimen
+    container = 'golob/dada2:1.6.0__bcw.0.3.0'
+
+    # Dependencies
+    in_merge = None
+
+    # Parameters
+    specimen = sl.Parameter()
+    path = sl.Parameter()
+
+    def out_rds(self):
+        return sl.ContainerTargetInfo(
+            self,
+            os.path.join(
+                self.path,
+                "{}.seqtab.rds".format(self.specimen)
+            ),
+            format=luigi.format.Nop
+        )
+    
+    def run(self):
+        input_targets = {
+            'merged': self.in_merge(),
+        }
+
+        output_targets = {
+            'seqtab': self.out_rds(),
+        }
+
+        self.ex(
+            command=(
+                'Rscript -e "'
+                "library('dada2'); "
+                "merged <- readRDS('$merged'); "
+                'seqtab <- makeSequenceTable(merged); '
+                "rownames(seqtab) <- c('$specimen'); "  # Inject specimen name to ease later combination
+                "saveRDS(seqtab, '$seqtab'); "
+                '"'
+            ),
+            input_targets=input_targets,
+            output_targets=output_targets,
+            extra_params={
+                'specimen': self.specimen,
+            }
+        )
+
+class DADA2_Combine_Seqtabs(sl.ContainerTask):
+    # DADA2 Make a sequence table for a specimen
+    container = 'golob/dada2:1.6.0__bcw.0.3.0'
+
+    # Dependencies
+    in_seqtabs = None
+
+    # Parameters
+    fn = sl.Parameter()
+
+    def out_rds(self):
+        return sl.ContainerTargetInfo(
+            self,
+            self.fn,
+            format=luigi.format.Nop
+        )
+    
+    def run(self):
+        input_targets = {"seqtab_{}".format(s_i): seqtab_t()
+            for s_i, seqtab_t in enumerate(self.in_seqtabs)
+        }
+
+        output_targets = {
+            'combined_seqtab': self.out_rds(),
+        }
+
+        command = (
+            'Rscript -e "'
+            "library('dada2'); "
+            'seqtab_fns <- c('
+        )
+
+        command += ", ".join(
+            [
+                "'${}'".format(st_id) 
+            
+            for st_id in input_targets.keys()]
+        )
+        command += '); '
+        # Apply to each element in the list a load operation. Store into seqtabs list
+        command += 'seqtabs <- lapply(seqtab_fns, readRDS); '
+        # Filter out tables that are empty (have no sequences), etc
+        command += (
+            'seqtabs.filtered <- '
+            'seqtabs[lapply(seqtabs, '
+            'function(tab) is.matrix(tab) '
+            '&& all(tab>=0) '
+            '&& !is.null(colnames(tab)) '
+            '&& !is.null(rownames(tab)) '
+            '&& all(sapply(colnames(tab), nchar)>0) '
+            '&& all(sapply(rownames(tab), nchar)>0) ) == TRUE]; '
+        )
+        # Use the dada2 method to actually combine together
+        command += 'combined_seqtab <- do.call(mergeSequenceTables, seqtabs.filtered); ' 
+        command += "saveRDS(combined_seqtab, '$combined_seqtab') " # Save to disk
+        # Closing quote for Rscript
+        command += '"'
+
+        self.ex(
+            command=command,
             input_targets=input_targets,
             output_targets=output_targets,
         )
