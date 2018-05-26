@@ -1900,7 +1900,7 @@ class DADA2_Specimen_Seqtab(sl.ContainerTask):
         )
 
 class DADA2_Combine_Seqtabs(sl.ContainerTask):
-    # DADA2 Make a sequence table for a specimen
+    # DADA2 Combine seqtabs
     container = 'golob/dada2:1.6.0__bcw.0.3.0'
 
     # Dependencies
@@ -1959,6 +1959,119 @@ class DADA2_Combine_Seqtabs(sl.ContainerTask):
 
         self.ex(
             command=command,
+            input_targets=input_targets,
+            output_targets=output_targets,
+        )
+
+
+class DADA2_Remove_Chimera(sl.ContainerTask):
+    # DADA2 Remove chimeras from Seqtab
+    container = 'golob/dada2:1.6.0__bcw.0.3.0'
+
+    # Dependencies
+    in_seqtab = None
+
+    # Parameters
+    fn_rds = sl.Parameter()
+    fn_csv = sl.Parameter()
+    method = sl.Parameter(default='consensus')
+
+    def out_rds(self):
+        return sl.ContainerTargetInfo(
+            self,
+            self.fn_rds,
+            format=luigi.format.Nop
+        )
+
+    def out_csv(self):
+        return sl.ContainerTargetInfo(
+            self,
+            self.fn_csv,
+        )
+
+    def run(self):
+        input_targets = {
+            'seqtab': self.in_seqtab()
+        }
+
+        output_targets = {
+            'seqtab_nochim_rds': self.out_rds(),
+            'seqtab_nochim_csv': self.out_csv(),
+        }
+
+        self.ex(
+            command=(
+                'Rscript -e "'
+                "library('dada2'); "
+                "seqtab <- readRDS('$seqtab'); "
+                'seqtab_nochim <- removeBimeraDenovo('
+                'seqtab, '
+                "method='$method', "
+                'multithread=$vcpu); '
+                "saveRDS(seqtab_nochim, '$seqtab_nochim_rds'); "
+                "write.csv(seqtab_nochim, '$seqtab_nochim_csv', na='') "
+                '"'
+            ),
+            input_targets=input_targets,
+            output_targets=output_targets,
+            extra_params={
+                'method': self.method,
+                'vcpu': self.containerinfo.vcpu
+            }
+        )
+
+
+class DADA2_SV_to_PPlacer(sl.ContainerTask):
+    # Convert DADA2 sequence variant table to outputs compatible with pplacer
+    # guppy and rppr.
+    container = 'golob/dada2-pplacer:0.2.0__bcw__0.3.0'
+
+    # Dependencies
+    in_seqtab_csv = None
+
+    # Parameters
+    fasta_fn = sl.Parameter()
+    weights_fn = sl.Parameter()
+    map_fn = sl.Parameter()
+
+    def out_fasta(self):
+        return sl.ContainerTargetInfo(
+            self,
+            self.fasta_fn,
+        )
+
+    def out_weights(self):
+        return sl.ContainerTargetInfo(
+            self,
+            self.weights_fn,
+        )
+
+    def out_map(self):
+        return sl.ContainerTargetInfo(
+            self,
+            self.map_fn,
+        )
+
+    def run(self):
+        input_targets = {
+            'seqtab': self.in_seqtab_csv()
+        }
+
+        output_targets = {
+            'fasta': self.out_fasta(),
+            'weights': self.out_weights(),
+            'map': self.out_map(),
+        }
+
+        self.ex(
+            command=(
+                'dada2-seqtab-to-pplacer '
+                '--seqtable $seqtab '
+                '--fasta_out_sequences $fasta '
+                '--weights $weights '
+                '--map $map'
+
+            ),
             input_targets=input_targets,
             output_targets=output_targets,
         )

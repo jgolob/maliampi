@@ -3,13 +3,14 @@ import luigi
 import sciluigi as sl
 from lib.tasks import LoadManifest, LoadSpecimenReads, BCCSpecimenReads
 from lib.tasks import DADA2_FilterAndTrim, DADA2_Dereplicate, DADA2_LearnError
-from lib.tasks import DADA2_DADA, DADA2_Merge, DADA2_Specimen_Seqtab, DADA2_Combine_Seqtabs
+from lib.tasks import DADA2_DADA, DADA2_Merge, DADA2_Specimen_Seqtab
+from lib.tasks import DADA2_Combine_Seqtabs, DADA2_Remove_Chimera, DADA2_SV_to_PPlacer
 
 from collections import defaultdict
 import logging
 import os
 
-ENGINE = 'docker'
+ENGINE = 'aws_batch'
 log = logging.getLogger('sciluigi-interface')
 
 
@@ -174,25 +175,61 @@ class Workflow_DADA2(sl.WorkflowTask):
                 )
             )
             specimen_tasks[specimen]['dada2_seqtab'].in_merge = specimen_tasks[specimen]['dada2_merge'].out_rds
-    
+
         # Combine seqtabs
         combined_seqtab = self.new_task(
-            'combine_seqtabs',
+            'dada2_combine_seqtabs',
             DADA2_Combine_Seqtabs,
             containerinfo=self.test_containerinfo,
             fn=os.path.join(
                         self.working_dir,
                         'sv',
                         'dada2',
-                        'seqtab.merged.rds'
+                        'seqtab.combined.rds'
                     )
         )
         combined_seqtab.in_seqtabs = [
                 specimen_tasks[s]['dada2_seqtab'].out_rds
                 for s in specimens
             ]
-        
-        return (combined_seqtab)
+
+        combined_seqtab_nochim = self.new_task(
+            'dada2_remove_chimera',
+            DADA2_Remove_Chimera,
+            containerinfo=self.test_containerinfo,
+            fn_rds=os.path.join(
+                        self.working_dir,
+                        'sv',
+                        'dada2',
+                        'seqtab.combined.nochim.rds'
+                    ),
+            fn_csv=os.path.join(
+                        self.destination_dir,
+                        'seqtab.combined.nochim.csv'
+                    )
+        )
+        combined_seqtab_nochim.in_seqtab = combined_seqtab.out_rds
+
+        dada2_sv_to_pplacer = self.new_task(
+            'dada2_sv_to_pplacer',
+            DADA2_SV_to_PPlacer,
+            containerinfo=self.test_containerinfo,
+            fasta_fn=os.path.join(
+                        self.destination_dir,
+                        'dada2.sv.fasta',
+                    ),
+            weights_fn=os.path.join(
+                        self.destination_dir,
+                        'dada2.sv.weights.csv',
+                    ),
+            map_fn=os.path.join(
+                        self.destination_dir,
+                        'dada2.sv.map.csv',
+                    )
+        )
+        dada2_sv_to_pplacer.in_seqtab_csv = combined_seqtab_nochim.out_csv
+
+        return (dada2_sv_to_pplacer)
 
 
 def build_args(parser):
