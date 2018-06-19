@@ -104,8 +104,21 @@ class NCBI_NT_Repository(object):
                 upsert=True
             )
         except pymongo.errors.DocumentTooLarge:
-            logging.error("Failed to save document for {} due to size".format(
+            logging.warning("Failed to save document for {} due to size. Reducing".format(
                 entry['version']))
+            entry['feature_table'] = [
+                f for f in entry.get('feature_table', [])
+                if f.get('feature') == 'rRNA'
+            ]
+            try:
+                collection.update_one(
+                    filter={'version': entry['version']},
+                    update={'$set': entry},
+                    upsert=True
+                )
+            except pymongo.errors.DocumentTooLarge:
+                logging.error("Failed to save document for {}  after reducing".format(
+                    entry['version']))
 
     def __mongodb_versions_needing_feature_table__(self, constraints={}):
         collection = self.__mongodb_collection__
@@ -193,7 +206,6 @@ class NCBI_NT_Repository(object):
         projection = {'version': 1, 'feature_table': 1, 'seq': 1, '_id': 0}
         projection.update(extra_projection)
 
-        matching_features = []
         for rec_match in collection.find(
                 filter=qualifiers,
                 projection=projection):
@@ -212,12 +224,14 @@ class NCBI_NT_Repository(object):
                 qv_match = q_match
 
             for qv_m in qv_match:
-                start_stop = (qv_m['seq_start'], qv_m['seq_stop'])
-                qv_seq = rec_seq[min(start_stop):max(start_stop)].decode('utf-8')
+                start_stop = sorted([qv_m['seq_start'], qv_m['seq_stop']])
+                qv_seq = rec_seq[start_stop[0]:start_stop[1]].decode('utf-8')
                 if qv_m['strand'] == -1:
                     qv_seq = self.reverse_complement(qv_seq)
                 f_dict = {
                     'accession_version': rec_match['version'],
+                    'start': start_stop[0],
+                    'stop': start_stop[1],
                     'feature': qv_m['feature'],
                     'qual': qv_m['qual'],
                     'qual_val': qv_m['qual_val'],
@@ -227,9 +241,7 @@ class NCBI_NT_Repository(object):
                     k: rec_match.get(k)
                     for k in extra_projection.keys()
                 })
-                matching_features.append(f_dict)
-
-        return matching_features
+                yield f_dict
 
     def find_feature(
             self,

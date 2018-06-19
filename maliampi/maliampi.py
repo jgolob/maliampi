@@ -126,11 +126,17 @@ class MALIAMPI:
                 '--sequence-variants-path={}'.format(
                     args.sequence_variants
                     ),
-                '--repo-seq-info={}'.format(
-                    args.repo_seq_info
+                '--repo-filtered-seq-info={}'.format(
+                    args.repo_filtered_seq_info
                     ),
-                '--repo-seqs-filtered={}'.format(
-                    args.repo_seqs_filtered
+                '--repo-filtered={}'.format(
+                    args.repo_filtered
+                    ),
+                '--repo-genomes-seq-info={}'.format(
+                    args.repo_genomes_seq_info
+                    ),
+                '--repo-genomes={}'.format(
+                    args.repo_genomes
                     ),
                 '--new-refpkg-path={}'.format(
                     args.refpkg_destdir
@@ -141,8 +147,8 @@ class MALIAMPI:
                 '--working-dir={}'.format(
                     args.working_dir
                     ),
-                '--min-id-types={}'.format(
-                    args.min_id_types
+                '--min-id-genomes={}'.format(
+                    args.min_id_genomes
                     ),
                 '--min-id-filtered={}'.format(
                     args.min_id_filtered
@@ -178,6 +184,9 @@ class MALIAMPI:
                     ),
                 '--repo-url={}'.format(
                     args.repo_secret
+                ),
+                '--example-seqs={}'.format(
+                    args.example_seqs
                 ),
                 '--working-dir={}'.format(
                     args.working_dir

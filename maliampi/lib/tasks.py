@@ -21,6 +21,7 @@ import io
 import gzip
 import json
 import gc
+import tempfile
 
 log = logging.getLogger('sciluigi-interface')
 
@@ -110,8 +111,195 @@ class SearchRepoForMatches(sl.ContainerTask):
             )
 
 
+class VerifyRepo(sl.ContainerTask):
+    # Verify repo sequences are somewhat like expected sequences
+
+    # Define the container (in docker-style repo format) to complete this task
+    container = 'golob/vsearch:2.7.1_bcw_0.2.0'
+
+    in_repo_seqs = None  # Repo seqs
+    in_expected_seqs = None  # Expected seqs
+
+    # Where to put the matches in the repo, in UC format
+    uc_fn = sl.Parameter()
+
+    # Where to put the unmatched exp seqs
+    unverified_seqs_fn = sl.Parameter()
+    # Where to put the repo seqs with at least one match in the exp
+    verified_seqs_fn = sl.Parameter()
+
+    # vsearch parameters
+    min_id = sl.Parameter(default=0.7)
+    maxaccepts = sl.Parameter(default=1)  # by default, stop searching after the first
+    query_cov = sl.Parameter(default=0.70)
+    iddef = sl.Parameter(default=2)
+
+    def out_repo_uc(self):
+        return sl.ContainerTargetInfo(self, self.uc_fn)
+
+    def out_verified_seqs(self):
+        return sl.ContainerTargetInfo(self, self.verified_seqs_fn)
+
+    def out_unverified_seqs(self):
+        return sl.ContainerTargetInfo(self, self.unverified_seqs_fn)
+
+    def run(self):
+        # Get our host paths for inputs and outputs
+        input_targets = {
+            'repo_seqs': self.in_repo_seqs(),
+            'expected_seqs': self.in_expected_seqs(),
+        }
+        output_targets = {
+            'verified': self.out_verified_seqs(),
+            'unverified': self.out_unverified_seqs(),
+            'uc': self.out_repo_uc(),
+        }
+
+        self.ex(
+            command='vsearch ' +
+                    ' --threads=%s' % self.containerinfo.vcpu +
+                    ' --usearch_global $repo_seqs' +
+                    ' --db $expected_seqs' +
+                    ' --id=$min_id' +
+                    ' --iddef $iddef ' +
+                    ' --query_cov $query_cov ' +
+                    ' --strand both' +
+                    ' --uc=$uc ' +
+                    ' --notmatched=$unverified' +
+                    ' --matched=$verified ' +
+                    ' --maxaccepts=%s' % self.maxaccepts,
+            input_targets=input_targets,
+            output_targets=output_targets,
+            extra_params={
+                'min_id': self.min_id,
+                'iddef': self.iddef,
+                'query_cov': self.query_cov
+                }
+            )
+
+
+class CombineRepoMatches(sl.Task):
+    # Given input LISTS of recruited sequences, combine to one master list
+    # AND filter seq info to match
+    in_seqs = None
+    in_seq_info = None
+
+    # Where to put the combined seqs
+    seqs_fn = sl.Parameter()
+    # Where to put the combined seq info
+    seq_info_fn = sl.Parameter()
+
+    def out_seqs(self):
+        return sl.ContainerTargetInfo(self, self.seqs_fn)
+
+    def out_seq_info(self):
+        return sl.ContainerTargetInfo(self, self.seq_info_fn)
+
+    def run(self):
+        seqs_included = set()
+        seq_ids_included = set()
+        with self.out_seqs().open('w') as out_seq_h:
+            for seq_i, seq_T in enumerate(self.in_seqs):
+                if seq_i == 0:  # We are on the first block. Include everything
+                    with seq_T().open('r') as seq_h:
+                        for sr in SeqIO.parse(seq_h, 'fasta'):
+                            seqs_included.add(sr.seq)
+                            seq_ids_included.add(sr.id)
+                            SeqIO.write(sr, out_seq_h, 'fasta')
+                else:  # AFTER the first block
+                    with seq_T().open('r') as seq_h:
+                        for sr in SeqIO.parse(seq_h, 'fasta'):
+                            if sr.id in seq_ids_included:
+                                continue
+                            # Implicit else
+                            if sr.seq not in seqs_included:
+                                continue
+                            # implicit else
+                            seqs_included.add(sr.seq)
+                            seq_ids_included.add(sr.id)
+                            SeqIO.write(sr, out_seq_h, 'fasta')
+
+        log.info("{} combined sequences".format(len(seq_ids_included)))
+        # Now work on the seq_info
+        # First figure out the full set of columns for both seq_info tables
+        seq_info_headers = [
+            csv.DictReader(T().open('r')).fieldnames
+            for T in self.in_seq_info
+        ]
+        shared_headers = []
+        for h_i, h in enumerate(seq_info_headers):
+            if h_i == 0:
+                shared_headers = h
+            else:  # Beyond the first
+                for c in h:
+                    if c not in shared_headers:
+                        shared_headers.append(c)
+
+        with self.out_seq_info().open('w') as out_seq_info_h:
+            si_writer = csv.DictWriter(
+                out_seq_info_h,
+                fieldnames=shared_headers
+                )
+            si_writer.writeheader()
+            for si_T in self.in_seq_info:
+                with si_T().open('r') as si_h:
+                    si_R = csv.DictReader(si_h)
+                    for row in si_R:
+                        if row.get('seqname') in seq_ids_included:
+                            si_writer.writerow({
+                                c: row.get(c, "")
+                                for c in shared_headers
+                            })
+                            seq_ids_included.remove(row.get('seqname'))
+
+
 class FillLonely(sl.Task):
     pass
+
+
+class CMSearchVerify(sl.ContainerTask):
+    # A Task that uses cmsearch to check if seqs are valid
+    # Define the container (in docker-style repo format) to complete this task
+    container = 'golob/infernal:1.1.2_bcw_0.2.0'
+
+    in_seqs = None  # Seqs to verify
+
+    # Where to put the table of search results
+
+    results_fn = sl.Parameter()
+
+    def out_results(self):
+        return sl.ContainerTargetInfo(
+            self,
+            self.results_fn
+            )
+
+    def run(self):
+
+        # Get our host paths for inputs and outputs
+        input_targets = {
+            'in_seqs': self.in_seqs(),
+        }
+
+        output_targets = {
+            'results': self.out_results(),
+        }
+
+        self.ex(
+            command=(
+                'cmsearch '
+                '--cpu $vcpu '
+                '--noali '
+                '--tblout $results '
+                '/cmalign/data/SSU_rRNA_bacteria.cm '
+                '$in_seqs'
+            ),
+            input_targets=input_targets,
+            output_targets=output_targets,
+            extra_params={
+                'vcpu': self.containerinfo.vcpu,
+            }
+        )
 
 
 class CMAlignSeqs(sl.ContainerTask):
@@ -319,7 +507,7 @@ class NT_Repo_Fill(sl.ContainerTask):
     working_dir = sl.Parameter()
     email = sl.Parameter()
 
-    chunk_size = sl.Parameter(default=100)
+    chunk_size = sl.Parameter(default=40)
 
     def out_repo(self):
         return NCBI_Repo_Filled_TargetInfo(
@@ -365,7 +553,6 @@ class NT_Repo_Fill(sl.ContainerTask):
         records = ExtractGenbank(raw_gb.open('r'))
 
         for version, record in records.get_records().items():
-            logging.info("Updating document for {}".format(version))
             self.out_repo().target.repo.add_entry(record)
 
     def run(self):
@@ -403,6 +590,102 @@ class NT_Repo_Fill(sl.ContainerTask):
             )
             self.work_on_chunk(chunk_versions, gb_needed, raw_gb)
             gc.collect()
+
+
+class NT_Repo_Output_FastaSeqInfo(sl.Task):
+    in_repo = None
+
+    fn_fasta_gz = sl.Parameter()
+    fn_seq_info = sl.Parameter()
+    min_len = sl.Parameter(default=1200)
+    max_ambiguous_pct = sl.Parameter(default=1)
+
+    def out_seqs(self):
+        return sl.ContainerTargetInfo(
+            self,
+            self.fn_fasta_gz,
+            format=luigi.format.Gzip
+        )
+
+    def out_seq_info(self):
+        return sl.ContainerTargetInfo(
+            self,
+            self.fn_seq_info,
+        )
+
+    def run(self):
+        repo = self.in_repo().target.repo
+
+        with self.out_seqs().open('w') as out_h:
+            with self.out_seq_info().open('w') as seq_info_h:
+                seq_info_w = csv.DictWriter(
+                    seq_info_h,
+                    fieldnames=[
+                        'seqname',
+                        'version',
+                        'accession',
+                        'name',
+                        'description',
+                        'gi',
+                        'tax_id',
+                        'date',
+                        'source',
+                        'keywords',
+                        'organism',
+                        'length',
+                        'ambig_count',
+                        'seq_start',
+                        'seq_stop',
+                        'is_type',
+                        'is_genome',
+                    ])
+                seq_info_w.writeheader()
+                for i, rRNA_16s in enumerate(repo.find_feature(
+                    qual_val='16S ribosomal RNA',
+                    extra_fields=[
+                        'tax_id',
+                        'source',
+                        'description',
+                        'download_date',
+                        'refseq__accession'])):
+                        if i % 1000 == 0:
+                            log.info("Exporting 16S rRNA {:,}".format(i))
+                        if len(rRNA_16s['seq']) < self.min_len:
+                            continue
+                        # Implicit else
+                        ambig_count = len([b for b in rRNA_16s['seq'].upper()
+                                           if b not in {'A', 'C', 'G', 'T'}])
+                        if (100.0 * ambig_count / len(rRNA_16s['seq']) > self.max_ambiguous_pct):
+                            continue
+                        # Implicit else basic test passed
+                        name = "{}__{}__{}".format(
+                            rRNA_16s['accession_version'].split('.')[0],
+                            rRNA_16s['start'],
+                            rRNA_16s['stop'])
+                        out_h.write(">{} accession_version='{}'\n{}\n".format(
+                            name,
+                            rRNA_16s['accession_version'],
+                            rRNA_16s['seq']
+                        ).encode())
+                        seq_info_w.writerow({
+                            'seqname': name,
+                            'version': rRNA_16s['accession_version'],
+                            'accession': rRNA_16s['accession_version'].split('.')[0],
+                            'name': rRNA_16s['accession_version'].split('.')[0],
+                            'description': rRNA_16s['description'],
+                            'gi': rRNA_16s['refseq__accession'],
+                            'tax_id': rRNA_16s['tax_id'],
+                            'date': rRNA_16s['download_date'],
+                            'source': rRNA_16s['source'],
+                            'keywords': "",
+                            'organism': rRNA_16s['source'],
+                            'length': len(rRNA_16s['seq']),
+                            'ambig_count': ambig_count,
+                            'seq_start': rRNA_16s['start'],
+                            'seq_stop': rRNA_16s['stop'],
+                            'is_type': "",
+                            'is_genome': True,
+                        })
 
 
 class BuildTaxtasticDB(sl.ContainerTask):
@@ -1331,7 +1614,7 @@ class LoadManifest(LoadFile):
         log.info("{} batches".format(
             len(batches))
             )
-        
+
         for batch in batches:
             yield((batch, {
                 r['specimen'] for r in manifest
@@ -1367,6 +1650,7 @@ class LoadManifest(LoadFile):
     def get_specimens(self):
         with self.out_file().open() as manifest_h:
             return {r.get('specimen') for r in csv.DictReader(manifest_h)}
+
 
 class LoadSpecimenReads(sl.ExternalTask):
     # Given a manifest and a specimen ID to target, load the read(s)
@@ -1692,48 +1976,133 @@ class DADA2_LearnError(sl.ContainerTask):
         return rds_dict
     
     def run(self):
-        input_targets = {
-            'read_{}_1'.format(r_i): read_t()['R1']
-            for r_i, read_t in enumerate(self.in_reads)
+        # Make a tarfile for the forward and reverse entries
+        F_reads_tar = sl.ContainerTargetInfo(
+            self,
+            os.path.join(
+                self.path,
+                "F_reads.tar"
+            ),
+            format=luigi.format.Nop
+        )
+        with F_reads_tar.open('w') as tar_h:
+            arch = tarfile.open(fileobj=tar_h, mode='w:')
+            for r_i, read_t in enumerate(self.in_reads):
+                with read_t()['R1'].open('r') as file_h:
+                    try:
+                        f_ti = arch.gettarinfo(
+                            fileobj=file_h,
+                            arcname='r_{}.fa.gz'.format(r_i)
+                            )
+                        arch.addfile(
+                            f_ti,
+                            fileobj=file_h
+                        )
+                    except AttributeError:  # S3 doesn't do well with this
+                        # So manually download to a named-temp file and then add that to the tar
+                        with tempfile.NamedTemporaryFile() as f_ntf:
+                            f_ntf.write(file_h.read())
+                            f_ntf.seek(0)
+                            f_ti = arch.gettarinfo(
+                                fileobj=f_ntf,
+                                arcname='r_{}.fa.gz'.format(r_i)
+                            )
+                            arch.addfile(
+                                f_ti,
+                                fileobj=f_ntf
+                            )
+
+        input_targets_F = {
+            'reads_tar': F_reads_tar,
         }
-        input_targets.update({
-            'read_{}_2'.format(r_i): read_t()['R2']
-            for r_i, read_t in enumerate(self.in_reads)
-        })
-        output_targets = {
+
+        R_reads_tar = sl.ContainerTargetInfo(
+            self,
+            os.path.join(
+                self.path,
+                "R_reads.tar"
+            ),
+            format=luigi.format.Nop
+        )
+        with R_reads_tar.open('w') as tar_h:
+            arch = tarfile.open(fileobj=tar_h, mode='w:')
+            for r_i, read_t in enumerate(self.in_reads):
+                with read_t()['R2'].open('r') as file_h:
+                    try:
+                        f_ti = arch.gettarinfo(
+                            fileobj=file_h,
+                            arcname='r_{}.fa.gz'.format(r_i)
+                            )
+                        arch.addfile(
+                            f_ti,
+                            fileobj=file_h
+                        )
+                    except AttributeError:  # S3 doesn't do well with this
+                        # So manually download to a named-temp file and then add that to the tar
+                        with tempfile.NamedTemporaryFile() as f_ntf:
+                            f_ntf.write(file_h.read())
+                            f_ntf.seek(0)
+                            f_ti = arch.gettarinfo(
+                                fileobj=f_ntf,
+                                arcname='r_{}.fa.gz'.format(r_i)
+                            )
+                            arch.addfile(
+                                f_ti,
+                                fileobj=f_ntf
+                            )
+
+        input_targets_R = {
+            'reads_tar': R_reads_tar,
+        }
+
+        output_targets_F = {
             'err_1': self.out_rds()['R1'],
+            'err_csv_1': self.out_csv()['R1']
+        }
+
+        output_targets_R = {
             'err_2': self.out_rds()['R2'],
-            'err_csv_1': self.out_csv()['R1'],
             'err_csv_2': self.out_csv()['R2'],
         }
         command = (
+                'tar xf $reads_tar -C /working/ && '
                 'Rscript -e "'
                 "library('dada2'); "
         )
         # Forward
-        command += 'errF <- learnErrors(c('
-        command += ",".join(["'$read_{}_1'".format(i) for i in range(len(self.in_reads))])
-        command += (
+        command_F = command + 'errF <- learnErrors(c('
+        command_F += ",".join(["'/working/r_{}.fa.gz'".format(i) for i in range(len(self.in_reads))])
+        command_F += (
             '), multithread=$vcpu'
             "); saveRDS(errF, '$err_1'); "
             "write.csv(errF, '$err_csv_1');"
+            '"'
         )
         # Reverse
-        command += 'errR <- learnErrors(c('
-        command += ",".join(["'$read_{}_2'".format(i) for i in range(len(self.in_reads))])
-        command += (
+        command_R = command + 'errR <- learnErrors(c('
+        command_R += ",".join(["'/working/r_{}.fa.gz'".format(i) for i in range(len(self.in_reads))])
+        command_R += (
             '), multithread=$vcpu'
             "); saveRDS(errR, '$err_2'); "
             "write.csv(errR, '$err_csv_2');"
         )
-        command+='"'
-
+        command_R+='"'
+        # Forward:
         self.ex(
-            command=command,
-            input_targets=input_targets,
-            output_targets=output_targets,
+            command=command_F,
+            input_targets=input_targets_F,
+            output_targets=output_targets_F,
             extra_params={'vcpu': self.containerinfo.vcpu}
         )
+        # Reverse:
+        self.ex(
+            command=command_R,
+            input_targets=input_targets_R,
+            output_targets=output_targets_R,
+            extra_params={'vcpu': self.containerinfo.vcpu}
+        )
+        F_reads_tar.target.__del__()
+        R_reads_tar.target.__del__()
 
 
 class DADA2_DADA(sl.ContainerTask):
@@ -1899,7 +2268,85 @@ class DADA2_Specimen_Seqtab(sl.ContainerTask):
             }
         )
 
+
 class DADA2_Combine_Seqtabs(sl.ContainerTask):
+    # DADA2 Combine seqtabs
+    container = 'golob/dada2:1.6.0__bcw.0.3.0'
+
+    # Dependencies
+    in_seqtabs = None
+
+    # Parameters
+    fn = sl.Parameter()
+
+    def out_rds(self):
+        return sl.ContainerTargetInfo(
+            self,
+            self.fn,
+            format=luigi.format.Nop
+        )
+    
+    def run(self):
+        # Strategy here is to loop through the seqtabs and slowly build up
+        # the combined table
+
+        # Initialize
+        with self.out_rds().open('w') as out_h:
+            out_h.write(b"")
+
+        # Output target never changes
+        input_targets = {
+            'combined_seqtab': self.out_rds(),
+        }
+
+        for seq_tab_T in self.in_seqtabs:
+            input_targets['indv_seqtab'] =  seq_tab_T()
+            command = (
+                'Rscript -e "'
+                "library('dada2'); "
+                "indv_seqtab <- readRDS('$indv_seqtab'); "
+                'prior_seqtab <- tryCatch('
+                    "{ readRDS('$combined_seqtab'); }, "
+                    'error=function(cond){ print(cond); return (NA); }'
+                '); '
+                'valid_indv <- ('
+                'is.matrix(indv_seqtab) && '
+                'all(indv_seqtab)>=0 && '
+                '!is.null(colnames(indv_seqtab)) && '
+                '!is.null(rownames(indv_seqtab)) && '
+                'all(sapply(colnames(indv_seqtab), nchar)>0) && '
+                'all(sapply(rownames(indv_seqtab), nchar)>0) '
+                '); '
+                'valid_prior <- ('
+                '!is.na(prior_seqtab) && '
+                'is.matrix(prior_seqtab) && '
+                'all(prior_seqtab)>=0 && '
+                '!is.null(colnames(prior_seqtab)) && '
+                '!is.null(rownames(prior_seqtab)) && '
+                'all(sapply(colnames(prior_seqtab), nchar)>0) && '
+                'all(sapply(rownames(prior_seqtab), nchar)>0) '
+                '); '
+                ' if (valid_prior && valid_indv) {'
+                'combined_seqtab <- mergeSequenceTables(prior_seqtab, indv_seqtab); '
+                "saveRDS(combined_seqtab, '$combined_seqtab') "
+                '}'
+                ' else if (valid_indv) { '
+                "saveRDS(indv_seqtab, '$combined_seqtab') "
+                '}'
+                ' else if (valid_prior) { '
+                "saveRDS(prior_seqtab, '$combined_seqtab') "
+                '}'
+                '"'
+            )
+            self.ex(
+                command=command,
+                input_targets=input_targets,
+                inputs_mode='rw'
+                #output_targets=output_targets,
+            )
+
+
+class DADA2_Combine_Seqtabs_Old(sl.ContainerTask):
     # DADA2 Combine seqtabs
     container = 'golob/dada2:1.6.0__bcw.0.3.0'
 

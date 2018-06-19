@@ -2,6 +2,7 @@
 import luigi
 import sciluigi as sl
 from lib.tasks import NT_AccessionsForQuery, NT_Repo_Update_Accessions, LoadFile, NT_Repo_Fill
+from lib.tasks import NT_Repo_Output_FastaSeqInfo, VerifyRepo, CMSearchVerify
 
 import os
 
@@ -20,6 +21,18 @@ class Workflow_NCBI_16s(sl.WorkflowTask):
     working_dir = sl.Parameter()
     ncbi_email = sl.Parameter()
     repo_url = sl.Parameter()
+    example_seqs = sl.Parameter()
+
+    heavy_containerinfo = sl.ContainerInfo(
+                vcpu=36,
+                mem=70000,
+                container_cache=os.path.abspath(os.path.join('../working', 'containers/')),
+                engine='aws_batch',
+                aws_s3_scratch_loc='s3://fh-pi-fredricks-d/lab/golob/sl_temp/',
+                aws_jobRoleArn='arn:aws:iam::064561331775:role/fh-pi-fredricks-d-batchtask',
+                aws_batch_job_queue='optimal',
+                slurm_partition='boneyard'
+            )
 
     test_containerinfo = sl.ContainerInfo(
                 vcpu=2,
@@ -41,6 +54,12 @@ class Workflow_NCBI_16s(sl.WorkflowTask):
             'load_repo_url',
             LoadFile,
             path=self.repo_url,
+        )
+
+        example_seqs = self.new_task(
+            'load_example_seqs',
+            LoadFile,
+            path=self.example_seqs
         )
 
         acc_genome_16s = self.new_task(
@@ -82,7 +101,62 @@ class Workflow_NCBI_16s(sl.WorkflowTask):
         )
         repo_filled.in_repo = repo_genome_update.out_repo
 
-        return(repo_filled, repo_genome_update)
+        #  Now dump out 16S / seq_info from the genomes.
+        repo_dumped = self.new_task(
+            'repo_dump',
+            NT_Repo_Output_FastaSeqInfo,
+            fn_fasta_gz=os.path.join(
+                self.working_dir,
+                'ncbi_16s',
+                'genomes.16s.fasta.gz'
+            ),
+            fn_seq_info=os.path.join(
+                self.working_dir,
+                'ncbi_16s',
+                'genomes.16s.seq_info.csv'
+            ),
+        )
+        repo_dumped.in_repo = repo_filled.out_repo
+
+
+        # Use cmsearch to be sure these are vaguely like rRNA
+        cmsearch_verify = self.new_task(
+            'cmsearch_verify',
+            CMSearchVerify,
+            containerinfo=self.heavy_containerinfo,
+            results_fn=os.path.join(
+                self.working_dir,
+                'ncbi_16s',
+                'genomes.16s.cmsearch.tsv'
+            ),
+        )
+        cmsearch_verify.in_seqs = repo_dumped.out_seqs
+
+        #  And filter to rRNA.
+        verified_seqs = self.new_task(
+            'verify_repo',
+            VerifyRepo,
+            containerinfo=self.heavy_containerinfo,
+            uc_fn=os.path.join(
+                self.working_dir,
+                'ncbi_16s',
+                'genomes.16s.verified.uc'
+            ),
+            verified_seqs_fn=os.path.join(
+                self.working_dir,
+                'ncbi_16s',
+                'genomes.16s.verified.fasta.gz'
+            ),
+            unverified_seqs_fn=os.path.join(
+                self.working_dir,
+                'ncbi_16s',
+                'genomes.16s.unverified.fasta.gz'
+            ),
+        )
+        verified_seqs.in_repo_seqs = repo_dumped.out_seqs
+        verified_seqs.in_expected_seqs = example_seqs.out_file
+
+        return(repo_dumped)
 
 
 def build_args(parser):
@@ -94,6 +168,13 @@ def build_args(parser):
     parser.add_argument(
         '--repo-secret',
         help="""Path to a file containing the URL / secret for the NCBI repo
+        """,
+        type=str,
+        required=True,
+    )
+    parser.add_argument(
+        '--example-seqs',
+        help="""FASTA file with example 16S rRNA seqs
         """,
         type=str,
         required=True,
