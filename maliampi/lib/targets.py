@@ -75,7 +75,7 @@ class NCBI_Repo_Entries_Target(luigi.Target):
         return self.repo.has_versions(self.all_entries)
 
 ###
-# Check if every entry has a feature table.
+# Check if every entry has been downloaded
 
 
 class NCBI_Repo_Filled_TargetInfo(sl.TargetInfo):
@@ -99,6 +99,32 @@ class NCBI_Repo_Filled_Target(luigi.Target):
         # Make a set of all_versions. Get the existing versions from the repo.
         # Find out the difference. If the length is zero, we have everything.
         return (len(self.repo.versions_needing_data()) == 0)
+
+
+###
+# Check if every genome entry has had peptides and rRNA 16S extracted
+
+class NCBI_Repo_Peptides_TargetInfo(sl.TargetInfo):
+    def __init__(self, task, path):
+        self.task = task
+        self.path = path
+        self.target = NCBI_Repo_Peptides_Target
+        self.target.repo = NCBI_NT_Repository(path)
+
+    def open(self):
+        raise NotImplementedError("Open is not implemented for NCBI_Repo_TargetInfo")
+
+
+class NCBI_Repo_Peptides_Target(luigi.Target):
+    # A class to wrap around NCBI_NT_Repository and see if all the
+    # every entry has a FT
+    repo = None
+
+    @classmethod
+    def exists(self):
+        # Make a set of all_versions. Get the existing versions from the repo.
+        # Find out the difference. If the length is zero, we have everything.
+        return (len(self.repo.versions_needing_peptides()) == 0)
 
 
 # Refpkg.tgz

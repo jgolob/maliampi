@@ -3,6 +3,7 @@ import luigi
 import sciluigi as sl
 from lib.tasks import NT_AccessionsForQuery, NT_Repo_Update_Accessions, LoadFile, NT_Repo_Fill
 from lib.tasks import NT_Repo_Output_FastaSeqInfo, VerifyRepo, CMSearchVerify
+from lib.tasks import NT_Repo_Prokka
 
 import os
 
@@ -34,11 +35,33 @@ class Workflow_NCBI_16s(sl.WorkflowTask):
                 slurm_partition='boneyard'
             )
 
+    light_containerinfo = sl.ContainerInfo(
+                vcpu=2,
+                mem=2024,
+                container_cache=os.path.abspath(os.path.join('../working', 'containers/')),
+                engine='aws_batch',
+                aws_s3_scratch_loc='s3://fh-pi-fredricks-d/lab/golob/sl_temp/',
+                aws_jobRoleArn='arn:aws:iam::064561331775:role/fh-pi-fredricks-d-batchtask',
+                aws_batch_job_queue='optimal',
+                slurm_partition='boneyard'
+            )
+
     test_containerinfo = sl.ContainerInfo(
                 vcpu=2,
                 mem=4096,
                 container_cache=os.path.abspath(os.path.join('../working', 'containers/')),
                 engine=ENGINE,
+                aws_s3_scratch_loc='s3://fh-pi-fredricks-d/lab/golob/sl_temp/',
+                aws_jobRoleArn='arn:aws:iam::064561331775:role/fh-pi-fredricks-d-batchtask',
+                aws_batch_job_queue='optimal',
+                slurm_partition='boneyard'
+            )
+
+    local_containerinfo = sl.ContainerInfo(
+                vcpu=2,
+                mem=4096,
+                container_cache=os.path.abspath(os.path.join('../working', 'containers/')),
+                engine='docker',
                 aws_s3_scratch_loc='s3://fh-pi-fredricks-d/lab/golob/sl_temp/',
                 aws_jobRoleArn='arn:aws:iam::064561331775:role/fh-pi-fredricks-d-batchtask',
                 aws_batch_job_queue='optimal',
@@ -118,7 +141,21 @@ class Workflow_NCBI_16s(sl.WorkflowTask):
         )
         repo_dumped.in_repo = repo_filled.out_repo
 
+        # Find genomes missing peptide / rRNA annotations
+        prokka_annotation = self.new_task(
+                'prokka_annotation',
+                NT_Repo_Prokka,
+                containerinfo=self.light_containerinfo,
+                num_concurrent=100,
+                workdir=os.path.join(
+                    self.working_dir,
+                    'ncbi_16s',
+                    'prokka'
+                )
+            )
+        prokka_annotation.in_repo = repo_filled.out_repo
 
+        return (prokka_annotation)
         # Use cmsearch to be sure these are vaguely like rRNA
         cmsearch_verify = self.new_task(
             'cmsearch_verify',

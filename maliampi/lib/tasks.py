@@ -6,7 +6,7 @@ from Bio import AlignIO, SeqIO
 import shutil
 from .targets import NCBI_Repo_Entries_TargetInfo,  NCBI_Repo_Filled_TargetInfo
 from .targets import PlacementDB_Prepped_ContainerTargetInfo, RefpkgTGZ_ContainerTargetInfo
-from .targets import PlacementDB_Classified_ContainerTargetInfo
+from .targets import PlacementDB_Classified_ContainerTargetInfo, NCBI_Repo_Peptides_TargetInfo
 from .targets import PlacementDB_MCC_ContainerTargetInfo, PlacementDB_SI_ContainerTargetInfo
 from lib.ExtractGenbank import ExtractGenbank
 import csv
@@ -22,6 +22,8 @@ import gzip
 import json
 import gc
 import tempfile
+import multiprocessing
+from multiprocessing.dummy import Pool as ThreadPool
 
 log = logging.getLogger('sciluigi-interface')
 
@@ -590,6 +592,118 @@ class NT_Repo_Fill(sl.ContainerTask):
             )
             self.work_on_chunk(chunk_versions, gb_needed, raw_gb)
             gc.collect()
+
+
+class NT_Repo_Prokka(sl.ContainerTask):
+    container = 'golob/metaspades:v3.11.1--8A__bcw__0.3.0'
+    in_repo = None
+    workdir = sl.Parameter()
+    num_concurrent = sl.Parameter(1)
+
+    def out_repo(self):
+        return NCBI_Repo_Peptides_TargetInfo(
+            self,
+            self.in_repo().path,
+            )
+
+    def annotate_version(self, version):
+        try:
+            seq_T = sl.ContainerTargetInfo(
+                self,
+                os.path.join(
+                    self.workdir,
+                    version,
+                    'seq.fasta'
+                ),
+            )
+            faa_T = sl.ContainerTargetInfo(
+                self,
+                os.path.join(
+                    self.workdir,
+                    version,
+                    'peptides.faa'
+                ),
+            )
+            ffn_T = sl.ContainerTargetInfo(
+                self,
+                os.path.join(
+                    self.workdir,
+                    version,
+                    'rrna.ffn'
+                ),
+            )
+            with seq_T.open('w') as seq_h:
+                seq_h.write(
+                        self.in_repo().target.repo.get_full_sequence(version)
+                    )
+
+            input_targets = {
+                'seq': seq_T,
+            }
+            output_targets = {
+                'faa': faa_T,
+                'ffn': ffn_T,
+            }
+
+            self.ex(
+                command=(
+                    'prokka '
+                    '--noanno '
+                    '--outdir /share/$version '
+                    '--prefix prokka '
+                    '--cpus $vcpu '
+                    '--force '
+                    '$seq && '
+                    'mv /share/$version/prokka.faa $faa && '
+                    'mv /share/$version/prokka.ffn $ffn && '
+                    'rm -r /share/$version '
+                ),
+                input_targets=input_targets,
+                output_targets=output_targets,
+                extra_params={
+                    'version': version,
+                    'vcpu': self.containerinfo.vcpu
+                }
+            )
+            with faa_T.open() as faa_h:
+                peptides = list({str(sr.seq) for sr in SeqIO.parse(faa_h, 'fasta')})
+            with ffn_T.open() as ffn_h:
+                rrna_16s = list({
+                    str(sr.seq) for sr in SeqIO.parse(ffn_h, 'fasta')
+                    if '16S' in sr.description
+                    })
+            log.info("Adding {} peptides to {}".format(
+                len(peptides),
+                version
+            ))
+            self.out_repo().target.repo.add_peptides_to_version(
+                version,
+                peptides
+            )
+            log.info("Adding {} 16S rRNA to {}".format(
+                len(rrna_16s),
+                version
+            ))
+            self.out_repo().target.repo.add_rRNA16s_to_version(
+                version,
+                rrna_16s
+            )
+            faa_T.target.remove()
+            ffn_T.target.remove()
+            seq_T.target.remove()
+        except Exception as e:
+            log.error(e)
+
+
+    def run(self):
+        versions_to_annotate = list(self.in_repo().target.repo.versions_needing_peptides())
+        log.info("Prokka annotating {} genomes".format(len(versions_to_annotate)))
+        annotate_pool = ThreadPool(
+            int(self.num_concurrent))
+        annotate_pool.map(
+            func=self.annotate_version,
+            iterable=versions_to_annotate,
+        )
 
 
 class NT_Repo_Output_FastaSeqInfo(sl.Task):

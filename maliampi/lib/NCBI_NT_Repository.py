@@ -10,6 +10,9 @@ except ImportError:
 
 import pymongo
 import gzip
+import uuid
+
+NT_REPO_NS = uuid.UUID('a3c2d868-1544-40b1-b341-278dcb756326')
 
 
 class NCBI_NT_Repository(object):
@@ -41,6 +44,26 @@ class NCBI_NT_Repository(object):
         # And our collection
         collection = db[collection]
         self.__mongodb_collection__ = collection
+
+        collection.create_index(
+            'version',
+            unique=True
+        )
+
+        # Peptides
+        peptides = db['peptides']
+        self.__mongodb_peptides__ = peptides
+
+        peptides.create_index(
+            [('seq', pymongo.HASHED)],
+        )
+
+        # Peptides
+        rRNA16S = db['rRNA16S']
+        self.__mongodb_rRNA16S__ = rRNA16S
+        rRNA16S.create_index(
+            [('seq', pymongo.HASHED)],
+        )
 
         # Each record within the collection has a basic structure:
         """
@@ -135,6 +158,17 @@ class NCBI_NT_Repository(object):
         constraints.update(
             {'modified_date': None}
         )
+        return {
+            r['version'] for r in
+            collection.find(constraints, {'version': 1, "_id": 0})
+        }
+
+    def __mongodb_versions_needing_peptides__(self, constraints={}):
+        collection = self.__mongodb_collection__
+        constraints.update({
+            'peptides': None,
+            'is_genome': True
+            })
         return {
             r['version'] for r in
             collection.find(constraints, {'version': 1, "_id": 0})
@@ -243,6 +277,63 @@ class NCBI_NT_Repository(object):
                 })
                 yield f_dict
 
+    def __mongodb_get_full_sequence__(self, version):
+        collection = self.__mongodb_collection__
+        rec = collection.find_one({
+            'version': version
+        })
+        if rec is None:
+            logging.error("Could not find {}".format(version))
+            return None
+        # Implicit else
+        seq = gzip.decompress(rec['seq']).decode('utf-8')
+        if '>' not in seq:
+            seq = ">{}\n".format(version)+seq
+        return seq
+
+    def __mongodb_add_peptides_to_version__(self, version, peptides):
+        collection = self.__mongodb_collection__
+        peptides_collection = self.__mongodb_peptides__
+
+        collection.update_one(
+            filter={'version': version},
+            update={'$addToSet': {'peptides': {'$each': peptides}}},
+        )
+        for p in peptides:
+            peptides_collection.update_one(
+                filter={'seq': p},
+                update={'$addToSet': {'genomes': version}},
+                upsert=True
+            )
+            peptides_collection.update_one(
+                filter={'seq': p},
+                update={'$set': {'seq_id': uuid.uuid3(NT_REPO_NS, p)}},
+                upsert=True
+            )
+
+    def __mongodb_add_rRNA16s_to_version__(self, version, rRNA16S):
+        collection = self.__mongodb_collection__
+        rRNA_collection = self.__mongodb_rRNA16S__
+        collection.update_one(
+            filter={'version': version},
+            update={'$addToSet': {'rRNA_16S': {'$each': rRNA16S}}},
+        )
+        for r in rRNA16S:
+            rRNA_collection.update_one(
+                filter={'seq': r},
+                update={'$addToSet': {'genomes': version}},
+                upsert=True
+            )
+            rRNA_collection.update_one(
+                filter={'seq': r},
+                update={'$set': {'seq_id': uuid.uuid3(NT_REPO_NS, r)}},
+                upsert=True
+            )
+
+    def get_full_sequence(self, version):
+        if self.__engine__ == 'mongodb':
+            return self.__mongodb_get_full_sequence__(version)
+
     def find_feature(
             self,
             version=None,
@@ -283,6 +374,10 @@ class NCBI_NT_Repository(object):
         if self.__engine__ == 'mongodb':
             return self.__mongodb_add_feature__(feature_dict)
 
+    def versions_needing_peptides(self, constraints={}):
+        if self.__engine__ == 'mongodb':
+            return self.__mongodb_versions_needing_peptides__(constraints)
+
     def versions_needing_data(self, constraints={}):
         if self.__engine__ == 'mongodb':
             return self.__mongodb_versions_needing_data__(constraints)
@@ -298,6 +393,20 @@ class NCBI_NT_Repository(object):
     def add_entry(self, entry):
         if self.__engine__ == 'mongodb':
             return self.__mongodb_add_entry__(entry)
+
+    def add_peptides_to_version(self, version, peptides):
+        if self.__engine__ == 'mongodb':
+            return self.__mongodb_add_peptides_to_version__(
+                version,
+                peptides
+            )
+
+    def add_rRNA16s_to_version(self, version, rRNA16S):
+        if self.__engine__ == 'mongodb':
+            return self.__mongodb_add_rRNA16s_to_version__(
+                version,
+                rRNA16S
+            )
 
     def get_existing_versions(self, contraints={}):
         if self.__engine__ == 'mongodb':
