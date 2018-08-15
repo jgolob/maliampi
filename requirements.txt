@@ -4,3 +4,4 @@ boto3==1.7.1
 awscli==1.15.1
 docker==3.2.1
 biopython==1.71
+pytz
