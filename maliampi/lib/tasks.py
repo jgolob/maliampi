@@ -2050,6 +2050,7 @@ class DADA2_LearnError(sl.ContainerTask):
     # Parameters
     batch = sl.Parameter()
     path = sl.Parameter()
+    tar_reads = sl.Parameter(default=False)
 
     def out_rds(self):
         rds_dict = {}
@@ -2090,133 +2091,188 @@ class DADA2_LearnError(sl.ContainerTask):
         return rds_dict
     
     def run(self):
-        # Make a tarfile for the forward and reverse entries
-        F_reads_tar = sl.ContainerTargetInfo(
-            self,
-            os.path.join(
-                self.path,
-                "F_reads.tar"
-            ),
-            format=luigi.format.Nop
-        )
-        with F_reads_tar.open('w') as tar_h:
-            arch = tarfile.open(fileobj=tar_h, mode='w:')
-            for r_i, read_t in enumerate(self.in_reads):
-                with read_t()['R1'].open('r') as file_h:
-                    try:
-                        f_ti = arch.gettarinfo(
-                            fileobj=file_h,
-                            arcname='r_{}.fa.gz'.format(r_i)
-                            )
-                        arch.addfile(
-                            f_ti,
-                            fileobj=file_h
-                        )
-                    except AttributeError:  # S3 doesn't do well with this
-                        # So manually download to a named-temp file and then add that to the tar
-                        with tempfile.NamedTemporaryFile() as f_ntf:
-                            f_ntf.write(file_h.read())
-                            f_ntf.seek(0)
+        if self.tar_reads == 'true':
+            # Make a tarfile for the forward and reverse entries
+            run_id = str(uuid.uuid4())
+            F_reads_tar = sl.ContainerTargetInfo(
+                self,
+                os.path.join(
+                    self.path,
+                    "F_reads.{}.tar".format(self.batch)
+                ),
+                format=luigi.format.Nop
+            )
+            with F_reads_tar.open('w') as tar_h:
+                arch = tarfile.open(fileobj=tar_h, mode='w:')
+                for r_i, read_t in enumerate(self.in_reads):
+                    with read_t()['R1'].open('r') as file_h:
+                        try:
                             f_ti = arch.gettarinfo(
-                                fileobj=f_ntf,
+                                fileobj=file_h,
                                 arcname='r_{}.fa.gz'.format(r_i)
-                            )
+                                )
                             arch.addfile(
                                 f_ti,
-                                fileobj=f_ntf
+                                fileobj=file_h
                             )
+                        except AttributeError:  # S3 doesn't do well with this
+                            # So manually download to a named-temp file and then add that to the tar
+                            with tempfile.NamedTemporaryFile() as f_ntf:
+                                f_ntf.write(file_h.read())
+                                f_ntf.seek(0)
+                                f_ti = arch.gettarinfo(
+                                    fileobj=f_ntf,
+                                    arcname='r_{}.fa.gz'.format(r_i)
+                                )
+                                arch.addfile(
+                                    f_ti,
+                                    fileobj=f_ntf
+                                )
 
-        input_targets_F = {
-            'reads_tar': F_reads_tar,
-        }
+            input_targets_F = {
+                'reads_tar': F_reads_tar,
+            }
 
-        R_reads_tar = sl.ContainerTargetInfo(
-            self,
-            os.path.join(
-                self.path,
-                "R_reads.tar"
-            ),
-            format=luigi.format.Nop
-        )
-        with R_reads_tar.open('w') as tar_h:
-            arch = tarfile.open(fileobj=tar_h, mode='w:')
-            for r_i, read_t in enumerate(self.in_reads):
-                with read_t()['R2'].open('r') as file_h:
-                    try:
-                        f_ti = arch.gettarinfo(
-                            fileobj=file_h,
-                            arcname='r_{}.fa.gz'.format(r_i)
-                            )
-                        arch.addfile(
-                            f_ti,
-                            fileobj=file_h
-                        )
-                    except AttributeError:  # S3 doesn't do well with this
-                        # So manually download to a named-temp file and then add that to the tar
-                        with tempfile.NamedTemporaryFile() as f_ntf:
-                            f_ntf.write(file_h.read())
-                            f_ntf.seek(0)
+            R_reads_tar = sl.ContainerTargetInfo(
+                self,
+                os.path.join(
+                    self.path,
+                    "R_reads.{}.tar".format(self.batch)
+                ),
+                format=luigi.format.Nop
+            )
+            with R_reads_tar.open('w') as tar_h:
+                arch = tarfile.open(fileobj=tar_h, mode='w:')
+                for r_i, read_t in enumerate(self.in_reads):
+                    with read_t()['R2'].open('r') as file_h:
+                        try:
                             f_ti = arch.gettarinfo(
-                                fileobj=f_ntf,
+                                fileobj=file_h,
                                 arcname='r_{}.fa.gz'.format(r_i)
-                            )
+                                )
                             arch.addfile(
                                 f_ti,
-                                fileobj=f_ntf
+                                fileobj=file_h
                             )
+                        except AttributeError:  # S3 doesn't do well with this
+                            # So manually download to a named-temp file and then add that to the tar
+                            with tempfile.NamedTemporaryFile() as f_ntf:
+                                f_ntf.write(file_h.read())
+                                f_ntf.seek(0)
+                                f_ti = arch.gettarinfo(
+                                    fileobj=f_ntf,
+                                    arcname='r_{}.fa.gz'.format(r_i)
+                                )
+                                arch.addfile(
+                                    f_ti,
+                                    fileobj=f_ntf
+                                )
 
-        input_targets_R = {
-            'reads_tar': R_reads_tar,
-        }
+            input_targets_R = {
+                'reads_tar': R_reads_tar,
+            }
 
-        output_targets_F = {
-            'err_1': self.out_rds()['R1'],
-            'err_csv_1': self.out_csv()['R1']
-        }
+            output_targets_F = {
+                'err_1': self.out_rds()['R1'],
+                'err_csv_1': self.out_csv()['R1']
+            }
 
-        output_targets_R = {
-            'err_2': self.out_rds()['R2'],
-            'err_csv_2': self.out_csv()['R2'],
-        }
-        command = (
-                'tar xf $reads_tar -C /working/ && '
-                'Rscript -e "'
-                "library('dada2'); "
-        )
-        # Forward
-        command_F = command + 'errF <- learnErrors(c('
-        command_F += ",".join(["'/working/r_{}.fa.gz'".format(i) for i in range(len(self.in_reads))])
-        command_F += (
-            '), multithread=$vcpu'
-            "); saveRDS(errF, '$err_1'); "
-            "write.csv(errF, '$err_csv_1');"
-            '"'
-        )
-        # Reverse
-        command_R = command + 'errR <- learnErrors(c('
-        command_R += ",".join(["'/working/r_{}.fa.gz'".format(i) for i in range(len(self.in_reads))])
-        command_R += (
-            '), multithread=$vcpu'
-            "); saveRDS(errR, '$err_2'); "
-            "write.csv(errR, '$err_csv_2');"
-        )
-        command_R+='"'
-        # Forward:
-        self.ex(
-            command=command_F,
-            input_targets=input_targets_F,
-            output_targets=output_targets_F,
-            extra_params={'vcpu': self.containerinfo.vcpu}
-        )
-        # Reverse:
-        self.ex(
-            command=command_R,
-            input_targets=input_targets_R,
-            output_targets=output_targets_R,
-            extra_params={'vcpu': self.containerinfo.vcpu}
-        )
-        F_reads_tar.target.__del__()
-        R_reads_tar.target.__del__()
+            output_targets_R = {
+                'err_2': self.out_rds()['R2'],
+                'err_csv_2': self.out_csv()['R2'],
+            }
+            command = 'mkdir -p /tmp/{}/{} && '.format(run_id, self.batch) + \
+                    'tar xf $reads_tar -C /tmp/{}/{}/ && '.format(run_id, self.batch) + \
+                    'Rscript -e "' + \
+                    "library('dada2'); "
+            # Forward
+            command_F = command + 'errF <- learnErrors(c('
+            command_F += ",".join(["'/tmp/{}/{}/r_{}.fa.gz'".format(run_id, self.batch, i) for i in range(len(self.in_reads))])
+            command_F += (
+                '), multithread=$vcpu'
+                "); saveRDS(errF, '$err_1'); "
+                "write.csv(errF, '$err_csv_1');"
+                '"'
+            )
+            # Reverse
+            command_R = command + 'errR <- learnErrors(c('
+            command_R += ",".join(["'/tmp/{}/{}/r_{}.fa.gz'".format(run_id, self.batch, i) for i in range(len(self.in_reads))])
+            command_R += (
+                '), multithread=$vcpu'
+                "); saveRDS(errR, '$err_2'); "
+                "write.csv(errR, '$err_csv_2');"
+            )
+            command_R += '"'
+            # Forward:
+            self.ex(
+                command=command_F,
+                input_targets=input_targets_F,
+                output_targets=output_targets_F,
+                extra_params={'vcpu': self.containerinfo.vcpu}
+            )
+            # Reverse:
+            self.ex(
+                command=command_R,
+                input_targets=input_targets_R,
+                output_targets=output_targets_R,
+                extra_params={'vcpu': self.containerinfo.vcpu}
+            )
+            F_reads_tar.target.__del__()
+            R_reads_tar.target.__del__()
+        else: # Do not tar reads
+            output_targets_F = {
+                'err_1': self.out_rds()['R1'],
+                'err_csv_1': self.out_csv()['R1']
+            }
+            input_targets_F = {
+                'read_F_{}'.format(i): t()['R1'] for i, t in enumerate(self.in_reads)
+            }
+            output_targets_R = {
+                'err_2': self.out_rds()['R2'],
+                'err_csv_2': self.out_csv()['R2'],
+            }
+            input_targets_R = {
+                'read_R_{}'.format(i): t()['R2'] for i, t in enumerate(self.in_reads)
+            }
+
+
+            command = (
+                        'Rscript -e "'
+                        "library('dada2'); "
+            )
+
+            # Forward
+            command_F = command + 'errF <- learnErrors(c('
+            command_F += ",".join(["'$read_F_{}'".format(i) for i in range(len(self.in_reads))])
+            command_F += (
+                '), multithread=$vcpu'
+                "); saveRDS(errF, '$err_1'); "
+                "write.csv(errF, '$err_csv_1');"
+                '"'
+            )
+            # Reverse
+            command_R = command + 'errR <- learnErrors(c('
+            command_R += ",".join(["'$read_R_{}'".format(i) for i in range(len(self.in_reads))])
+            command_R += (
+                '), multithread=$vcpu'
+                "); saveRDS(errR, '$err_2'); "
+                "write.csv(errR, '$err_csv_2');"
+            )
+            command_R += '"'
+            # Forward:
+            self.ex(
+                command=command_F,
+                input_targets=input_targets_F,
+                output_targets=output_targets_F,
+                extra_params={'vcpu': self.containerinfo.vcpu}
+            )
+            # Reverse:
+            self.ex(
+                command=command_R,
+                input_targets=input_targets_R,
+                output_targets=output_targets_R,
+                extra_params={'vcpu': self.containerinfo.vcpu}
+            )
 
 
 class DADA2_DADA(sl.ContainerTask):
