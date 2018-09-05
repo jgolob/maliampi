@@ -176,7 +176,9 @@ class RefpkgTGZ_ContainerTargetInfo(sl.ContainerTargetInfo):
             )
             # Get the contents keyed by the filenames, excluding dirs
             tar_contents_dict = {os.path.basename(f.name): f for f in tar_h.getmembers()}
-            contents = json.load(tar_h.extractfile(tar_contents_dict['CONTENTS.json']))
+            contents = json.loads(
+                    tar_h.extractfile(tar_contents_dict['CONTENTS.json']).read().decode('utf-8')
+                )
             taxonomy_h = tar_h.extractfile(
                 os.path.join(
                     self.get_refpkg_rel_path(),

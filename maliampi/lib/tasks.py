@@ -1121,13 +1121,19 @@ class PPLACER_PlaceAlignment(sl.ContainerTask):
 
         refpkg_rel_path = self.in_refpkg_tgz().get_refpkg_rel_path()
 
+        unique_prefix = str(uuid.uuid4())
         self.ex(
-            command='mkdir -p /refpkg && cd /refpkg && tar xzvf $refpkg_tgz -C /refpkg/ ' +
+            command='mkdir -p /tmp/{}/refpkg/ && cd /tmp/{}/refpkg/ && tar xzvf $refpkg_tgz -C /tmp/{}/refpkg/ '.format(
+                unique_prefix,
+                unique_prefix,
+                unique_prefix
+            ) +
                     ' && pplacer -p --inform-prior --prior-lower $prior_lower --map-identity' +
                     ' -j $nproc' +
-                    ' -c /refpkg/$refpkg_rel_path' +
+                    ' -c /tmp/{}/refpkg/$refpkg_rel_path'.format(unique_prefix) +
                     ' $merged_aln' +
-                    ' -o $jplace',
+                    ' -o $jplace'
+                    ' && rm -r /tmp/{}/refpkg/'.format(unique_prefix),
             input_targets=input_targets,
             output_targets=output_targets,
             extra_params={
@@ -2091,11 +2097,12 @@ class DADA2_LearnError(sl.ContainerTask):
     
     def run(self):
         # Make a tarfile for the forward and reverse entries
+        run_id = str(uuid.uuid4())
         F_reads_tar = sl.ContainerTargetInfo(
             self,
             os.path.join(
                 self.path,
-                "F_reads.tar"
+                "F_reads.{}.tar".format(run_id)
             ),
             format=luigi.format.Nop
         )
@@ -2134,7 +2141,7 @@ class DADA2_LearnError(sl.ContainerTask):
             self,
             os.path.join(
                 self.path,
-                "R_reads.tar"
+                "R_reads.{}.tar".format(run_id)
             ),
             format=luigi.format.Nop
         )

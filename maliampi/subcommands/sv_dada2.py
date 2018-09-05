@@ -53,7 +53,8 @@ class Workflow_DADA2(sl.WorkflowTask):
                 vcpu=1,
                 mem=4096,
                 container_cache=os.path.abspath(os.path.join('../working', 'containers/')),
-                engine='aws_batch',
+                #engine='aws_batch',
+                engine='docker',
                 aws_s3_scratch_loc='s3://fh-pi-fredricks-d/lab/golob/sl_temp/',
                 aws_jobRoleArn='arn:aws:iam::064561331775:role/fh-pi-fredricks-d-batchtask',
                 aws_batch_job_queue='optimal',
@@ -71,6 +72,8 @@ class Workflow_DADA2(sl.WorkflowTask):
                 slurm_partition='boneyard'
             )
 
+    heavy_containerinfo = light_containerinfo
+    
     def workflow(self):
         #
         #  Load the manifest of files
