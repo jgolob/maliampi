@@ -11,8 +11,9 @@ from lib.tasks import GenerateTables
 import logging
 import os
 
-ENGINE = 'docker'
+ENGINE = 'singularity_pbs'
 log = logging.getLogger('sciluigi-interface')
+
 
 # Workflow
 class Workflow_Classify(sl.WorkflowTask):
@@ -32,15 +33,79 @@ class Workflow_Classify(sl.WorkflowTask):
     sv_weights_csv = sl.Parameter(default=None)
     labels = sl.Parameter(default=None)
 
-    test_containerinfo = sl.ContainerInfo(
-                vcpu=2,
+    local_containerinfo = sl.ContainerInfo(
+                    vcpu=1,
+                    mem=4096,
+                    container_cache='/scratch/schmidti_fluxm/golobj/singularity_img/',
+                    engine=ENGINE,
+                    aws_s3_scratch_loc='s3://fh-pi-fredricks-d/lab/golob/sl_temp/',
+                    aws_jobRoleArn='arn:aws:iam::064561331775:role/fh-pi-fredricks-d-batchtask',
+                    aws_batch_job_queue='optimal',
+                    slurm_partition='boneyard',
+                    pbs_account='schmidti_fluxm',
+                    pbs_queue='fluxm',
+                    pbs_scriptpath='/scratch/schmidti_fluxm/golobj/scripttmp',
+                    timeout=10,
+                )
+
+    light_containerinfo = sl.ContainerInfo(
+                vcpu=1,
                 mem=4096,
-                container_cache=os.path.abspath(os.path.join('../working', 'containers/')),
+                container_cache='/scratch/schmidti_fluxm/golobj/singularity_img/',
                 engine=ENGINE,
                 aws_s3_scratch_loc='s3://fh-pi-fredricks-d/lab/golob/sl_temp/',
                 aws_jobRoleArn='arn:aws:iam::064561331775:role/fh-pi-fredricks-d-batchtask',
                 aws_batch_job_queue='optimal',
-                slurm_partition='boneyard'
+                slurm_partition='boneyard',
+                pbs_account='schmidti_fluxm',
+                pbs_queue='fluxm',
+                pbs_scriptpath='/scratch/schmidti_fluxm/golobj/scripttmp',
+                timeout=60,
+            )
+
+    himem_containerinfo = sl.ContainerInfo(
+                vcpu=1,
+                mem=32000,
+                container_cache='/scratch/schmidti_fluxm/golobj/singularity_img/',
+                engine=ENGINE,
+                aws_s3_scratch_loc='s3://fh-pi-fredricks-d/lab/golob/sl_temp/',
+                aws_jobRoleArn='arn:aws:iam::064561331775:role/fh-pi-fredricks-d-batchtask',
+                aws_batch_job_queue='optimal',
+                slurm_partition='boneyard',
+                pbs_account='schmidti_fluxm',
+                pbs_queue='fluxm',
+                pbs_scriptpath='/scratch/schmidti_fluxm/golobj/scripttmp',
+                timeout=60,
+            )
+
+    long_containerinfo = sl.ContainerInfo(
+                vcpu=1,
+                mem=4096,
+                container_cache='/scratch/schmidti_fluxm/golobj/singularity_img/',
+                engine=ENGINE,
+                aws_s3_scratch_loc='s3://fh-pi-fredricks-d/lab/golob/sl_temp/',
+                aws_jobRoleArn='arn:aws:iam::064561331775:role/fh-pi-fredricks-d-batchtask',
+                aws_batch_job_queue='optimal',
+                slurm_partition='boneyard',
+                pbs_account='schmidti_fluxm',
+                pbs_queue='fluxm',
+                pbs_scriptpath='/scratch/schmidti_fluxm/golobj/scripttmp',
+                timeout=6000,
+            )
+
+    heavy_containerinfo = sl.ContainerInfo(
+                vcpu=12,
+                mem=12 * 8000,
+                container_cache='/scratch/schmidti_fluxm/golobj/singularity_img/',
+                engine=ENGINE,
+                aws_s3_scratch_loc='s3://fh-pi-fredricks-d/lab/golob/sl_temp/',
+                aws_jobRoleArn='arn:aws:iam::064561331775:role/fh-pi-fredricks-d-batchtask',
+                aws_batch_job_queue='optimal',
+                slurm_partition='boneyard',
+                pbs_account='schmidti_fluxm',
+                pbs_queue='fluxm',
+                pbs_scriptpath='/scratch/schmidti_fluxm/golobj/scripttmp',
+                timeout=480,
             )
 
     def workflow(self):
@@ -118,7 +183,7 @@ class Workflow_Classify(sl.WorkflowTask):
         sv_aligned = self.new_task(
             'align_sv',
             CMAlignSeqs,
-            containerinfo=self.test_containerinfo,
+            containerinfo=self.heavy_containerinfo,
             alignment_sto_fn=os.path.join(
                 self.working_dir,
                 'placement',
@@ -150,7 +215,7 @@ class Workflow_Classify(sl.WorkflowTask):
         sv_refpkg_aln_sto = self.new_task(
             'combine_sv_refpkg_aln_sto',
             CombineAlignmentsSTO,
-            containerinfo=self.test_containerinfo,
+            containerinfo=self.light_containerinfo,
             combined_aln_sto_fn=os.path.join(
                 self.working_dir,
                 'placement',
@@ -167,7 +232,7 @@ class Workflow_Classify(sl.WorkflowTask):
         prepped_placementdb = self.new_task(
             'prep_placementdb',
             PlacementDB_Prep,
-            containerinfo=self.test_containerinfo,
+            containerinfo=self.light_containerinfo,
             placement_db_fn=os.path.join(
                 self.destination_dir,
                 'classification',
@@ -183,7 +248,7 @@ class Workflow_Classify(sl.WorkflowTask):
         placement_db_w_si = self.new_task(
             'placement_db_add_si',
             PlacementDB_AddSI,
-            containerinfo=self.test_containerinfo,
+            containerinfo=self.light_containerinfo,
         )
         placement_db_w_si.in_placement_db = prepped_placementdb.out_placement_db
         placement_db_w_si.in_seq_map = seq_map.out_file
@@ -195,7 +260,7 @@ class Workflow_Classify(sl.WorkflowTask):
         placement_db_classified = self.new_task(
             'classify_into_placement_db',
             PlacementDB_Classify_SV,
-            containerinfo=self.test_containerinfo,
+            containerinfo=self.heavy_containerinfo,
         )
         placement_db_classified.in_placement_db = placement_db_w_si.out_placement_db
         placement_db_classified.in_refpkg_tgz = refpkg_tgz.out_refpkg_tgz
@@ -209,7 +274,7 @@ class Workflow_Classify(sl.WorkflowTask):
         placement_db_mcc = self.new_task(
             'placement_db_multiclass_concat',
             PlacementDB_MCC,
-            containerinfo=self.test_containerinfo,
+            containerinfo=self.long_containerinfo,
         )
         placement_db_mcc.in_placement_db = placement_db_classified.out_placement_db
         placement_db_mcc.in_weights = sv_weights.out_file
@@ -222,7 +287,7 @@ class Workflow_Classify(sl.WorkflowTask):
             tables_for_rank[rank] = self.new_task(
                 'by_specimen_{}'.format(rank),
                 GenerateTables,
-                containerinfo=self.test_containerinfo,
+                containerinfo=self.light_containerinfo,
                 tables_path=os.path.join(
                     self.destination_dir,
                     'classification',

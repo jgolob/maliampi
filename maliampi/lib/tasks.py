@@ -1006,7 +1006,14 @@ class ExtractRefpkgAlignment(sl.Task):
             )
             # Get the contents keyed by the filenames, excluding dirs
             tar_contents_dict = {os.path.basename(f.name): f for f in tar_h.getmembers()}
-            contents = json.load(tar_h.extractfile(tar_contents_dict['CONTENTS.json']))
+            try:
+                contents = json.load(tar_h.extractfile(tar_contents_dict['CONTENTS.json']))
+            except TypeError:
+                contents = json.loads(
+                    tar_h.extractfile(
+                            tar_contents_dict['CONTENTS.json']
+                        ).read().decode('utf-8')
+                    )
             aln_fasta_intgz = contents['files'].get('aln_fasta')
             aln_sto_intgz = contents['files'].get('aln_sto')
 
@@ -1122,24 +1129,22 @@ class PPLACER_PlaceAlignment(sl.ContainerTask):
         refpkg_rel_path = self.in_refpkg_tgz().get_refpkg_rel_path()
 
         unique_prefix = str(uuid.uuid4())
+        run_tmpdir = "/tmp/{}".format(unique_prefix)
         self.ex(
-            command='mkdir -p /tmp/{}/refpkg/ && cd /tmp/{}/refpkg/ && tar xzvf $refpkg_tgz -C /tmp/{}/refpkg/ '.format(
-                unique_prefix,
-                unique_prefix,
-                unique_prefix
-            ) +
+            command='mkdir -p $run_tmpdir/refpkg/ && tar xzvf $refpkg_tgz -C $run_tmpdir/refpkg/ ' +
                     ' && pplacer -p --inform-prior --prior-lower $prior_lower --map-identity' +
                     ' -j $nproc' +
-                    ' -c /tmp/{}/refpkg/$refpkg_rel_path'.format(unique_prefix) +
+                    ' -c $run_tmpdir/refpkg/$refpkg_rel_path' +
                     ' $merged_aln' +
-                    ' -o $jplace'
-                    ' && rm -r /tmp/{}/refpkg/'.format(unique_prefix),
+                    ' -o $jplace' +
+                    ' && rm -r $run_tmpdir',
             input_targets=input_targets,
             output_targets=output_targets,
             extra_params={
                 'prior_lower': self.pplacer_prior_lower,
                 'nproc': self.containerinfo.vcpu,
                 'refpkg_rel_path': refpkg_rel_path,
+                'run_tmpdir': run_tmpdir,
             }
         )
 
@@ -1244,22 +1249,27 @@ class Jplace_PCA(sl.ContainerTask):
             'xml': self.out_xml(),
         }
 
+        unique_prefix = str(uuid.uuid4())
+        run_tmpdir = "/tmp/{}".format(unique_prefix)
         self.ex(
-            command='mkdir -p /refpkg && cd /refpkg && tar xzvf $refpkg_tgz -C /refpkg/ '
-                    ' && mkdir -p /results '
+            command='mkdir -p $run_tmpdir/refpkg/ && cd $run_tmpdir/refpkg/ && tar xzvf $refpkg_tgz -C $run_tmpdir/refpkg/ ' +
+                    ' && mkdir -p $run_tmpdir/results ' +
                     ' && guppy $pca' +
                     ' $jplace:$seq_map ' +
-                    ' -c /refpkg/$refpkg_rel_path ' + 
-                    ' --out-dir /results --prefix $prefix' +
-                    ' && cp /results/$prefix.xml $xml' + 
-                    ' && cp /results/$prefix.proj $proj' + 
-                    ' && cp /results/$prefix.trans $trans',
+                    ' -c $run_tmpdir/refpkg/$refpkg_rel_path ' + 
+                    ' --out-dir $run_tmpdir/results --prefix $prefix' +
+                    ' && cp $run_tmpdir/results/$prefix.xml $xml' + 
+                    ' && cp $run_tmpdir/results/$prefix.proj $proj' + 
+                    ' && cp $run_tmpdir/results/$prefix.trans $trans' +
+                    ' && rm -r $run_tmpdir',
+
             input_targets=input_targets,
             output_targets=output_targets,
             extra_params={
                 'refpkg_rel_path': refpkg_rel_path,
                 'prefix': self.prefix,
-                'pca': pca
+                'pca': pca,
+                'run_tmpdir': run_tmpdir
             }
         )
 
@@ -1357,17 +1367,21 @@ class Jplace_KR_Distance(sl.ContainerTask):
             'kr_distance': self.out_kr_distance(),
         }
 
+        unique_prefix = str(uuid.uuid4())
+        run_tmpdir = "/tmp/{}".format(unique_prefix)
         self.ex(
-            command='mkdir -p /refpkg && cd /refpkg && tar xzvf $refpkg_tgz -C /refpkg/ '
+            command='mkdir -p $run_tmpdir/refpkg/ && cd $run_tmpdir/refpkg/ && tar xzvf $refpkg_tgz -C $run_tmpdir/refpkg/ ' +
                     ' && guppy kr' +
                     ' --list-out' +
-                    ' -c /refpkg/$refpkg_rel_path ' +
+                    ' -c $run_tmpdir/refpkg/$refpkg_rel_path ' +
                     ' $jplace:$seq_map ' +
-                    ' -o $kr_distance',
+                    ' -o $kr_distance' +
+                    ' && rm -r $run_tmpdir',
             input_targets=input_targets,
             output_targets=output_targets,
             extra_params={
                 'refpkg_rel_path': refpkg_rel_path,
+                'run_tmpdir': run_tmpdir,
             }
         )
 
@@ -1388,7 +1402,6 @@ class Jplace_Alpha_Diversity(sl.ContainerTask):
         )
 
     def run(self):
-        refpkg_rel_path = self.in_refpkg_tgz().get_refpkg_rel_path()
         input_targets = {
             'jplace': self.in_jplace(),
             'seq_map': self.in_seq_map(),
@@ -1406,9 +1419,6 @@ class Jplace_Alpha_Diversity(sl.ContainerTask):
                     ' -o $alpha_diversity',
             input_targets=input_targets,
             output_targets=output_targets,
-            extra_params={
-                'refpkg_rel_path': refpkg_rel_path,
-            }
         )
 
 
@@ -1440,15 +1450,19 @@ class PlacementDB_Prep(sl.ContainerTask):
             'placement_db': self.out_placement_db(),
         }
 
+        unique_prefix = str(uuid.uuid4())
+        run_tmpdir = "/tmp/{}".format(unique_prefix)
         self.ex(
-            command='mkdir -p /refpkg && cd /refpkg && tar xzvf $refpkg_tgz -C /refpkg/ '
+            command='mkdir -p $run_tmpdir/refpkg/ && tar xzvf $refpkg_tgz -C $run_tmpdir/refpkg/ ' +
                     ' && rppr prep_db' +
-                    ' -c /refpkg/$refpkg_rel_path ' +
-                    ' --sqlite $placement_db',
+                    ' -c $run_tmpdir/refpkg/$refpkg_rel_path ' +
+                    ' --sqlite $placement_db' +
+                    '&& rm -r $run_tmpdir ',
             input_targets=input_targets,
             output_targets=output_targets,
             extra_params={
                 'refpkg_rel_path': refpkg_rel_path,
+                'run_tmpdir': run_tmpdir
             }
         )
 
@@ -1507,7 +1521,7 @@ class PlacementDB_Classify_SV(sl.ContainerTask):
             ' guppy classify'
             ' --classifier $classifier '
             ' -j $nproc '
-            ' -c /refpkg/$refpkg_rel_path '
+            ' -c $run_tmpdir/refpkg/$refpkg_rel_path '
             ' --nbc-sequences $sv_refpkg_aln_sto '
             ' --sqlite $placement_db'
             ' --seed $seed'
@@ -1534,6 +1548,8 @@ class PlacementDB_Classify_SV(sl.ContainerTask):
             return s
 
     def run(self):
+        unique_prefix = str(uuid.uuid4())
+        run_tmpdir = "/tmp/{}".format(unique_prefix)
         refpkg_rel_path = self.in_refpkg_tgz().get_refpkg_rel_path()
         input_targets = {
             'refpkg_tgz': self.in_refpkg_tgz(),
@@ -1547,12 +1563,14 @@ class PlacementDB_Classify_SV(sl.ContainerTask):
 
         extra_params = {
                 'refpkg_rel_path': refpkg_rel_path,
+                'run_tmpdir': run_tmpdir,
             }
         extra_params.update(self.guppy_parameter_to_dict())
 
         self.ex(
-            command='mkdir -p /refpkg && cd /refpkg && tar xzvf $refpkg_tgz -C /refpkg/ &&' +
-                    self.make_guppy_command(),
+            command='mkdir -p $run_tmpdir/refpkg/ && tar xzvf $refpkg_tgz -C $run_tmpdir/refpkg/ &&' +
+            self.make_guppy_command()
+            + ' && rm -r $run_tmpdir ',
             input_targets=input_targets,
             output_targets=output_targets,
             extra_params=extra_params,
@@ -1680,6 +1698,9 @@ class GenerateTables(sl.ContainerTask):
         )
 
     def run(self):
+        unique_prefix = str(uuid.uuid4())
+        run_tmpdir = "/tmp/{}".format(unique_prefix)
+
         input_targets = {
             'placement_db': self.in_placement_db(),
             'seq_map': self.in_seq_map(),
@@ -1695,28 +1716,29 @@ class GenerateTables(sl.ContainerTask):
         }
 
         command = (
-                'mkdir -p /working &&'
+                'mkdir -p $run_tmpdir/tables &&'
                 ' python2 /usr/bin/classif_table.py'
                 ' $placement_db'
-                ' /working/by_taxon.csv'
+                ' $run_tmpdir/tables/by_taxon.csv'
                 ' --rank $rank'
                 ' --specimen-map $seq_map'
-                ' --by-specimen /working/by_specimen.csv'
-                ' --tallies-wide /working/tallies_wide.csv'
-                ' && cp -r /working/by_taxon.csv $by_taxon'
-                ' && cp -r /working/by_specimen.csv $by_specimen'
-                ' && cp -r /working/tallies_wide.csv $tallies_wide'
+                ' --by-specimen $run_tmpdir/tables/by_specimen.csv'
+                ' --tallies-wide $run_tmpdir/tables/tallies_wide.csv'
+                ' && cp -r $run_tmpdir/tables/by_taxon.csv $by_taxon'
+                ' && cp -r $run_tmpdir/tables/by_specimen.csv $by_specimen'
+                ' && cp -r $run_tmpdir/tables/tallies_wide.csv $tallies_wide'
         )
 
         if self.in_labels:
             command += ' --metadata-map $labels'
-
+        command += ' && rm -r $run_tmpdir/'
         self.ex(
             command=command,
             input_targets=input_targets,
             output_targets=output_targets,
             extra_params={
                 'rank': self.rank,
+                'run_tmpdir': run_tmpdir,
             }
         )
 
@@ -1905,7 +1927,7 @@ class BCCSpecimenReads(sl.ContainerTask):
 
 class DADA2_FilterAndTrim(sl.ContainerTask):
     # DADA2 filter and trim for a specimen (F and R)
-    container = 'golob/dada2:1.6.0__bcw.0.3.0'
+    container = 'golob/dada2:1.8.0.ub.1804__bcw.0.3.0A'
 
     # Dependencies
     in_reads = None
@@ -1914,9 +1936,9 @@ class DADA2_FilterAndTrim(sl.ContainerTask):
     specimen = sl.Parameter()
     path = sl.Parameter()
     # DADA2 parameters
-    maxN = sl.Parameter(default=1)
+    maxN = sl.Parameter(default=0)
     maxEE = sl.Parameter(default='Inf')
-    f_trunc = sl.Parameter(default=280)
+    f_trunc = sl.Parameter(default=250)
     r_trunc = sl.Parameter(default=250)
     trim_left = sl.Parameter(default=15)
     trunc_Q = sl.Parameter(default=2)
@@ -1964,6 +1986,7 @@ class DADA2_FilterAndTrim(sl.ContainerTask):
                 'truncLen = c($f_trunc, $r_trunc), '
                 'truncQ = $trunc_Q, '
                 'compress = TRUE, '
+                'verbose = TRUE, '
                 'multithread = $vcpu)'
                 '"'
             ),
@@ -1983,7 +2006,7 @@ class DADA2_FilterAndTrim(sl.ContainerTask):
 
 class DADA2_Dereplicate(sl.ContainerTask):
     # DADA2 filter and trim for a specimen (F and R)
-    container = 'golob/dada2:1.6.0__bcw.0.3.0'
+    container = 'golob/dada2:1.8.0.ub.1804__bcw.0.3.0A'
 
     # Dependencies
     in_reads = None
@@ -2033,9 +2056,9 @@ class DADA2_Dereplicate(sl.ContainerTask):
             command=(
                 'Rscript -e "'
                 "library('dada2'); "
-                "derep1 <- derepFastq('$read_1'); "
+                "derep1 <- derepFastq('$read_1', verbose = TRUE); "
                 "saveRDS(derep1, '$derep_1'); "
-                "derep2 <- derepFastq('$read_2'); "
+                "derep2 <- derepFastq('$read_2', verbose = TRUE); "
                 "saveRDS(derep2, '$derep_2'); "
                 '"'
             ),
@@ -2046,7 +2069,7 @@ class DADA2_Dereplicate(sl.ContainerTask):
 
 class DADA2_LearnError(sl.ContainerTask):
     # DADA2 filter and trim for a specimen (F and R)
-    container = 'golob/dada2:1.6.0__bcw.0.3.0'
+    container = 'golob/dada2:1.8.0.ub.1804__bcw.0.3.0A'
 
     # Dependencies
     # Should be a LIST of DICTS 
@@ -2056,6 +2079,10 @@ class DADA2_LearnError(sl.ContainerTask):
     # Parameters
     batch = sl.Parameter()
     path = sl.Parameter()
+    tar_reads = sl.Parameter(default=False)
+    MAX_CONSIST = sl.Parameter(default=10)
+    randomize = sl.Parameter(default='FALSE')
+    n_bases = sl.Parameter(default='1e8')
 
     def out_rds(self):
         rds_dict = {}
@@ -2096,139 +2123,211 @@ class DADA2_LearnError(sl.ContainerTask):
         return rds_dict
     
     def run(self):
-        # Make a tarfile for the forward and reverse entries
-        run_id = str(uuid.uuid4())
-        F_reads_tar = sl.ContainerTargetInfo(
-            self,
-            os.path.join(
-                self.path,
-                "F_reads.{}.tar".format(run_id)
-            ),
-            format=luigi.format.Nop
-        )
-        with F_reads_tar.open('w') as tar_h:
-            arch = tarfile.open(fileobj=tar_h, mode='w:')
-            for r_i, read_t in enumerate(self.in_reads):
-                with read_t()['R1'].open('r') as file_h:
-                    try:
-                        f_ti = arch.gettarinfo(
-                            fileobj=file_h,
-                            arcname='r_{}.fa.gz'.format(r_i)
-                            )
-                        arch.addfile(
-                            f_ti,
-                            fileobj=file_h
-                        )
-                    except AttributeError:  # S3 doesn't do well with this
-                        # So manually download to a named-temp file and then add that to the tar
-                        with tempfile.NamedTemporaryFile() as f_ntf:
-                            f_ntf.write(file_h.read())
-                            f_ntf.seek(0)
+        if self.tar_reads == 'true':
+            # Make a tarfile for the forward and reverse entries
+            run_id = str(uuid.uuid4())
+            F_reads_tar = sl.ContainerTargetInfo(
+                self,
+                os.path.join(
+                    self.path,
+                    "F_reads.{}.tar".format(self.batch)
+                ),
+                format=luigi.format.Nop
+            )
+            with F_reads_tar.open('w') as tar_h:
+                arch = tarfile.open(fileobj=tar_h, mode='w:')
+                for r_i, read_t in enumerate(self.in_reads):
+                    with read_t()['R1'].open('r') as file_h:
+                        try:
                             f_ti = arch.gettarinfo(
-                                fileobj=f_ntf,
+                                fileobj=file_h,
                                 arcname='r_{}.fa.gz'.format(r_i)
-                            )
+                                )
                             arch.addfile(
                                 f_ti,
-                                fileobj=f_ntf
+                                fileobj=file_h
                             )
+                        except AttributeError:  # S3 doesn't do well with this
+                            # So manually download to a named-temp file and then add that to the tar
+                            with tempfile.NamedTemporaryFile() as f_ntf:
+                                f_ntf.write(file_h.read())
+                                f_ntf.seek(0)
+                                f_ti = arch.gettarinfo(
+                                    fileobj=f_ntf,
+                                    arcname='r_{}.fa.gz'.format(r_i)
+                                )
+                                arch.addfile(
+                                    f_ti,
+                                    fileobj=f_ntf
+                                )
 
-        input_targets_F = {
-            'reads_tar': F_reads_tar,
-        }
+            input_targets_F = {
+                'reads_tar': F_reads_tar,
+            }
 
-        R_reads_tar = sl.ContainerTargetInfo(
-            self,
-            os.path.join(
-                self.path,
-                "R_reads.{}.tar".format(run_id)
-            ),
-            format=luigi.format.Nop
-        )
-        with R_reads_tar.open('w') as tar_h:
-            arch = tarfile.open(fileobj=tar_h, mode='w:')
-            for r_i, read_t in enumerate(self.in_reads):
-                with read_t()['R2'].open('r') as file_h:
-                    try:
-                        f_ti = arch.gettarinfo(
-                            fileobj=file_h,
-                            arcname='r_{}.fa.gz'.format(r_i)
-                            )
-                        arch.addfile(
-                            f_ti,
-                            fileobj=file_h
-                        )
-                    except AttributeError:  # S3 doesn't do well with this
-                        # So manually download to a named-temp file and then add that to the tar
-                        with tempfile.NamedTemporaryFile() as f_ntf:
-                            f_ntf.write(file_h.read())
-                            f_ntf.seek(0)
+            R_reads_tar = sl.ContainerTargetInfo(
+                self,
+                os.path.join(
+                    self.path,
+                    "R_reads.{}.tar".format(self.batch)
+                ),
+                format=luigi.format.Nop
+            )
+            with R_reads_tar.open('w') as tar_h:
+                arch = tarfile.open(fileobj=tar_h, mode='w:')
+                for r_i, read_t in enumerate(self.in_reads):
+                    with read_t()['R2'].open('r') as file_h:
+                        try:
                             f_ti = arch.gettarinfo(
-                                fileobj=f_ntf,
+                                fileobj=file_h,
                                 arcname='r_{}.fa.gz'.format(r_i)
-                            )
+                                )
                             arch.addfile(
                                 f_ti,
-                                fileobj=f_ntf
+                                fileobj=file_h
                             )
+                        except AttributeError:  # S3 doesn't do well with this
+                            # So manually download to a named-temp file and then add that to the tar
+                            with tempfile.NamedTemporaryFile() as f_ntf:
+                                f_ntf.write(file_h.read())
+                                f_ntf.seek(0)
+                                f_ti = arch.gettarinfo(
+                                    fileobj=f_ntf,
+                                    arcname='r_{}.fa.gz'.format(r_i)
+                                )
+                                arch.addfile(
+                                    f_ti,
+                                    fileobj=f_ntf
+                                )
 
-        input_targets_R = {
-            'reads_tar': R_reads_tar,
-        }
+            input_targets_R = {
+                'reads_tar': R_reads_tar,
+            }
 
-        output_targets_F = {
-            'err_1': self.out_rds()['R1'],
-            'err_csv_1': self.out_csv()['R1']
-        }
+            output_targets_F = {
+                'err_1': self.out_rds()['R1'],
+                'err_csv_1': self.out_csv()['R1']
+            }
 
-        output_targets_R = {
-            'err_2': self.out_rds()['R2'],
-            'err_csv_2': self.out_csv()['R2'],
-        }
-        command = (
-                'tar xf $reads_tar -C /working/ && '
-                'Rscript -e "'
-                "library('dada2'); "
-        )
-        # Forward
-        command_F = command + 'errF <- learnErrors(c('
-        command_F += ",".join(["'/working/r_{}.fa.gz'".format(i) for i in range(len(self.in_reads))])
-        command_F += (
-            '), multithread=$vcpu'
-            "); saveRDS(errF, '$err_1'); "
-            "write.csv(errF, '$err_csv_1');"
-            '"'
-        )
-        # Reverse
-        command_R = command + 'errR <- learnErrors(c('
-        command_R += ",".join(["'/working/r_{}.fa.gz'".format(i) for i in range(len(self.in_reads))])
-        command_R += (
-            '), multithread=$vcpu'
-            "); saveRDS(errR, '$err_2'); "
-            "write.csv(errR, '$err_csv_2');"
-        )
-        command_R+='"'
-        # Forward:
-        self.ex(
-            command=command_F,
-            input_targets=input_targets_F,
-            output_targets=output_targets_F,
-            extra_params={'vcpu': self.containerinfo.vcpu}
-        )
-        # Reverse:
-        self.ex(
-            command=command_R,
-            input_targets=input_targets_R,
-            output_targets=output_targets_R,
-            extra_params={'vcpu': self.containerinfo.vcpu}
-        )
-        F_reads_tar.target.__del__()
-        R_reads_tar.target.__del__()
+            output_targets_R = {
+                'err_2': self.out_rds()['R2'],
+                'err_csv_2': self.out_csv()['R2'],
+            }
+            command = 'mkdir -p /tmp/{}/{} && '.format(run_id, self.batch) + \
+                    'tar xf $reads_tar -C /tmp/{}/{}/ && '.format(run_id, self.batch) + \
+                    'Rscript -e "' + \
+                    "library('dada2'); "
+            # Forward
+            command_F = command + 'errF <- learnErrors(c('
+            command_F += ",".join(["'/tmp/{}/{}/r_{}.fa.gz'".format(run_id, self.batch, i) for i in range(len(self.in_reads))])
+            command_F += (
+                '), multithread=$vcpu'
+                "); saveRDS(errF, '$err_1'); "
+                "write.csv(errF, '$err_csv_1');"
+                '"'
+            )
+            # Reverse
+            command_R = command + 'errR <- learnErrors(c('
+            command_R += ",".join(["'/tmp/{}/{}/r_{}.fa.gz'".format(run_id, self.batch, i) for i in range(len(self.in_reads))])
+            command_R += (
+                '), multithread=$vcpu'
+                "); saveRDS(errR, '$err_2'); "
+                "write.csv(errR, '$err_csv_2');"
+            )
+            command_R += '"'
+            # Forward:
+            self.ex(
+                command=command_F,
+                input_targets=input_targets_F,
+                output_targets=output_targets_F,
+                extra_params={'vcpu': self.containerinfo.vcpu}
+            )
+            # Reverse:
+            self.ex(
+                command=command_R,
+                input_targets=input_targets_R,
+                output_targets=output_targets_R,
+                extra_params={'vcpu': self.containerinfo.vcpu}
+            )
+            F_reads_tar.target.__del__()
+            R_reads_tar.target.__del__()
+        else: # Do not tar reads
+            output_targets_F = {
+                'err_1': self.out_rds()['R1'],
+                'err_csv_1': self.out_csv()['R1']
+            }
+            input_targets_F = {
+                'read_F_{}'.format(i): t()['R1'] for i, t in enumerate(self.in_reads)
+            }
+            output_targets_R = {
+                'err_2': self.out_rds()['R2'],
+                'err_csv_2': self.out_csv()['R2'],
+            }
+            input_targets_R = {
+                'read_R_{}'.format(i): t()['R2'] for i, t in enumerate(self.in_reads)
+            }
+
+
+            command = (
+                        'Rscript -e "'
+                        "library('dada2'); "
+            )
+
+            # Forward
+            command_F = command + 'errF <- learnErrors(c('
+            command_F += ",".join(["'$read_F_{}'".format(i) for i in range(len(self.in_reads))])
+            command_F += (
+                '), multithread=$vcpu'
+                ', MAX_CONSIST=$MAX_CONSIST'
+                ', randomize=$randomize'
+                ', nbases=$nbases'
+                ', verbose=TRUE'
+                "); saveRDS(errF, '$err_1'); "
+                "write.csv(errF, '$err_csv_1');"
+                '"'
+            )
+            # Reverse
+            command_R = command + 'errR <- learnErrors(c('
+            command_R += ",".join(["'$read_R_{}'".format(i) for i in range(len(self.in_reads))])
+            command_R += (
+                '), multithread=$vcpu'
+                ', MAX_CONSIST=$MAX_CONSIST'
+                ', randomize=$randomize'
+                ', nbases=$nbases'
+                ', verbose=TRUE'
+                "); saveRDS(errR, '$err_2'); "
+                "write.csv(errR, '$err_csv_2');"
+            )
+            command_R += '"'
+            # Forward:
+            self.ex(
+                command=command_F,
+                input_targets=input_targets_F,
+                output_targets=output_targets_F,
+                extra_params={
+                    'vcpu': self.containerinfo.vcpu,
+                    'MAX_CONSIST': self.MAX_CONSIST,
+                    'randomize': self.randomize,
+                    'nbases': self.n_bases,
+                    }
+            )
+            # Reverse:
+            self.ex(
+                command=command_R,
+                input_targets=input_targets_R,
+                output_targets=output_targets_R,
+                extra_params={
+                    'vcpu': self.containerinfo.vcpu,
+                    'MAX_CONSIST': self.MAX_CONSIST,
+                    'randomize': self.randomize,
+                    'nbases': self.n_bases,
+                    }
+            )
 
 
 class DADA2_DADA(sl.ContainerTask):
     # DADA2 filter and trim for a specimen (F and R)
-    container = 'golob/dada2:1.6.0__bcw.0.3.0'
+    container = 'golob/dada2:1.8.0.ub.1804__bcw.0.3.0A'
 
     # Dependencies
     in_derep = None
@@ -2276,11 +2375,11 @@ class DADA2_DADA(sl.ContainerTask):
                 "library('dada2'); "
                 "errM_1 <- readRDS('$errM_1'); "
                 "derep_1 <- readRDS('$derep_1'); "
-                "dadaResult_1 <- dada(derep_1, err=errM_1, multithread=$vcpu); "
+                "dadaResult_1 <- dada(derep_1, err=errM_1, multithread=$vcpu, verbose=TRUE); "
                 "saveRDS(dadaResult_1, '$dada_1'); "
                 "errM_2 <- readRDS('$errM_2'); "
                 "derep_2 <- readRDS('$derep_2'); "
-                "dadaResult_2 <- dada(derep_2, err=errM_2, multithread=$vcpu); "
+                "dadaResult_2 <- dada(derep_2, err=errM_2, multithread=$vcpu, verbose=TRUE); "
                 "saveRDS(dadaResult_2, '$dada_2'); "
                 '"'
             ),
@@ -2292,7 +2391,7 @@ class DADA2_DADA(sl.ContainerTask):
 
 class DADA2_Merge(sl.ContainerTask):
     # DADA2 Merge forward and reverse reads
-    container = 'golob/dada2:1.6.0__bcw.0.3.0'
+    container = 'golob/dada2:1.8.0.ub.1804__bcw.0.3.0A'
 
     # Dependencies
     in_derep = None
@@ -2334,7 +2433,8 @@ class DADA2_Merge(sl.ContainerTask):
                 "derep_2 <- readRDS('$derep_2'); "
                 'merger <- mergePairs('
                 'dada_1, derep_1, '
-                'dada_2, derep_2); '
+                'dada_2, derep_2 '
+                ', verbose=TRUE); '
                 "saveRDS(merger, '$merger'); "
                 '"'
             ),
@@ -2390,9 +2490,9 @@ class DADA2_Specimen_Seqtab(sl.ContainerTask):
         )
 
 
-class DADA2_Combine_Seqtabs(sl.ContainerTask):
+class DADA2_Combine_Seqtabs_Lin(sl.ContainerTask):
     # DADA2 Combine seqtabs
-    container = 'golob/dada2:1.6.0__bcw.0.3.0'
+    container = 'golob/dada2:1.8.0.ub.1804__bcw.0.3.0A'
 
     # Dependencies
     in_seqtabs = None
@@ -2465,11 +2565,54 @@ class DADA2_Combine_Seqtabs(sl.ContainerTask):
                 inputs_mode='rw'
                 #output_targets=output_targets,
             )
-
-
-class DADA2_Combine_Seqtabs_Old(sl.ContainerTask):
+class DADA2_Combine_Seqtabs(sl.ContainerTask):
     # DADA2 Combine seqtabs
-    container = 'golob/dada2:1.6.0__bcw.0.3.0'
+    container = 'golob/dada2-fast-combineseqtab:0.2.0_BCW_0.30'
+
+    # Dependencies
+    in_seqtabs = None
+
+    # Parameters
+    fn = sl.Parameter()
+
+    def out_rds(self):
+        return sl.ContainerTargetInfo(
+            self,
+            self.fn,
+            format=luigi.format.Nop
+        )
+    
+    def run(self):
+        input_targets = {"seqtab_{}".format(s_i): seqtab_t()
+            for s_i, seqtab_t in enumerate(self.in_seqtabs)
+        }
+
+        output_targets = {
+            'combined_seqtab': self.out_rds(),
+        }
+
+        command = (
+            'combine_seqtab '
+            '--rds $combined_seqtab '
+            '--seqtabs '
+        )
+
+        command += " ".join(
+            [
+                "'${}'".format(st_id) 
+            
+            for st_id in input_targets.keys()]
+        )
+
+        self.ex(
+            command=command,
+            input_targets=input_targets,
+            output_targets=output_targets,
+        )
+
+class DADA2_Combine_Seqtabs_Native(sl.ContainerTask):
+    # DADA2 Combine seqtabs
+    container = 'golob/dada2:1.8.0__bcw.0.3.0'
 
     # Dependencies
     in_seqtabs = None
@@ -2534,7 +2677,7 @@ class DADA2_Combine_Seqtabs_Old(sl.ContainerTask):
 
 class DADA2_Remove_Chimera(sl.ContainerTask):
     # DADA2 Remove chimeras from Seqtab
-    container = 'golob/dada2:1.6.0__bcw.0.3.0'
+    container = 'golob/dada2:1.8.0.ub.1804__bcw.0.3.0A'
 
     # Dependencies
     in_seqtab = None
@@ -2576,6 +2719,7 @@ class DADA2_Remove_Chimera(sl.ContainerTask):
                 'seqtab, '
                 "method='$method', "
                 'multithread=$vcpu); '
+                'print((sum(seqtab) - sum(seqtab_nochim)) / sum(seqtab)); '
                 "saveRDS(seqtab_nochim, '$seqtab_nochim_rds'); "
                 "write.csv(seqtab_nochim, '$seqtab_nochim_csv', na='') "
                 '"'

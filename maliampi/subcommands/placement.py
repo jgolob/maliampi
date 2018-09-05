@@ -9,7 +9,7 @@ from lib.tasks import Jplace_Alpha_Diversity, LoadRefpkgTGZ
 
 import os
 
-ENGINE = 'docker'
+ENGINE = 'singularity_pbs'
 
 
 # Workflow
@@ -27,15 +27,79 @@ class Workflow_Placement(sl.WorkflowTask):
     seq_map_csv = sl.Parameter()
     sv_weights_csv = sl.Parameter(default=None)
 
-    test_containerinfo = sl.ContainerInfo(
-                vcpu=2,
+    local_containerinfo = sl.ContainerInfo(
+                    vcpu=1,
+                    mem=4096,
+                    container_cache='/scratch/schmidti_fluxm/golobj/singularity_img/',
+                    engine=ENGINE,
+                    aws_s3_scratch_loc='s3://fh-pi-fredricks-d/lab/golob/sl_temp/',
+                    aws_jobRoleArn='arn:aws:iam::064561331775:role/fh-pi-fredricks-d-batchtask',
+                    aws_batch_job_queue='optimal',
+                    slurm_partition='boneyard',
+                    pbs_account='schmidti_fluxm',
+                    pbs_queue='fluxm',
+                    pbs_scriptpath='/scratch/schmidti_fluxm/golobj/scripttmp',
+                    timeout=10,
+                )
+
+    light_containerinfo = sl.ContainerInfo(
+                vcpu=1,
                 mem=4096,
-                container_cache=os.path.abspath(os.path.join('../working', 'containers/')),
+                container_cache='/scratch/schmidti_fluxm/golobj/singularity_img/',
                 engine=ENGINE,
                 aws_s3_scratch_loc='s3://fh-pi-fredricks-d/lab/golob/sl_temp/',
                 aws_jobRoleArn='arn:aws:iam::064561331775:role/fh-pi-fredricks-d-batchtask',
                 aws_batch_job_queue='optimal',
-                slurm_partition='boneyard'
+                slurm_partition='boneyard',
+                pbs_account='schmidti_fluxm',
+                pbs_queue='fluxm',
+                pbs_scriptpath='/scratch/schmidti_fluxm/golobj/scripttmp',
+                timeout=60,
+            )
+
+    himem_containerinfo = sl.ContainerInfo(
+                vcpu=1,
+                mem=64000,
+                container_cache='/scratch/schmidti_fluxm/golobj/singularity_img/',
+                engine=ENGINE,
+                aws_s3_scratch_loc='s3://fh-pi-fredricks-d/lab/golob/sl_temp/',
+                aws_jobRoleArn='arn:aws:iam::064561331775:role/fh-pi-fredricks-d-batchtask',
+                aws_batch_job_queue='optimal',
+                slurm_partition='boneyard',
+                pbs_account='schmidti_fluxm',
+                pbs_queue='fluxm',
+                pbs_scriptpath='/scratch/schmidti_fluxm/golobj/scripttmp',
+                timeout=60,
+            )
+
+    long_containerinfo = sl.ContainerInfo(
+                vcpu=1,
+                mem=4096,
+                container_cache='/scratch/schmidti_fluxm/golobj/singularity_img/',
+                engine=ENGINE,
+                aws_s3_scratch_loc='s3://fh-pi-fredricks-d/lab/golob/sl_temp/',
+                aws_jobRoleArn='arn:aws:iam::064561331775:role/fh-pi-fredricks-d-batchtask',
+                aws_batch_job_queue='optimal',
+                slurm_partition='boneyard',
+                pbs_account='schmidti_fluxm',
+                pbs_queue='fluxm',
+                pbs_scriptpath='/scratch/schmidti_fluxm/golobj/scripttmp',
+                timeout=6000,
+            )
+
+    heavy_containerinfo = sl.ContainerInfo(
+                vcpu=12,
+                mem=12 * 8000,
+                container_cache='/scratch/schmidti_fluxm/golobj/singularity_img/',
+                engine=ENGINE,
+                aws_s3_scratch_loc='s3://fh-pi-fredricks-d/lab/golob/sl_temp/',
+                aws_jobRoleArn='arn:aws:iam::064561331775:role/fh-pi-fredricks-d-batchtask',
+                aws_batch_job_queue='optimal',
+                slurm_partition='boneyard',
+                pbs_account='schmidti_fluxm',
+                pbs_queue='fluxm',
+                pbs_scriptpath='/scratch/schmidti_fluxm/golobj/scripttmp',
+                timeout=480,
             )
 
     def workflow(self):
@@ -98,7 +162,7 @@ class Workflow_Placement(sl.WorkflowTask):
         sv_aligned = self.new_task(
             'align_sv',
             CMAlignSeqs,
-            containerinfo=self.test_containerinfo,
+            containerinfo=self.heavy_containerinfo,
             alignment_sto_fn=os.path.join(
                 self.working_dir,
                 'placement',
@@ -130,7 +194,7 @@ class Workflow_Placement(sl.WorkflowTask):
         sv_refpkg_aln_sto = self.new_task(
             'combine_sv_refpkg_aln_sto',
             CombineAlignmentsSTO,
-            containerinfo=self.test_containerinfo,
+            containerinfo=self.heavy_containerinfo,
             combined_aln_sto_fn=os.path.join(
                 self.working_dir,
                 'placement',
@@ -146,7 +210,7 @@ class Workflow_Placement(sl.WorkflowTask):
         dedup_jplace = self.new_task(
             'make_dedup_jplace',
             PPLACER_PlaceAlignment,
-            containerinfo=self.test_containerinfo,
+            containerinfo=self.heavy_containerinfo,
             jplace_fn=os.path.join(
                 self.destination_dir,
                 'placement',
@@ -166,7 +230,7 @@ class Workflow_Placement(sl.WorkflowTask):
             redup_jplace = self.new_task(
                 'reduplicate_jplace',
                 Jplace_Reduplicate,
-                containerinfo=self.test_containerinfo,
+                containerinfo=self.light_containerinfo,
                 jplace_fn=os.path.join(
                     self.destination_dir,
                     'placement',
@@ -182,7 +246,7 @@ class Workflow_Placement(sl.WorkflowTask):
         adcl = self.new_task(
             'create_adcl',
             Jplace_ADCL,
-            containerinfo=self.test_containerinfo,
+            containerinfo=self.light_containerinfo,
             adcl_fn=os.path.join(
                 self.destination_dir,
                 'placement',
@@ -198,7 +262,7 @@ class Workflow_Placement(sl.WorkflowTask):
         edpl = self.new_task(
             'calculate_edpl',
             Jplace_EDPL,
-            containerinfo=self.test_containerinfo,
+            containerinfo=self.himem_containerinfo,
             edpl_fn=os.path.join(
                 self.destination_dir,
                 'placement',
@@ -213,7 +277,7 @@ class Workflow_Placement(sl.WorkflowTask):
         epca = self.new_task(
             'calculate_epca',
             Jplace_PCA,
-            containerinfo=self.test_containerinfo,
+            containerinfo=self.long_containerinfo,
             path=os.path.join(
                 self.destination_dir,
                 'placement',
@@ -233,7 +297,7 @@ class Workflow_Placement(sl.WorkflowTask):
         lpca = self.new_task(
             'calculate_lpca',
             Jplace_PCA,
-            containerinfo=self.test_containerinfo,
+            containerinfo=self.long_containerinfo,
             path=os.path.join(
                 self.destination_dir,
                 'placement',
@@ -253,7 +317,7 @@ class Workflow_Placement(sl.WorkflowTask):
         kr_distance = self.new_task(
             'calculate_kr_distance',
             Jplace_KR_Distance,
-            containerinfo=self.test_containerinfo,
+            containerinfo=self.long_containerinfo,
             kr_fn=os.path.join(
                 self.destination_dir,
                 'placement',
@@ -271,7 +335,7 @@ class Workflow_Placement(sl.WorkflowTask):
         alpha_diversity = self.new_task(
             'calculate_alpha_diversity',
             Jplace_Alpha_Diversity,
-            containerinfo=self.test_containerinfo,
+            containerinfo=self.light_containerinfo,
             alpha_diversity_fn=os.path.join(
                 self.destination_dir,
                 'placement',

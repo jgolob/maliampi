@@ -10,7 +10,7 @@ from collections import defaultdict
 import logging
 import os
 
-ENGINE = 'docker'
+ENGINE = 'singularity_pbs'
 log = logging.getLogger('sciluigi-interface')
 
 
@@ -30,46 +30,80 @@ class Workflow_DADA2(sl.WorkflowTask):
     test_containerinfo = sl.ContainerInfo(
                 vcpu=2,
                 mem=4096,
-                container_cache=os.path.abspath(os.path.join('../working', 'containers/')),
+                container_cache='/scratch/schmidti_fluxm/golobj/singularity_img/',
                 engine=ENGINE,
                 aws_s3_scratch_loc='s3://fh-pi-fredricks-d/lab/golob/sl_temp/',
                 aws_jobRoleArn='arn:aws:iam::064561331775:role/fh-pi-fredricks-d-batchtask',
                 aws_batch_job_queue='optimal',
-                slurm_partition='boneyard'
+                slurm_partition='boneyard',
+                pbs_account='schmidti_fluxm',
+                pbs_queue='fluxm'
             )
 
     local_containerinfo = sl.ContainerInfo(
                 vcpu=1,
                 mem=4096,
-                container_cache=os.path.abspath(os.path.join('../working', 'containers/')),
-                engine='docker',
+                container_cache='/scratch/schmidti_fluxm/golobj/singularity_img/',
+                engine=ENGINE,
                 aws_s3_scratch_loc='s3://fh-pi-fredricks-d/lab/golob/sl_temp/',
                 aws_jobRoleArn='arn:aws:iam::064561331775:role/fh-pi-fredricks-d-batchtask',
                 aws_batch_job_queue='optimal',
-                slurm_partition='boneyard'
+                slurm_partition='boneyard',
+                pbs_account='schmidti_fluxm',
+                pbs_queue='fluxm',
+                pbs_scriptpath='/scratch/schmidti_fluxm/golobj/scripttmp',
+                timeout=10,
             )
 
     light_containerinfo = sl.ContainerInfo(
                 vcpu=1,
                 mem=4096,
+<<<<<<< HEAD
                 container_cache=os.path.abspath(os.path.join('../working', 'containers/')),
                 #engine='aws_batch',
                 engine='docker',
+=======
+                container_cache='/scratch/schmidti_fluxm/golobj/singularity_img/',
+                engine=ENGINE,
+>>>>>>> ae7dc910da3b93b93ca387f4ac951fa03e564177
                 aws_s3_scratch_loc='s3://fh-pi-fredricks-d/lab/golob/sl_temp/',
                 aws_jobRoleArn='arn:aws:iam::064561331775:role/fh-pi-fredricks-d-batchtask',
                 aws_batch_job_queue='optimal',
-                slurm_partition='boneyard'
+                slurm_partition='boneyard',
+                pbs_account='schmidti_fluxm',
+                pbs_queue='fluxm',
+                pbs_scriptpath='/scratch/schmidti_fluxm/golobj/scripttmp',
+                timeout=10,
+            )
+
+    long_containerinfo = sl.ContainerInfo(
+                vcpu=1,
+                mem=4096,
+                container_cache='/scratch/schmidti_fluxm/golobj/singularity_img/',
+                engine=ENGINE,
+                aws_s3_scratch_loc='s3://fh-pi-fredricks-d/lab/golob/sl_temp/',
+                aws_jobRoleArn='arn:aws:iam::064561331775:role/fh-pi-fredricks-d-batchtask',
+                aws_batch_job_queue='optimal',
+                slurm_partition='boneyard',
+                pbs_account='schmidti_fluxm',
+                pbs_queue='fluxm',
+                pbs_scriptpath='/scratch/schmidti_fluxm/golobj/scripttmp',
+                timeout=6000,
             )
 
     heavy_containerinfo = sl.ContainerInfo(
-                vcpu=4,
-                mem=16384,
-                container_cache=os.path.abspath(os.path.join('../working', 'containers/')),
-                engine='aws_batch',
+                vcpu=6,
+                mem=6 * 4096,
+                container_cache='/scratch/schmidti_fluxm/golobj/singularity_img/',
+                engine=ENGINE,
                 aws_s3_scratch_loc='s3://fh-pi-fredricks-d/lab/golob/sl_temp/',
                 aws_jobRoleArn='arn:aws:iam::064561331775:role/fh-pi-fredricks-d-batchtask',
                 aws_batch_job_queue='optimal',
-                slurm_partition='boneyard'
+                slurm_partition='boneyard',
+                pbs_account='schmidti_fluxm',
+                pbs_queue='fluxm',
+                pbs_scriptpath='/scratch/schmidti_fluxm/golobj/scripttmp',
+                timeout=60,
             )
 
     heavy_containerinfo = light_containerinfo
@@ -117,6 +151,9 @@ class Workflow_DADA2(sl.WorkflowTask):
                 DADA2_FilterAndTrim,
                 containerinfo=self.light_containerinfo,
                 specimen=specimen,
+                f_trunc=235,
+                r_trunc=235,
+                trim_left=15,
                 path=os.path.join(
                     self.working_dir,
                     'sv',
@@ -148,6 +185,7 @@ class Workflow_DADA2(sl.WorkflowTask):
                 DADA2_LearnError,
                 containerinfo=self.heavy_containerinfo,
                 batch=batch,
+                tar_reads=False,
                 path=os.path.join(
                     self.working_dir,
                     'sv',
@@ -216,7 +254,7 @@ class Workflow_DADA2(sl.WorkflowTask):
         combined_seqtab = self.new_task(
             'dada2_combine_seqtabs',
             DADA2_Combine_Seqtabs,
-            containerinfo=self.local_containerinfo,
+            containerinfo=self.long_containerinfo,
             fn=os.path.join(
                         self.working_dir,
                         'sv',
