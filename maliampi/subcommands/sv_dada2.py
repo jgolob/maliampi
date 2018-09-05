@@ -70,9 +70,9 @@ class Workflow_DADA2(sl.WorkflowTask):
                 timeout=10,
             )
 
-    heavy_containerinfo = sl.ContainerInfo(
-                vcpu=4,
-                mem=16384,
+    long_containerinfo = sl.ContainerInfo(
+                vcpu=1,
+                mem=4096,
                 container_cache='/scratch/schmidti_fluxm/golobj/singularity_img/',
                 engine=ENGINE,
                 aws_s3_scratch_loc='s3://fh-pi-fredricks-d/lab/golob/sl_temp/',
@@ -82,7 +82,22 @@ class Workflow_DADA2(sl.WorkflowTask):
                 pbs_account='schmidti_fluxm',
                 pbs_queue='fluxm',
                 pbs_scriptpath='/scratch/schmidti_fluxm/golobj/scripttmp',
-                timeout=600,
+                timeout=6000,
+            )
+
+    heavy_containerinfo = sl.ContainerInfo(
+                vcpu=6,
+                mem=6 * 4096,
+                container_cache='/scratch/schmidti_fluxm/golobj/singularity_img/',
+                engine=ENGINE,
+                aws_s3_scratch_loc='s3://fh-pi-fredricks-d/lab/golob/sl_temp/',
+                aws_jobRoleArn='arn:aws:iam::064561331775:role/fh-pi-fredricks-d-batchtask',
+                aws_batch_job_queue='optimal',
+                slurm_partition='boneyard',
+                pbs_account='schmidti_fluxm',
+                pbs_queue='fluxm',
+                pbs_scriptpath='/scratch/schmidti_fluxm/golobj/scripttmp',
+                timeout=60,
             )
 
     def workflow(self):
@@ -128,6 +143,9 @@ class Workflow_DADA2(sl.WorkflowTask):
                 DADA2_FilterAndTrim,
                 containerinfo=self.light_containerinfo,
                 specimen=specimen,
+                f_trunc=235,
+                r_trunc=235,
+                trim_left=15,
                 path=os.path.join(
                     self.working_dir,
                     'sv',
@@ -228,7 +246,7 @@ class Workflow_DADA2(sl.WorkflowTask):
         combined_seqtab = self.new_task(
             'dada2_combine_seqtabs',
             DADA2_Combine_Seqtabs,
-            containerinfo=self.light_containerinfo,
+            containerinfo=self.long_containerinfo,
             fn=os.path.join(
                         self.working_dir,
                         'sv',
