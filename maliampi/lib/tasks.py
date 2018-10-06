@@ -1827,13 +1827,13 @@ class LoadSpecimenReads(sl.ExternalTask):
                 specimen_manifest['read__2'],
                 format=luigi.format.Nop
             )
-        if 'index__1' in specimen_manifest:
+        if 'index__1' in specimen_manifest and specimen_manifest['index__1'] != "":
             reads_dict['I1'] = sl.ContainerTargetInfo(
                 self,
                 specimen_manifest['index__1'],
                 format=luigi.format.Nop
             )
-        if 'index__2' in specimen_manifest:
+        if 'index__2' in specimen_manifest and specimen_manifest['index__2'] != "":
             reads_dict['I2'] = sl.ContainerTargetInfo(
                 self,
                 specimen_manifest['index__2'],
