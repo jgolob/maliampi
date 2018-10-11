@@ -126,17 +126,17 @@ class MALIAMPI:
                 '--sequence-variants-path={}'.format(
                     args.sequence_variants
                     ),
-                '--repo-filtered-seq-info={}'.format(
-                    args.repo_filtered_seq_info
+                '--repo-fl-seq-info={}'.format(
+                    args.repo_fl_seq_info
                     ),
-                '--repo-filtered={}'.format(
-                    args.repo_filtered
+                '--repo-fl-fasta={}'.format(
+                    args.repo_fl_fasta
                     ),
-                '--repo-genomes-seq-info={}'.format(
-                    args.repo_genomes_seq_info
+                '--repo-primary-seq-info={}'.format(
+                    args.repo_primary_seq_info
                     ),
-                '--repo-genomes={}'.format(
-                    args.repo_genomes
+                '--repo-primary-fasta={}'.format(
+                    args.repo_primary_fasta
                     ),
                 '--new-refpkg-path={}'.format(
                     args.refpkg_destdir
@@ -147,14 +147,11 @@ class MALIAMPI:
                 '--working-dir={}'.format(
                     args.working_dir
                     ),
-                '--min-id-genomes={}'.format(
-                    args.min_id_genomes
+                '--min-id-primary={}'.format(
+                    args.min_id_primary
                     ),
-                '--min-id-filtered={}'.format(
-                    args.min_id_filtered
-                    ),
-                '--min-id-unnamed={}'.format(
-                    args.min_id_unnamed
+                '--min-id-fl={}'.format(
+                    args.min_id_fl
                     ),
                 '--min-best={}'.format(
                     args.min_best

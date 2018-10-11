@@ -88,8 +88,8 @@ class Workflow_Placement(sl.WorkflowTask):
             )
 
     heavy_containerinfo = sl.ContainerInfo(
-                vcpu=12,
-                mem=12 * 8000,
+                vcpu=10,
+                mem=10 * 8000,
                 container_cache='/scratch/schmidti_fluxm/golobj/singularity_img/',
                 engine=ENGINE,
                 aws_s3_scratch_loc='s3://fh-pi-fredricks-d/lab/golob/sl_temp/',

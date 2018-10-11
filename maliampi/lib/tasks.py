@@ -373,7 +373,7 @@ class RAxMLTree(sl.ContainerTask):
     # A task that uses RAxML to generate a tree from an alignment
 
     # Define the container (in docker-style repo format) to complete this task
-    container = 'golob/raxml:8.2.11_bcw_0.2.0'
+    container = 'golob/raxml:8.2.11_bcw_0.3.0'
 
     # Input of an alignment in FASTA format
     in_align_fasta = None
@@ -382,7 +382,10 @@ class RAxMLTree(sl.ContainerTask):
     tree_path = sl.Parameter()
     tree_stats_path = sl.Parameter()
     # DIRECTORY where the intermediate RAxML files should go (container fs space)
-    raxml_working_dir = sl.Parameter(default='/scratch')
+    raxml_working_dir = sl.Parameter(default=os.path.join(
+        '/tmp',
+        str(uuid.uuid4())
+    ))
 
     # Parameters for RAxML
 
@@ -419,7 +422,8 @@ class RAxMLTree(sl.ContainerTask):
                     ' -T %d' % max([int(self.containerinfo.vcpu), 2]) +  # threads (min 2)
                     ' -w $raxml_working_dir' +  # working directory
                     ' && cp $raxml_working_dir/RAxML_bestTree.%s $out_tree' % name +
-                    ' && cp $raxml_working_dir/RAxML_info.%s $out_tree_stats' % name,
+                    ' && cp $raxml_working_dir/RAxML_info.%s $out_tree_stats' % name +
+                    ' && rm -r $raxml_working_dir',
             input_targets=input_targets,
             output_targets=output_targets,
             extra_params={'raxml_working_dir': self.raxml_working_dir},
@@ -803,13 +807,16 @@ class NT_Repo_Output_FastaSeqInfo(sl.Task):
 
 
 class BuildTaxtasticDB(sl.ContainerTask):
-    # A Task that uses vsearch to find matches for experimental sequences in a repo of sequences
 
     # Define the container (in docker-style repo format) to complete this task
     container = 'golob/pplacer:1.1alpha19rc_BCW_0.3.0'
 
     # Where to put the sqlite database
     tax_db_path = sl.Parameter()
+    download_dir = sl.Parameter(default=os.path.join(
+        '/tmp',
+        str(uuid.uuid4())
+    ))
 
     def out_tax_db(self):
         return sl.ContainerTargetInfo(self, self.tax_db_path)
@@ -823,9 +830,12 @@ class BuildTaxtasticDB(sl.ContainerTask):
         self.ex(
             command='taxit ' +
                     ' new_database' +
-                    ' $tax_db',
+                    ' $tax_db'
+                    ' -p $download_dir',
             output_targets=output_targets,
-            )
+            extra_params={
+                'download_dir': self.download_dir,
+            })
 
 
 class FilterSeqinfoToFASTA(sl.Task):
@@ -921,6 +931,12 @@ class CombineRefpkg(sl.ContainerTask):
     # version, defaults to a timestamp of YYYYmmdd_HHMMSS
     refpkg_version = sl.Parameter(default=datetime.now().strftime('%Y%m%d_%H%M%S'))
 
+    working_dir = sl.Parameter(default=os.path.join(
+        '/tmp',
+        str(uuid.uuid4())
+    ))
+
+
     # dependencies
     in_aln_fasta = None
     in_aln_sto = None
@@ -959,7 +975,7 @@ class CombineRefpkg(sl.ContainerTask):
         # how to handle directory target?
 
         self.ex(
-            command='mkdir -p /scratch && cd /scratch && taxit' +
+            command='mkdir -p $working_dir && cd $working_dir && taxit' +
             ' create --locus 16S' +
             ' --package-name $refpkg_name --clobber' +
             ' --aln-fasta $aln_fasta ' +
@@ -969,10 +985,14 @@ class CombineRefpkg(sl.ContainerTask):
             ' --taxonomy $taxtable ' +
             ' --seq-info $seq_info ' +
             ' --profile $cm ' +
-            ' && tar czvf $refpkg_tgz $refpkg_name/*',
+            ' && tar czvf $refpkg_tgz $refpkg_name/* '+
+            ' && rm -r $working_dir ',
             input_targets=input_targets,
             output_targets=output_targets,
-            extra_params={'refpkg_name': self.refpkg_name_ver()}
+            extra_params={
+                'refpkg_name': self.refpkg_name_ver(),
+                'working_dir': self.working_dir,
+            }
         )
 
 
