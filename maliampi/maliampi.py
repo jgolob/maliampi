@@ -271,7 +271,7 @@ class MALIAMPI:
                 '--workers={}'.format(
                     args.workers
                 ),
-            ]
+        ]
 
         if args.sv_weights_csv:
             cmdline_args.append(
