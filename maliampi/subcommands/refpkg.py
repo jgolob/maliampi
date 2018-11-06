@@ -3,7 +3,8 @@ import luigi
 import sciluigi as sl
 from lib.tasks import LoadFastaSeqs, SearchRepoForMatches, CMAlignSeqs, RAxMLTree, LoadFile
 from lib.tasks import BuildTaxtasticDB, FilterSeqinfoToFASTA, TaxTableForSeqInfo, ObtainCM
-from lib.tasks import AlignmentStoToFasta, CombineRefpkg, CombineRepoMatches
+from lib.tasks import AlignmentStoToFasta, CombineRefpkg, CombineRepoMatches, ConfirmSeqInfoTaxonomy
+from lib.tasks import CleanupTreeInfo
 import os
 
 
@@ -21,13 +22,31 @@ class WorkflowMakeRefpkg(sl.WorkflowTask):
     sequence_variants_path = sl.Parameter()
     new_refpkg_path = sl.Parameter()
     new_refpkg_name = sl.Parameter()
-    repo_fl_seq_info = sl.Parameter(default="")
-    repo_fl_fasta = sl.Parameter(default="")
-    repo_primary_seq_info = sl.Parameter()
-    repo_primary_fasta = sl.Parameter()
-    min_id_primary = sl.Parameter()
-    min_id_fl = sl.Parameter()
+
+    # Our goal is to have some annotated reference sequence with this
+    # sequence identity for each experimental sequence variant.
     min_best = sl.Parameter()
+
+    # Annotated sequences have trusted annotations 
+    # (taxonomic / gene content / etc). To be used for classification
+    # this needs to be a subset where SOME metrics are used to validate
+    # annotations (source, as in genome or type strain; consensus based on seq id)
+    repo_annotated_seq_info = sl.Parameter()
+    repo_annotated_fasta = sl.Parameter()
+    min_id_annotated = sl.Parameter()
+
+    # Not every experimental sequence variant is going to have an annotated sequence
+    # availble. Thus we can have a larger second repo (where we do NOT trust the annotations)
+    # but where at least the sequence quality is valid (full length, actually 16S, 
+    # without many ambiguous bases) from which we can recruit additional sequences.
+    # These can be annotated via some metric, OR used to to recruit additional seqs from the 
+    # annotated set based on FULL LENGTH identity. 
+    repo_valid_seq_info = sl.Parameter(default="")
+    repo_valid_fasta = sl.Parameter(default="")
+    min_id_valid = sl.Parameter()
+
+    # email for entez
+    entrez_email = sl.Parameter()
 
     def workflow(self):
         # Intialize our container info
@@ -59,7 +78,7 @@ class WorkflowMakeRefpkg(sl.WorkflowTask):
                 self.working_dir,
                 'refpkg',
                 'taxonomy.db'
-                )
+            )
         )
 
         #
@@ -72,62 +91,79 @@ class WorkflowMakeRefpkg(sl.WorkflowTask):
         )
 
         #
-        # Load the primary repository
+        # Load the annotated repository
         #
-        repo_primary = self.new_task(
-            'load_primary_repo',
+        repo_annotated = self.new_task(
+            'load_annotated_repo',
             LoadFastaSeqs,
-            fasta_seq_path=self.repo_primary_fasta
+            fasta_seq_path=self.repo_annotated_fasta
         )
 
-        repo_primary_seq_info = self.new_task(
-            'load_primary_seq_info',
+        repo_annotated_seq_info = self.new_task(
+            'load_annotated_seq_info',
             LoadFile,
-            path=self.repo_primary_seq_info
+            path=self.repo_annotated_seq_info
         )
 
-
         #
-        # Search the sequence variants in the primary repository
+        # Search the sequence variants in the annotated repository
         #
 
-        search_sv_primary = self.new_task(
-            'search_sv_primary',
+        search_sv_annotated = self.new_task(
+            'search_sv_annotated',
             SearchRepoForMatches,
             containerinfo=midcpu_containerinfo,
             matches_uc_path=os.path.join(self.working_dir,
                                          'refpkg',
-                                         'repo_matches.primary.uc'),
+                                         'repo_matches.annotated.uc'),
             unmatched_exp_seqs_path=os.path.join(self.working_dir,
                                                  'refpkg',
-                                                 'exp_seqs_unmatched.primary.fasta'),
+                                                 'exp_seqs_unmatched.annotated.fasta'),
             matched_repo_seqs_path=os.path.join(self.working_dir,
                                                 'refpkg',
-                                                'recruited_repo_seqs.primary.fasta'),
-            min_id=self.min_id_primary,
+                                                'recruited_repo_seqs.annotated.fasta'),
+            min_id=self.min_id_annotated,
             maxaccepts=10,  # Default take the top 10 (roughly corresponding to a 95% id for most)
         )
-        search_sv_primary.in_exp_seqs = sequence_variants.out_seqs
-        search_sv_primary.in_repo_seqs = repo_primary.out_seqs
+        search_sv_annotated.in_exp_seqs = sequence_variants.out_seqs
+        search_sv_annotated.in_repo_seqs = repo_annotated.out_seqs
 
         # 
-        #  Filter the primary seq_info to be limited to entries for our recruits
+        #  Filter the annotated seq_info to be limited to entries for our recruits
         #
 
-        filter_seqinfo_primary = self.new_task(
-            'filter_si_primary',
+        filter_seqinfo_annotated = self.new_task(
+            'filter_si_annotated',
             FilterSeqinfoToFASTA,
             filtered_seq_info_fn=os.path.join(
                 self.working_dir,
                 'refpkg',
-                'repo_matches.primary.seq_info.csv'
+                'repo_matches.annotated.seq_info.csv'
             )
         )
-        filter_seqinfo_primary.in_fasta = search_sv_primary.out_matched_repo_seqs
-        filter_seqinfo_primary.in_seq_info = repo_primary_seq_info.out_file
+        filter_seqinfo_annotated.in_fasta = search_sv_annotated.out_matched_repo_seqs
+        filter_seqinfo_annotated.in_seq_info = repo_annotated_seq_info.out_file
 
-        refpkg_seqs = search_sv_primary.out_matched_repo_seqs
-        refpkg_seqinfo = filter_seqinfo_primary.out_seq_info
+        refpkg_seqs = search_sv_annotated.out_matched_repo_seqs
+        refpkg_seqinfo = filter_seqinfo_annotated.out_seq_info
+
+        #
+        # Verify the taxonomy for the refpkg seqinfo file.
+        #
+
+        verified_refpkg_seqinfo = self.new_task(
+            'verify_refpkg_seqinfo_taxonomy',
+            ConfirmSeqInfoTaxonomy,
+            email=self.entrez_email,
+            containerinfo=light_containerinfo,
+            confirmed_seqinfo_path=os.path.join(
+                self.working_dir,
+                'refpkg',
+                'seq_info.refpkg.verified_tax.csv'
+            )
+        )
+        verified_refpkg_seqinfo.in_seq_info = refpkg_seqinfo
+        verified_refpkg_seqinfo.in_tax_db = taxonomy_db.out_tax_db
 
         #
         # Parse UC file to determine if we achieved our minimum-best goal
@@ -187,6 +223,20 @@ class WorkflowMakeRefpkg(sl.WorkflowTask):
         )
         raxml_tree.in_align_fasta = align_fasta.out_align_fasta
 
+        # 
+        # Cleanup the tree info to remove cruft
+        #
+
+        tree_info_cleanup = self.new_task(
+            'tree_info_cleanup',
+            CleanupTreeInfo,
+            tree_info_path=os.path.join(self.working_dir,
+                                         'refpkg',
+                                         'refpkg.tre.cleaned.info'),
+        )
+        tree_info_cleanup.in_tree_info = raxml_tree.out_tree_stats
+
+
         #
         #  Start to assemble the reference package at this point
         #
@@ -202,7 +252,7 @@ class WorkflowMakeRefpkg(sl.WorkflowTask):
                 'taxtable.csv'
             )
         )
-        refpkg_taxtable.in_seq_info = refpkg_seqinfo
+        refpkg_taxtable.in_seq_info = verified_refpkg_seqinfo.out_seq_info
         refpkg_taxtable.in_tax_db = taxonomy_db.out_tax_db
 
         # Covariance Matrix
@@ -231,9 +281,9 @@ class WorkflowMakeRefpkg(sl.WorkflowTask):
         combine_refpgk.in_aln_fasta = align_fasta.out_align_fasta
         combine_refpgk.in_aln_sto = align_recruits.out_align_sto
         combine_refpgk.in_tree = raxml_tree.out_tree
-        combine_refpgk.in_tree_stats = raxml_tree.out_tree_stats
+        combine_refpgk.in_tree_stats = tree_info_cleanup.out_tree_info
         combine_refpgk.in_taxtable = refpkg_taxtable.out_taxtable
-        combine_refpgk.in_seq_info = refpkg_seqinfo
+        combine_refpgk.in_seq_info = verified_refpkg_seqinfo.out_seq_info
         combine_refpgk.in_cm = obtain_cm.out_cm
 
         return(combine_refpgk)
@@ -323,35 +373,40 @@ def build_args(parser):
         help="""Path to sequence variants (in FASTA format)
             for which we need a reference set created""",
         required=True
-        )
+    )
     parser.add_argument(
-        '--repo-fl-seq-info',
+        '--entrez-email',
+        help="Valid email for use with NCBI Entrez",
+        required=True,
+    )
+    parser.add_argument(
+        '--repo-valid-seq-info',
         help="""Path to full-length repository sequences information
             csv format expected""",
         type=str,
         default=""
-        )
+    )
     parser.add_argument(
-        '--repo-fl-fasta',
+        '--repo-valid-fasta',
         help="""Path(s) to repository full-length sequences
             from which we should recruit. FASTA format expected""",
         type=str,
         default=""
-        )
+    )
     parser.add_argument(
-        '--repo-primary-seq-info',
+        '--repo-annotated-seq-info',
         help="""Path to repository sequences information
             csv format expected""",
         type=str,
         required=True
-        )
+    )
     parser.add_argument(
-        '--repo-primary-fasta',
-        help="""Path(s) to repository sequences with primary annotations
+        '--repo-annotated-fasta',
+        help="""Path(s) to repository sequences with annotated annotations
             from which we should recruit. FASTA format expected""",
         type=str,
         required=True
-        )
+    )
     parser.add_argument(
         '--refpkg-destdir',
         help='Directory where the new reference package should be placed',
@@ -370,13 +425,13 @@ def build_args(parser):
         default='.',
     )
     parser.add_argument(
-        '--min-id-primary',
+        '--min-id-annotated',
         default=0.8,
         type=float,
-        help='Min percent identity when recruiting from primary-annotation 16S'
+        help='Min percent identity when recruiting from annotated-annotation 16S'
     )
     parser.add_argument(
-        '--min-id-fl',
+        '--min-id-valid',
         default=0.99,
         type=float,
         help='Min percent identity when recruiting from full-length 16S'
