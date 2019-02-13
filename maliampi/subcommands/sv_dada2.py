@@ -129,7 +129,7 @@ class Workflow_DADA2(sl.WorkflowTask):
                 specimen=specimen
             )
             specimen_tasks[specimen]['reads'].in_manifest = manifest.out_file
-            if self.barcodecop and manifest.has_index() and manifest.is_paired():
+            if self.barcodecop and "I1" in specimen_tasks[specimen]['reads'].out_reads() and manifest.is_paired():
                 specimen_tasks[specimen]['verified_reads'] = self.new_task(
                     'specimen_bcc_{}'.format(specimen),
                     BCCSpecimenReads,

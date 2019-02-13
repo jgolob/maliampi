@@ -321,6 +321,10 @@ class CMAlignSeqs(sl.ContainerTask):
     # cmalign parameters
     # max memory to use in MB.
     cmalign_mxsize = sl.Parameter(default=8196)
+    working_dir = sl.Parameter(default=os.path.join(
+        '/tmp',
+        str(uuid.uuid4())
+    ))
 
     def out_alignscores(self):
         return sl.ContainerTargetInfo(self, self.alignment_score_fn)
@@ -341,12 +345,21 @@ class CMAlignSeqs(sl.ContainerTask):
         }
 
         self.ex(
-            command='cmalign' +
-            ' --cpu %s --noprob --dnaout --mxsize %d' % (self.containerinfo.vcpu, self.cmalign_mxsize) +
-            ' --sfile $alignscores -o $align_sto ' +
-            ' /cmalign/data/SSU_rRNA_bacteria.cm $in_seqs',
+            command=(
+                'mkdir -p $working_dir && cd $working_dir &&'
+                ' cmalign'
+                ' --cpu $vcpu --noprob --dnaout --mxsize $mxsize' 
+                ' --sfile $alignscores -o $align_sto '
+                ' /cmalign/data/SSU_rRNA_bacteria.cm $in_seqs'
+                ' && rm -r $working_dir'
+            ),
             input_targets=input_targets,
-            output_targets=output_targets
+            output_targets=output_targets,
+            extra_params={
+                'vcpu': self.containerinfo.vcpu,
+                'mxsize': self.cmalign_mxsize,
+                'working_dir': self.working_dir
+            }
         )
 
 
@@ -369,11 +382,78 @@ class AlignmentStoToFasta(sl.Task):
             )
 
 
+class CleanupTreeInfo(sl.Task):
+    #  Get rid of extraneous info from tree info file from RAxML
+    in_tree_info = None
+    tree_info_path = sl.Parameter()
+
+    def out_tree_info(self):
+        return sl.ContainerTargetInfo(
+            self,
+            self.tree_info_path
+        )
+
+    def run(self):
+        with self.out_tree_info().open('w') as out_h:
+            with self.in_tree_info().open('r') as in_h:
+                past_cruft = False
+                for l in in_h:
+                    if "This is RAxML version" == l[0:21]:
+                        past_cruft = True
+                    if past_cruft:
+                        out_h.write(l)
+
+
+class ConfirmSeqInfoTaxonomy(sl.ContainerTask):
+    #  tax ids can change / be retired over time.
+    #  Confirm all tax ids in our seq info file are current
+    #  Correct as needed
+    container = 'golob/seqinfo_taxonomy_sync:0.2.1__bcw.0.3.0'
+
+    in_tax_db = None
+    in_seq_info = None
+
+    # Entrez expects an email
+    email = sl.Parameter()
+    # Where to put the corrected seqinfo
+    confirmed_seqinfo_path = sl.Parameter()
+
+    def out_seq_info(self):
+        return sl.ContainerTargetInfo(
+            self,
+            self.confirmed_seqinfo_path
+        )
+    
+    def run(self):
+        input_targets = {
+            'seqinfo': self.in_seq_info(),
+            'taxonomy_db': self.in_tax_db(),
+        }
+        output_targets = {
+            'outseqinfo': self.out_seq_info()
+        }
+        extra_params = {
+            'email': self.email
+        }
+        self.ex(
+            command=(
+                'seqinfo_taxonomy_sync.py '
+                '$seqinfo '
+                '$outseqinfo '
+                ' --db $taxonomy_db '
+                ' --email $email'
+            ),
+            input_targets=input_targets,
+            output_targets=output_targets,
+            extra_params=extra_params
+        )
+
+
 class RAxMLTree(sl.ContainerTask):
     # A task that uses RAxML to generate a tree from an alignment
 
     # Define the container (in docker-style repo format) to complete this task
-    container = 'golob/raxml:8.2.11_bcw_0.2.0'
+    container = 'golob/raxml:8.2.11_bcw_0.3.0'
 
     # Input of an alignment in FASTA format
     in_align_fasta = None
@@ -382,7 +462,10 @@ class RAxMLTree(sl.ContainerTask):
     tree_path = sl.Parameter()
     tree_stats_path = sl.Parameter()
     # DIRECTORY where the intermediate RAxML files should go (container fs space)
-    raxml_working_dir = sl.Parameter(default='/scratch')
+    raxml_working_dir = sl.Parameter(default=os.path.join(
+        '/tmp',
+        str(uuid.uuid4())
+    ))
 
     # Parameters for RAxML
 
@@ -419,7 +502,8 @@ class RAxMLTree(sl.ContainerTask):
                     ' -T %d' % max([int(self.containerinfo.vcpu), 2]) +  # threads (min 2)
                     ' -w $raxml_working_dir' +  # working directory
                     ' && cp $raxml_working_dir/RAxML_bestTree.%s $out_tree' % name +
-                    ' && cp $raxml_working_dir/RAxML_info.%s $out_tree_stats' % name,
+                    ' && cp $raxml_working_dir/RAxML_info.%s $out_tree_stats' % name +
+                    ' && rm -r $raxml_working_dir',
             input_targets=input_targets,
             output_targets=output_targets,
             extra_params={'raxml_working_dir': self.raxml_working_dir},
@@ -803,13 +887,16 @@ class NT_Repo_Output_FastaSeqInfo(sl.Task):
 
 
 class BuildTaxtasticDB(sl.ContainerTask):
-    # A Task that uses vsearch to find matches for experimental sequences in a repo of sequences
 
     # Define the container (in docker-style repo format) to complete this task
     container = 'golob/pplacer:1.1alpha19rc_BCW_0.3.0'
 
     # Where to put the sqlite database
     tax_db_path = sl.Parameter()
+    download_dir = sl.Parameter(default=os.path.join(
+        '/tmp',
+        str(uuid.uuid4())
+    ))
 
     def out_tax_db(self):
         return sl.ContainerTargetInfo(self, self.tax_db_path)
@@ -823,9 +910,12 @@ class BuildTaxtasticDB(sl.ContainerTask):
         self.ex(
             command='taxit ' +
                     ' new_database' +
-                    ' $tax_db',
+                    ' $tax_db'
+                    ' -p $download_dir',
             output_targets=output_targets,
-            )
+            extra_params={
+                'download_dir': self.download_dir,
+            })
 
 
 class FilterSeqinfoToFASTA(sl.Task):
@@ -921,6 +1011,12 @@ class CombineRefpkg(sl.ContainerTask):
     # version, defaults to a timestamp of YYYYmmdd_HHMMSS
     refpkg_version = sl.Parameter(default=datetime.now().strftime('%Y%m%d_%H%M%S'))
 
+    working_dir = sl.Parameter(default=os.path.join(
+        '/tmp',
+        str(uuid.uuid4())
+    ))
+
+
     # dependencies
     in_aln_fasta = None
     in_aln_sto = None
@@ -959,7 +1055,7 @@ class CombineRefpkg(sl.ContainerTask):
         # how to handle directory target?
 
         self.ex(
-            command='mkdir -p /scratch && cd /scratch && taxit' +
+            command='mkdir -p $working_dir && cd $working_dir && taxit' +
             ' create --locus 16S' +
             ' --package-name $refpkg_name --clobber' +
             ' --aln-fasta $aln_fasta ' +
@@ -969,10 +1065,14 @@ class CombineRefpkg(sl.ContainerTask):
             ' --taxonomy $taxtable ' +
             ' --seq-info $seq_info ' +
             ' --profile $cm ' +
-            ' && tar czvf $refpkg_tgz $refpkg_name/*',
+            ' && tar czvf $refpkg_tgz $refpkg_name/* '+
+            ' && rm -r $working_dir ',
             input_targets=input_targets,
             output_targets=output_targets,
-            extra_params={'refpkg_name': self.refpkg_name_ver()}
+            extra_params={
+                'refpkg_name': self.refpkg_name_ver(),
+                'working_dir': self.working_dir,
+            }
         )
 
 
@@ -1827,13 +1927,13 @@ class LoadSpecimenReads(sl.ExternalTask):
                 specimen_manifest['read__2'],
                 format=luigi.format.Nop
             )
-        if 'index__1' in specimen_manifest:
+        if 'index__1' in specimen_manifest and specimen_manifest['index__1'] != "":
             reads_dict['I1'] = sl.ContainerTargetInfo(
                 self,
                 specimen_manifest['index__1'],
                 format=luigi.format.Nop
             )
-        if 'index__2' in specimen_manifest:
+        if 'index__2' in specimen_manifest and specimen_manifest['index__2'] != "":
             reads_dict['I2'] = sl.ContainerTargetInfo(
                 self,
                 specimen_manifest['index__2'],

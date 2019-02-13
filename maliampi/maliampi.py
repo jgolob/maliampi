@@ -125,40 +125,40 @@ class MALIAMPI:
             cmdline_args=[
                 '--sequence-variants-path={}'.format(
                     args.sequence_variants
-                    ),
-                '--repo-filtered-seq-info={}'.format(
-                    args.repo_filtered_seq_info
-                    ),
-                '--repo-filtered={}'.format(
-                    args.repo_filtered
-                    ),
-                '--repo-genomes-seq-info={}'.format(
-                    args.repo_genomes_seq_info
-                    ),
-                '--repo-genomes={}'.format(
-                    args.repo_genomes
-                    ),
+                ),
+                '--entrez-email={}'.format(
+                    args.entrez_email
+                ),
+                '--repo-valid-seq-info={}'.format(
+                    args.repo_valid_seq_info
+                ),
+                '--repo-valid-fasta={}'.format(
+                    args.repo_valid_fasta
+                ),
+                '--repo-annotated-seq-info={}'.format(
+                    args.repo_annotated_seq_info
+                ),
+                '--repo-annotated-fasta={}'.format(
+                    args.repo_annotated_fasta
+                ),
                 '--new-refpkg-path={}'.format(
                     args.refpkg_destdir
-                    ),
+                ),
                 '--new-refpkg-name={}'.format(
                     args.refpkg_name
-                    ),
+                ),
                 '--working-dir={}'.format(
                     args.working_dir
-                    ),
-                '--min-id-genomes={}'.format(
-                    args.min_id_genomes
-                    ),
-                '--min-id-filtered={}'.format(
-                    args.min_id_filtered
-                    ),
-                '--min-id-unnamed={}'.format(
-                    args.min_id_unnamed
-                    ),
+                ),
+                '--min-id-annotated={}'.format(
+                    args.min_id_annotated
+                ),
+                '--min-id-valid={}'.format(
+                    args.min_id_valid
+                ),
                 '--min-best={}'.format(
                     args.min_best
-                    ),
+                ),
                 '--workers={}'.format(
                     args.workers
                 ),
