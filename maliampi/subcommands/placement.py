@@ -239,7 +239,7 @@ class Workflow_Placement(sl.WorkflowTask):
         lpca = self.new_task(
             'calculate_lpca',
             Jplace_PCA,
-            containerinfo=long_containerinfo,
+            containerinfo=highmem_containerinfo,
             path=os.path.join(
                 self.destination_dir,
                 'placement',
