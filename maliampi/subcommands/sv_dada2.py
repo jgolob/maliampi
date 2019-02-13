@@ -10,9 +10,7 @@ from collections import defaultdict
 import logging
 import os
 
-ENGINE = 'singularity_pbs'
 log = logging.getLogger('sciluigi-interface')
-
 
 # Workflow
 class Workflow_DADA2(sl.WorkflowTask):
@@ -27,88 +25,22 @@ class Workflow_DADA2(sl.WorkflowTask):
     manifest = sl.Parameter()
     barcodecop = sl.Parameter(default=True)
 
-    test_containerinfo = sl.ContainerInfo(
-                vcpu=2,
-                mem=4096,
-                container_cache='/scratch/schmidti_fluxm/golobj/singularity_img/',
-                engine=ENGINE,
-                aws_s3_scratch_loc='s3://fh-pi-fredricks-d/lab/golob/sl_temp/',
-                aws_jobRoleArn='arn:aws:iam::064561331775:role/fh-pi-fredricks-d-batchtask',
-                aws_batch_job_queue='optimal',
-                slurm_partition='boneyard',
-                pbs_account='schmidti_fluxm',
-                pbs_queue='fluxm'
-            )
 
-    local_containerinfo = sl.ContainerInfo(
-                vcpu=1,
-                mem=4096,
-                container_cache='/scratch/schmidti_fluxm/golobj/singularity_img/',
-                engine=ENGINE,
-                aws_s3_scratch_loc='s3://fh-pi-fredricks-d/lab/golob/sl_temp/',
-                aws_jobRoleArn='arn:aws:iam::064561331775:role/fh-pi-fredricks-d-batchtask',
-                aws_batch_job_queue='optimal',
-                slurm_partition='boneyard',
-                pbs_account='schmidti_fluxm',
-                pbs_queue='fluxm',
-                pbs_scriptpath='/scratch/schmidti_fluxm/golobj/scripttmp',
-                timeout=10,
-            )
-
-    light_containerinfo = sl.ContainerInfo(
-                vcpu=1,
-                mem=4096,
-<<<<<<< HEAD
-                container_cache=os.path.abspath(os.path.join('../working', 'containers/')),
-                #engine='aws_batch',
-                engine='docker',
-=======
-                container_cache='/scratch/schmidti_fluxm/golobj/singularity_img/',
-                engine=ENGINE,
->>>>>>> ae7dc910da3b93b93ca387f4ac951fa03e564177
-                aws_s3_scratch_loc='s3://fh-pi-fredricks-d/lab/golob/sl_temp/',
-                aws_jobRoleArn='arn:aws:iam::064561331775:role/fh-pi-fredricks-d-batchtask',
-                aws_batch_job_queue='optimal',
-                slurm_partition='boneyard',
-                pbs_account='schmidti_fluxm',
-                pbs_queue='fluxm',
-                pbs_scriptpath='/scratch/schmidti_fluxm/golobj/scripttmp',
-                timeout=10,
-            )
-
-    long_containerinfo = sl.ContainerInfo(
-                vcpu=1,
-                mem=4096,
-                container_cache='/scratch/schmidti_fluxm/golobj/singularity_img/',
-                engine=ENGINE,
-                aws_s3_scratch_loc='s3://fh-pi-fredricks-d/lab/golob/sl_temp/',
-                aws_jobRoleArn='arn:aws:iam::064561331775:role/fh-pi-fredricks-d-batchtask',
-                aws_batch_job_queue='optimal',
-                slurm_partition='boneyard',
-                pbs_account='schmidti_fluxm',
-                pbs_queue='fluxm',
-                pbs_scriptpath='/scratch/schmidti_fluxm/golobj/scripttmp',
-                timeout=6000,
-            )
-
-    heavy_containerinfo = sl.ContainerInfo(
-                vcpu=6,
-                mem=6 * 4096,
-                container_cache='/scratch/schmidti_fluxm/golobj/singularity_img/',
-                engine=ENGINE,
-                aws_s3_scratch_loc='s3://fh-pi-fredricks-d/lab/golob/sl_temp/',
-                aws_jobRoleArn='arn:aws:iam::064561331775:role/fh-pi-fredricks-d-batchtask',
-                aws_batch_job_queue='optimal',
-                slurm_partition='boneyard',
-                pbs_account='schmidti_fluxm',
-                pbs_queue='fluxm',
-                pbs_scriptpath='/scratch/schmidti_fluxm/golobj/scripttmp',
-                timeout=60,
-            )
-
-    heavy_containerinfo = light_containerinfo
-    
     def workflow(self):
+        light_containerinfo = sl.ContainerInfo()
+        light_containerinfo.from_config(
+                section='light'
+        )
+        long_containerinfo = light_containerinfo
+        heavy_containerinfo = sl.ContainerInfo()
+        heavy_containerinfo.from_config(
+            section='heavy'
+        )
+        midcpu_containerinfo = sl.ContainerInfo()
+        midcpu_containerinfo.from_config(
+            section='midcpu'
+        )
+
         #
         #  Load the manifest of files
         #
@@ -133,7 +65,7 @@ class Workflow_DADA2(sl.WorkflowTask):
                 specimen_tasks[specimen]['verified_reads'] = self.new_task(
                     'specimen_bcc_{}'.format(specimen),
                     BCCSpecimenReads,
-                    containerinfo=self.light_containerinfo,
+                    containerinfo=light_containerinfo,
                     specimen=specimen,
                     path=os.path.join(
                         self.working_dir,
@@ -149,7 +81,7 @@ class Workflow_DADA2(sl.WorkflowTask):
             specimen_tasks[specimen]['dada2_ft'] = self.new_task(
                 'dada2_ft_{}'.format(specimen),
                 DADA2_FilterAndTrim,
-                containerinfo=self.light_containerinfo,
+                containerinfo=light_containerinfo,
                 specimen=specimen,
                 f_trunc=235,
                 r_trunc=235,
@@ -166,7 +98,7 @@ class Workflow_DADA2(sl.WorkflowTask):
             specimen_tasks[specimen]['dada2_derep'] = self.new_task(
                 'dada2_derep_{}'.format(specimen),
                 DADA2_Dereplicate,
-                containerinfo=self.light_containerinfo,
+                containerinfo=light_containerinfo,
                 specimen=specimen,
                 path=os.path.join(
                     self.working_dir,
@@ -183,7 +115,7 @@ class Workflow_DADA2(sl.WorkflowTask):
             batch_errModels[batch] = self.new_task(
                 'dada2_learn_error_batch_{}'.format(batch),
                 DADA2_LearnError,
-                containerinfo=self.heavy_containerinfo,
+                containerinfo=heavy_containerinfo,
                 batch=batch,
                 tar_reads=False,
                 path=os.path.join(
@@ -207,7 +139,7 @@ class Workflow_DADA2(sl.WorkflowTask):
             specimen_tasks[specimen]['dada2_dada'] = self.new_task(
                 'dada2_dada_{}'.format(specimen),
                 DADA2_DADA,
-                containerinfo=self.heavy_containerinfo,
+                containerinfo=midcpu_containerinfo,
                 specimen=specimen,
                 path=os.path.join(
                     self.working_dir,
@@ -223,7 +155,7 @@ class Workflow_DADA2(sl.WorkflowTask):
             specimen_tasks[specimen]['dada2_merge'] = self.new_task(
                 'dada2_merge_{}'.format(specimen),
                 DADA2_Merge,
-                containerinfo=self.light_containerinfo,
+                containerinfo=light_containerinfo,
                 specimen=specimen,
                 path=os.path.join(
                     self.working_dir,
@@ -239,7 +171,7 @@ class Workflow_DADA2(sl.WorkflowTask):
             specimen_tasks[specimen]['dada2_seqtab'] = self.new_task(
                 'dada2_seqtab_{}'.format(specimen),
                 DADA2_Specimen_Seqtab,
-                containerinfo=self.light_containerinfo,
+                containerinfo=light_containerinfo,
                 specimen=specimen,
                 path=os.path.join(
                     self.working_dir,
@@ -254,7 +186,7 @@ class Workflow_DADA2(sl.WorkflowTask):
         combined_seqtab = self.new_task(
             'dada2_combine_seqtabs',
             DADA2_Combine_Seqtabs,
-            containerinfo=self.long_containerinfo,
+            containerinfo=long_containerinfo,
             fn=os.path.join(
                         self.working_dir,
                         'sv',
@@ -270,7 +202,7 @@ class Workflow_DADA2(sl.WorkflowTask):
         combined_seqtab_nochim = self.new_task(
             'dada2_remove_chimera',
             DADA2_Remove_Chimera,
-            containerinfo=self.heavy_containerinfo,
+            containerinfo=heavy_containerinfo,
             fn_rds=os.path.join(
                         self.working_dir,
                         'sv',
@@ -287,7 +219,7 @@ class Workflow_DADA2(sl.WorkflowTask):
         dada2_sv_to_pplacer = self.new_task(
             'dada2_sv_to_pplacer',
             DADA2_SV_to_PPlacer,
-            containerinfo=self.light_containerinfo,
+            containerinfo=light_containerinfo,
             fasta_fn=os.path.join(
                         self.destination_dir,
                         'dada2.sv.fasta',
@@ -329,4 +261,3 @@ def build_args(parser):
         type=str,
         required=True,
     )
-
