@@ -115,7 +115,7 @@ class Workflow_DADA2(sl.WorkflowTask):
             batch_errModels[batch] = self.new_task(
                 'dada2_learn_error_batch_{}'.format(batch),
                 DADA2_LearnError,
-                containerinfo=heavy_containerinfo,
+                containerinfo=midcpu_containerinfo,
                 batch=batch,
                 tar_reads=False,
                 path=os.path.join(

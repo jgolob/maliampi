@@ -2381,7 +2381,7 @@ class DADA2_LearnError(sl.ContainerTask):
                 ', MAX_CONSIST=$MAX_CONSIST'
                 ', randomize=$randomize'
                 ', nbases=$nbases'
-                ', verbose=TRUE'
+                ', verbose=FALSE'
                 "); saveRDS(errF, '$err_1'); "
                 "write.csv(errF, '$err_csv_1');"
                 '"'
@@ -2394,7 +2394,7 @@ class DADA2_LearnError(sl.ContainerTask):
                 ', MAX_CONSIST=$MAX_CONSIST'
                 ', randomize=$randomize'
                 ', nbases=$nbases'
-                ', verbose=TRUE'
+                ', verbose=FALSE'
                 "); saveRDS(errR, '$err_2'); "
                 "write.csv(errR, '$err_csv_2');"
             )
@@ -2475,11 +2475,11 @@ class DADA2_DADA(sl.ContainerTask):
                 "library('dada2'); "
                 "errM_1 <- readRDS('$errM_1'); "
                 "derep_1 <- readRDS('$derep_1'); "
-                "dadaResult_1 <- dada(derep_1, err=errM_1, multithread=$vcpu, verbose=TRUE); "
+                "dadaResult_1 <- dada(derep_1, err=errM_1, multithread=$vcpu, verbose=FALSE); "
                 "saveRDS(dadaResult_1, '$dada_1'); "
                 "errM_2 <- readRDS('$errM_2'); "
                 "derep_2 <- readRDS('$derep_2'); "
-                "dadaResult_2 <- dada(derep_2, err=errM_2, multithread=$vcpu, verbose=TRUE); "
+                "dadaResult_2 <- dada(derep_2, err=errM_2, multithread=$vcpu, verbose=FALSE); "
                 "saveRDS(dadaResult_2, '$dada_2'); "
                 '"'
             ),
@@ -2534,7 +2534,7 @@ class DADA2_Merge(sl.ContainerTask):
                 'merger <- mergePairs('
                 'dada_1, derep_1, '
                 'dada_2, derep_2 '
-                ', verbose=TRUE); '
+                ', verbose=FALSE); '
                 "saveRDS(merger, '$merger'); "
                 '"'
             ),
