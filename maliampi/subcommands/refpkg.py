@@ -27,7 +27,7 @@ class WorkflowMakeRefpkg(sl.WorkflowTask):
     # sequence identity for each experimental sequence variant.
     min_best = sl.Parameter()
 
-    # Annotated sequences have trusted annotations 
+    # Annotated sequences have trusted annotations
     # (taxonomic / gene content / etc). To be used for classification
     # this needs to be a subset where SOME metrics are used to validate
     # annotations (source, as in genome or type strain; consensus based on seq id)

@@ -2667,7 +2667,7 @@ class DADA2_Combine_Seqtabs_Lin(sl.ContainerTask):
             )
 class DADA2_Combine_Seqtabs(sl.ContainerTask):
     # DADA2 Combine seqtabs
-    container = 'golob/dada2-fast-combineseqtab:0.2.0_BCW_0.30'
+    container = 'golob/dada2-fast-combineseqtab:0.2.0_BCW_0.30A'
 
     # Dependencies
     in_seqtabs = None
