@@ -5,7 +5,11 @@ from lib.tasks import LoadFastaSeqs, SearchRepoForMatches, CMAlignSeqs, RAxMLTre
 from lib.tasks import BuildTaxtasticDB, FilterSeqinfoToFASTA, TaxTableForSeqInfo, ObtainCM
 from lib.tasks import AlignmentStoToFasta, CombineRefpkg, CombineRepoMatches, ConfirmSeqInfoTaxonomy
 from lib.tasks import CleanupTreeInfo
+from lib.tasks import CombineRepoMatches
 import os
+import logging
+
+log = logging.getLogger('sciluigi-interface')
 
 
 # Workflow
@@ -27,12 +31,14 @@ class WorkflowMakeRefpkg(sl.WorkflowTask):
     # sequence identity for each experimental sequence variant.
     min_best = sl.Parameter()
 
+    repo_seq_info = sl.Parameter()
+
     # Annotated sequences have trusted annotations
     # (taxonomic / gene content / etc). To be used for classification
     # this needs to be a subset where SOME metrics are used to validate
     # annotations (source, as in genome or type strain; consensus based on seq id)
-    repo_annotated_seq_info = sl.Parameter()
     repo_annotated_fasta = sl.Parameter()
+
     min_id_annotated = sl.Parameter()
 
     # Not every experimental sequence variant is going to have an annotated sequence
@@ -41,7 +47,6 @@ class WorkflowMakeRefpkg(sl.WorkflowTask):
     # without many ambiguous bases) from which we can recruit additional sequences.
     # These can be annotated via some metric, OR used to to recruit additional seqs from the 
     # annotated set based on FULL LENGTH identity. 
-    repo_valid_seq_info = sl.Parameter(default="")
     repo_valid_fasta = sl.Parameter(default="")
     min_id_valid = sl.Parameter()
 
@@ -84,68 +89,84 @@ class WorkflowMakeRefpkg(sl.WorkflowTask):
         #
         # Load the sequence variants
         #
+
         sequence_variants = self.new_task(
             'load_sequence_variants',
             LoadFastaSeqs,
             fasta_seq_path=self.sequence_variants_path
         )
+        log.info("Loaded sequence variants")
+
+        # Load the sequence information
+        seq_info_files = [
+            self.new_task(
+                'load_si_{}'.format(si_i),
+                LoadFile,
+                path=si_path
+            )
+            for si_i, si_path in enumerate(self.repo_seq_info.split(','))
+        ]
+        log.info("Loaded %d sequence information files", len(seq_info_files))
 
         #
-        # Load the annotated repository
+        # Load the annotated repositories
         #
-        repo_annotated = self.new_task(
-            'load_annotated_repo',
-            LoadFastaSeqs,
-            fasta_seq_path=self.repo_annotated_fasta
-        )
-
-        repo_annotated_seq_info = self.new_task(
-            'load_annotated_seq_info',
-            LoadFile,
-            path=self.repo_annotated_seq_info
-        )
+        repo_annotated = [
+            self.new_task(
+                'load_annotated_repo_{}'.format(r_i),
+                LoadFastaSeqs,
+                fasta_seq_path=r_path
+            )
+            for r_i, r_path in enumerate(self.repo_annotated_fasta.split(','))
+        ]
+        log.info("Loaded %d Annotated Repositories", len(repo_annotated))
 
         #
         # Search the sequence variants in the annotated repository
         #
+        search_sv_annotated = []
+        for ra_i, r_annotated in enumerate(repo_annotated):
 
-        search_sv_annotated = self.new_task(
-            'search_sv_annotated',
-            SearchRepoForMatches,
-            containerinfo=midcpu_containerinfo,
-            matches_uc_path=os.path.join(self.working_dir,
-                                         'refpkg',
-                                         'repo_matches.annotated.uc'),
-            unmatched_exp_seqs_path=os.path.join(self.working_dir,
-                                                 'refpkg',
-                                                 'exp_seqs_unmatched.annotated.fasta'),
-            matched_repo_seqs_path=os.path.join(self.working_dir,
-                                                'refpkg',
-                                                'recruited_repo_seqs.annotated.fasta'),
-            min_id=self.min_id_annotated,
-            maxaccepts=10,  # Default take the top 10 (roughly corresponding to a 95% id for most)
-        )
-        search_sv_annotated.in_exp_seqs = sequence_variants.out_seqs
-        search_sv_annotated.in_repo_seqs = repo_annotated.out_seqs
-
-        # 
-        #  Filter the annotated seq_info to be limited to entries for our recruits
+            r_a_task = self.new_task(
+                'search_sv_annotated_{}'.format(ra_i),
+                SearchRepoForMatches,
+                containerinfo=midcpu_containerinfo,
+                matches_uc_path=os.path.join(self.working_dir,
+                                            'refpkg',
+                                            'repo.annotated__{}.matches.uc'.format(ra_i)),
+                unmatched_exp_seqs_path=os.path.join(self.working_dir,
+                                                    'refpkg',
+                                                    'repo.annotated__{}.annotated.exp_seqs_unmatched.fasta'.format(ra_i)),
+                matched_repo_seqs_path=os.path.join(self.working_dir,
+                                                    'refpkg',
+                                                    'repo.annotated__{}.recruited_repo_seqs.fasta'.format(ra_i)),
+                min_id=self.min_id_annotated,
+                maxaccepts=10,  # Default take the top 10 (roughly corresponding to a 95% id for most)
+            )
+            r_a_task.in_exp_seqs = sequence_variants.out_seqs
+            r_a_task.in_repo_seqs = r_annotated.out_seqs
+            search_sv_annotated.append(r_a_task)
+        #
+        # Combine Recruits into one file
         #
 
-        filter_seqinfo_annotated = self.new_task(
-            'filter_si_annotated',
-            FilterSeqinfoToFASTA,
-            filtered_seq_info_fn=os.path.join(
-                self.working_dir,
-                'refpkg',
-                'repo_matches.annotated.seq_info.csv'
-            )
+        combined_repo_matches = self.new_task(
+            'combine_repo_matches',
+            CombineRepoMatches,
+            seqs_fn=os.path.join(self.working_dir,
+                                        'refpkg',
+                                        'combined.repo.maches.fasta'
+            ),
+            seq_info_fn=os.path.join(self.working_dir,
+                                        'refpkg',
+                                        'combined.repo.maches.seq_info.csv'
+            ),
         )
-        filter_seqinfo_annotated.in_fasta = search_sv_annotated.out_matched_repo_seqs
-        filter_seqinfo_annotated.in_seq_info = repo_annotated_seq_info.out_file
+        combined_repo_matches.in_seqs = [ssv.out_matched_repo_seqs for ssv in search_sv_annotated]
+        combined_repo_matches.in_seq_info = [sif.out_file for sif in seq_info_files]
 
-        refpkg_seqs = search_sv_annotated.out_matched_repo_seqs
-        refpkg_seqinfo = filter_seqinfo_annotated.out_seq_info
+        refpkg_seqs = combined_repo_matches.out_seqs
+        refpkg_seqinfo = combined_repo_matches.out_seq_info
 
         #
         # Verify the taxonomy for the refpkg seqinfo file.
@@ -317,11 +338,6 @@ class WorkflowMakeRefpkg(sl.WorkflowTask):
             repo_filtered_seq_info.out_file,
         ]
 
-
-
-
-
-
         refpkg_taxtable = self.new_task(
             'refpkg_taxtable',
             TaxTableForSeqInfo,
@@ -380,33 +396,31 @@ def build_args(parser):
         required=True,
     )
     parser.add_argument(
-        '--repo-valid-seq-info',
-        help="""Path to full-length repository sequences information
-            csv format expected""",
+        '--repo-seq-info',
+        help="""Path to repository sequences information
+            csv format expected. Multiple allowed.""",
         type=str,
-        default=""
+        required=True,
+        nargs='+'
+    )
+    parser.add_argument(
+        '--repo-annotated-fasta',
+        help="""Path(s) to repository sequences with trusted annotations
+            from which we should recruit. FASTA format expected""",
+        type=str,
+        required=True,
+        nargs='+',
     )
     parser.add_argument(
         '--repo-valid-fasta',
         help="""Path(s) to repository full-length sequences
-            from which we should recruit. FASTA format expected""",
+            from which we should recruit after trying annotated first.
+            FASTA format expected""",
         type=str,
-        default=""
+        nargs='+',
+        default=[],
     )
-    parser.add_argument(
-        '--repo-annotated-seq-info',
-        help="""Path to repository sequences information
-            csv format expected""",
-        type=str,
-        required=True
-    )
-    parser.add_argument(
-        '--repo-annotated-fasta',
-        help="""Path(s) to repository sequences with annotated annotations
-            from which we should recruit. FASTA format expected""",
-        type=str,
-        required=True
-    )
+
     parser.add_argument(
         '--refpkg-destdir',
         help='Directory where the new reference package should be placed',

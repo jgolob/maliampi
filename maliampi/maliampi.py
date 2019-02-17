@@ -129,17 +129,14 @@ class MALIAMPI:
                 '--entrez-email={}'.format(
                     args.entrez_email
                 ),
-                '--repo-valid-seq-info={}'.format(
-                    args.repo_valid_seq_info
+                '--repo-seq-info={}'.format(
+                    ",".join(args.repo_seq_info)
                 ),
                 '--repo-valid-fasta={}'.format(
-                    args.repo_valid_fasta
-                ),
-                '--repo-annotated-seq-info={}'.format(
-                    args.repo_annotated_seq_info
+                    ",".join(args.repo_valid_fasta)
                 ),
                 '--repo-annotated-fasta={}'.format(
-                    args.repo_annotated_fasta
+                    ",".join(args.repo_annotated_fasta)
                 ),
                 '--new-refpkg-path={}'.format(
                     args.refpkg_destdir

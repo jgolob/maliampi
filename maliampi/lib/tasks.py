@@ -321,10 +321,6 @@ class CMAlignSeqs(sl.ContainerTask):
     # cmalign parameters
     # max memory to use in MB.
     cmalign_mxsize = sl.Parameter(default=8196)
-    working_dir = sl.Parameter(default=os.path.join(
-        '/tmp',
-        str(uuid.uuid4())
-    ))
 
     def out_alignscores(self):
         return sl.ContainerTargetInfo(self, self.alignment_score_fn)
@@ -333,7 +329,10 @@ class CMAlignSeqs(sl.ContainerTask):
         return sl.ContainerTargetInfo(self, self.alignment_sto_fn)
 
     def run(self):
-
+        working_dir = os.path.join(
+            self.containerinfo.container_working_dir,
+            str(uuid.uuid4())
+        )
         # Get our host paths for inputs and outputs
         input_targets = {
             'in_seqs': self.in_seqs(),
@@ -358,7 +357,7 @@ class CMAlignSeqs(sl.ContainerTask):
             extra_params={
                 'vcpu': self.containerinfo.vcpu,
                 'mxsize': self.cmalign_mxsize,
-                'working_dir': self.working_dir
+                'working_dir': working_dir
             }
         )
 
@@ -889,14 +888,10 @@ class NT_Repo_Output_FastaSeqInfo(sl.Task):
 class BuildTaxtasticDB(sl.ContainerTask):
 
     # Define the container (in docker-style repo format) to complete this task
-    container = 'golob/pplacer:1.1alpha19rc_BCW_0.3.0'
+    container = 'golob/pplacer:1.1alpha19rc_BCW_0.3.0D'
 
     # Where to put the sqlite database
     tax_db_path = sl.Parameter()
-    download_dir = sl.Parameter(default=os.path.join(
-        '/tmp',
-        str(uuid.uuid4())
-    ))
 
     def out_tax_db(self):
         return sl.ContainerTargetInfo(self, self.tax_db_path)
@@ -906,15 +901,22 @@ class BuildTaxtasticDB(sl.ContainerTask):
         output_targets = {
             'tax_db': self.out_tax_db(),
         }
+        download_dir = os.path.join(
+            self.containerinfo.container_working_dir,
+            str(uuid.uuid4())
+        )
 
         self.ex(
-            command='taxit ' +
+            command='mkdir -p $download_dir && '
+                    ' taxit ' +
                     ' new_database' +
                     ' $tax_db'
-                    ' -p $download_dir',
+                    ' -p $download_dir '
+                    ' && rm -r $download_dir'
+                    ,
             output_targets=output_targets,
             extra_params={
-                'download_dir': self.download_dir,
+                'download_dir': download_dir,
             })
 
 
@@ -948,7 +950,7 @@ class TaxTableForSeqInfo(sl.ContainerTask):
     # A Task that uses vsearch to find matches for experimental sequences in a repo of sequences
 
     # Define the container (in docker-style repo format) to complete this task
-    container = 'golob/pplacer:1.1alpha19rc_BCW_0.3.0'
+    container = 'golob/pplacer:1.1alpha19rc_BCW_0.3.0D'
 
     taxtable_path = sl.Parameter()
 
@@ -1001,7 +1003,7 @@ class ObtainCM(sl.ContainerTask):
 
 class CombineRefpkg(sl.ContainerTask):
     # A task to take all the components of a refpkg and complete with a contents JSON
-    container = 'golob/pplacer:1.1alpha19rc_BCW_0.3.0'
+    container = 'golob/pplacer:1.1alpha19rc_BCW_0.3.0D'
 
     # Parameters to tell us where the refpkg should be placed,
     # as in: refpkg_path/refpkg_name.refpkg_version.refpkg

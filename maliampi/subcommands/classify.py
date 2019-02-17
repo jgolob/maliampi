@@ -203,7 +203,7 @@ class Workflow_Classify(sl.WorkflowTask):
         placement_db_classified = self.new_task(
             'classify_into_placement_db',
             PlacementDB_Classify_SV,
-            containerinfo=heavy_containerinfo,
+            containerinfo=midcpu_containerinfo,
         )
         placement_db_classified.in_placement_db = placement_db_w_si.out_placement_db
         placement_db_classified.in_refpkg_tgz = refpkg_tgz.out_refpkg_tgz
