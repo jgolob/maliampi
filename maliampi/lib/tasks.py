@@ -1559,7 +1559,7 @@ class PlacementDB_Prep(sl.ContainerTask):
                     ' && rppr prep_db' +
                     ' -c $run_tmpdir/refpkg/$refpkg_rel_path ' +
                     ' --sqlite $placement_db' +
-                    '&& rm -r $run_tmpdir ',
+                    ' && rm -r $run_tmpdir ',
             input_targets=input_targets,
             output_targets=output_targets,
             extra_params={

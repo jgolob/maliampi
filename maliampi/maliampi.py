@@ -107,6 +107,24 @@ class MALIAMPI:
                 '--manifest={}'.format(
                     args.manifest
                     ),
+                '--trimLeft={}'.format(
+                    args.trim_left
+                    ),
+                '--maxN={}'.format(
+                    args.maxN
+                    ),
+                '--maxEE={}'.format(
+                    args.maxEE
+                    ),
+                '--truncLenF={}'.format(
+                    args.truncLenF
+                    ),
+                '--truncLenR={}'.format(
+                    args.truncLenR
+                    ),
+                '--truncQ={}'.format(
+                    args.truncQ
+                    ),
             ]
         )
 

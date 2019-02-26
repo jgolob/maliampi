@@ -24,6 +24,12 @@ class Workflow_DADA2(sl.WorkflowTask):
     destination_dir = sl.Parameter()
     manifest = sl.Parameter()
     barcodecop = sl.Parameter(default=True)
+    trimLeft = sl.Parameter(default=15)
+    maxN = sl.Parameter(default=0)
+    maxEE = sl.Parameter(default='Inf')
+    truncLenF = sl.Parameter(default=235)
+    truncLenR = sl.Parameter(default=235)
+    truncQ = sl.Parameter(default=2)
 
 
     def workflow(self):
@@ -83,9 +89,11 @@ class Workflow_DADA2(sl.WorkflowTask):
                 DADA2_FilterAndTrim,
                 containerinfo=light_containerinfo,
                 specimen=specimen,
-                f_trunc=235,
-                r_trunc=235,
-                trim_left=15,
+                f_trunc=self.truncLenF,
+                r_trunc=self.truncLenR,
+                trim_left=self.trimLeft,
+                maxN=self.maxN,
+                maxEE=self.maxEE,
                 path=os.path.join(
                     self.working_dir,
                     'sv',
@@ -260,4 +268,40 @@ def build_args(parser):
         """,
         type=str,
         required=True,
+    )
+    parser.add_argument(
+        '-tL', '--trim-left',
+        help="""Trim Left
+        """,
+        type=int,
+        default=15,
+    )
+    parser.add_argument(
+        '-maxN', '--maxN',
+        help="""maxN
+        """,
+        type=int,
+        default=0,
+    )
+    parser.add_argument(
+        '-maxEE', '--maxEE',
+        help="""maxEE
+        """,
+        type=str,
+        default='Inf',
+    )
+    parser.add_argument(
+        '-truncLenF', '--truncLenF',
+        type=int,
+        default=235,
+    )
+    parser.add_argument(
+        '-truncLenR', '--truncLenR',
+        type=int,
+        default=235,
+    )
+    parser.add_argument(
+        '-truncQ', '--truncQ',
+        type=int,
+        default=2,
     )
