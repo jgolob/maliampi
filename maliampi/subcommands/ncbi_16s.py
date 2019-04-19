@@ -1,9 +1,9 @@
 #!/usr/bin/python
 import luigi
 import sciluigi as sl
-from lib.tasks import NT_AccessionsForQuery, NT_Repo_Update_Accessions, LoadFile, NT_Repo_Fill
-from lib.tasks import NT_Repo_Output_FastaSeqInfo, VerifyRepo, CMSearchVerify
-from lib.tasks import NT_Repo_Prokka
+from maliampi.lib.tasks import NT_AccessionsForQuery, NT_Repo_Update_Accessions, LoadFile, NT_Repo_Fill
+from maliampi.lib.tasks import NT_Repo_Output_FastaSeqInfo, VerifyRepo, CMSearchVerify
+from maliampi.lib.tasks import NT_Repo_Prokka
 
 import os
 

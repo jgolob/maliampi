@@ -1,10 +1,10 @@
 #!/usr/bin/python
 import luigi
 import sciluigi as sl
-from lib.tasks import LoadManifest, LoadSpecimenReads, BCCSpecimenReads
-from lib.tasks import DADA2_FilterAndTrim, DADA2_Dereplicate, DADA2_LearnError
-from lib.tasks import DADA2_DADA, DADA2_Merge, DADA2_Specimen_Seqtab
-from lib.tasks import DADA2_Combine_Seqtabs, DADA2_Remove_Chimera, DADA2_SV_to_PPlacer
+from maliampi.lib.tasks import LoadManifest, LoadSpecimenReads, BCCSpecimenReads
+from maliampi.lib.tasks import DADA2_FilterAndTrim, DADA2_Dereplicate, DADA2_LearnError
+from maliampi.lib.tasks import DADA2_DADA, DADA2_Merge, DADA2_Specimen_Seqtab
+from maliampi.lib.tasks import DADA2_Combine_Seqtabs, DADA2_Remove_Chimera, DADA2_SV_to_PPlacer
 
 from collections import defaultdict
 import logging

@@ -1,11 +1,11 @@
 #!/usr/bin/python
 import luigi
 import sciluigi as sl
-from lib.tasks import LoadFastaSeqs, SearchRepoForMatches, CMAlignSeqs, RAxMLTree, LoadFile
-from lib.tasks import BuildTaxtasticDB, FilterSeqinfoToFASTA, TaxTableForSeqInfo, ObtainCM
-from lib.tasks import AlignmentStoToFasta, CombineRefpkg, CombineRepoMatches, ConfirmSeqInfoTaxonomy
-from lib.tasks import CleanupTreeInfo
-from lib.tasks import CombineRepoMatches
+from maliampi.lib.tasks import LoadFastaSeqs, SearchRepoForMatches, CMAlignSeqs, RAxMLTree, LoadFile
+from maliampi.lib.tasks import BuildTaxtasticDB, FilterSeqinfoToFASTA, TaxTableForSeqInfo, ObtainCM
+from maliampi.lib.tasks import AlignmentStoToFasta, CombineRefpkg, CombineRepoMatches, ConfirmSeqInfoTaxonomy
+from maliampi.lib.tasks import CleanupTreeInfo
+from maliampi.lib.tasks import CombineRepoMatches
 import os
 import logging
 

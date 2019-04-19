@@ -5,7 +5,7 @@ import sys
 import luigi
 import sciluigi as sl
 
-from subcommands import refpkg, ncbi_16s, placement, classify, sv_dada2
+from .subcommands import refpkg, ncbi_16s, placement, classify, sv_dada2
 
 
 class MALIAMPI:

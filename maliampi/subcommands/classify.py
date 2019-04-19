@@ -1,12 +1,12 @@
 #!/usr/bin/python
 import luigi
 import sciluigi as sl
-from lib.tasks import LoadFile, CMAlignSeqs, LoadFastaSeqs, AlignmentStoToFasta
-from lib.tasks import LoadRefpkgTGZ
-from lib.tasks import ExtractRefpkgAlignment, CombineAlignmentsSTO
-from lib.tasks import PlacementDB_Prep, PlacementDB_Classify_SV, PlacementDB_MCC
-from lib.tasks import PlacementDB_AddSI
-from lib.tasks import GenerateTables
+from maliampi.lib.tasks import LoadFile, CMAlignSeqs, LoadFastaSeqs, AlignmentStoToFasta
+from maliampi.lib.tasks import LoadRefpkgTGZ
+from maliampi.lib.tasks import ExtractRefpkgAlignment, CombineAlignmentsSTO
+from maliampi.lib.tasks import PlacementDB_Prep, PlacementDB_Classify_SV, PlacementDB_MCC
+from maliampi.lib.tasks import PlacementDB_AddSI
+from maliampi.lib.tasks import GenerateTables
 
 import logging
 import os

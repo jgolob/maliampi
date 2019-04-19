@@ -1,11 +1,11 @@
 #!/usr/bin/python
 import luigi
 import sciluigi as sl
-from lib.tasks import LoadFile, CMAlignSeqs, LoadFastaSeqs, AlignmentStoToFasta
-from lib.tasks import ExtractRefpkgAlignment, CombineAlignmentsSTO
-from lib.tasks import PPLACER_PlaceAlignment, Jplace_Reduplicate
-from lib.tasks import Jplace_PCA, Jplace_ADCL, Jplace_EDPL, Jplace_KR_Distance
-from lib.tasks import Jplace_Alpha_Diversity, LoadRefpkgTGZ
+from maliampi.lib.tasks import LoadFile, CMAlignSeqs, LoadFastaSeqs, AlignmentStoToFasta
+from maliampi.lib.tasks import ExtractRefpkgAlignment, CombineAlignmentsSTO
+from maliampi.lib.tasks import PPLACER_PlaceAlignment, Jplace_Reduplicate
+from maliampi.lib.tasks import Jplace_PCA, Jplace_ADCL, Jplace_EDPL, Jplace_KR_Distance
+from maliampi.lib.tasks import Jplace_Alpha_Diversity, LoadRefpkgTGZ
 
 import os
 

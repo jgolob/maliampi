@@ -8,7 +8,7 @@ from .targets import NCBI_Repo_Entries_TargetInfo,  NCBI_Repo_Filled_TargetInfo
 from .targets import PlacementDB_Prepped_ContainerTargetInfo, RefpkgTGZ_ContainerTargetInfo
 from .targets import PlacementDB_Classified_ContainerTargetInfo, NCBI_Repo_Peptides_TargetInfo
 from .targets import PlacementDB_MCC_ContainerTargetInfo, PlacementDB_SI_ContainerTargetInfo
-from lib.ExtractGenbank import ExtractGenbank
+from .ExtractGenbank import ExtractGenbank
 import csv
 import uuid
 import json
