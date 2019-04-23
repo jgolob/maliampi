@@ -1,7 +1,6 @@
-sciluigi==0.9.6b7
-luigi==2.7.3
-boto3==1.7.1
-awscli==1.15.1
-docker==3.2.1
-biopython==1.71
+sciluigi>=2.0.0
+boto3>=1.7.1
+awscli>=1.15.1
+docker>=3.2.1
+biopython>=1.71
 pytz
