@@ -2676,6 +2676,7 @@ class DADA2_Combine_Seqtabs(sl.ContainerTask):
 
     # Parameters
     fn = sl.Parameter()
+    block_size = sl.Parameter(default=200)
 
     def out_rds(self):
         return sl.ContainerTargetInfo(
@@ -2685,32 +2686,37 @@ class DADA2_Combine_Seqtabs(sl.ContainerTask):
         )
     
     def run(self):
-        input_targets = {"seqtab_{}".format(s_i): seqtab_t()
-            for s_i, seqtab_t in enumerate(self.in_seqtabs)
-        }
+        first = True
+        for seqtabs_block in [self.in_seqtabs[i:i + self.block_size] for i in range(0, len(self.in_seqtabs), self.block_size)]:
+            input_targets = {"seqtab_{}".format(s_i): seqtab_t()
+                for s_i, seqtab_t in enumerate(seqtabs_block)
+            }
+            if not first:
+                input_targets['seqtab_prior'] = self.out_rds()
+            else:
+                first = False
 
-        output_targets = {
-            'combined_seqtab': self.out_rds(),
-        }
+            output_targets = {
+                'combined_seqtab': self.out_rds(),
+            }
 
-        command = (
-            'combine_seqtab '
-            '--rds $combined_seqtab '
-            '--seqtabs '
-        )
+            command = (
+                'combine_seqtab '
+                '--rds $combined_seqtab '
+                '--seqtabs '
+            )
 
-        command += " ".join(
-            [
-                "'${}'".format(st_id) 
-            
-            for st_id in input_targets.keys()]
-        )
-
-        self.ex(
-            command=command,
-            input_targets=input_targets,
-            output_targets=output_targets,
-        )
+            command += " ".join(
+                [
+                    "'${}'".format(st_id) 
+                
+                for st_id in input_targets.keys()]
+            )
+            self.ex(
+                command=command,
+                input_targets=input_targets,
+                output_targets=output_targets,
+            )
 
 class DADA2_Combine_Seqtabs_Native(sl.ContainerTask):
     # DADA2 Combine seqtabs

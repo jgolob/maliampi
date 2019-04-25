@@ -37,7 +37,10 @@ class Workflow_DADA2(sl.WorkflowTask):
         light_containerinfo.from_config(
                 section='light'
         )
-        long_containerinfo = light_containerinfo
+        highmem_containerinfo = sl.ContainerInfo()
+        highmem_containerinfo.from_config(
+            section='highmem'
+        )
         heavy_containerinfo = sl.ContainerInfo()
         heavy_containerinfo.from_config(
             section='heavy'
@@ -194,7 +197,7 @@ class Workflow_DADA2(sl.WorkflowTask):
         combined_seqtab = self.new_task(
             'dada2_combine_seqtabs',
             DADA2_Combine_Seqtabs,
-            containerinfo=long_containerinfo,
+            containerinfo=highmem_containerinfo,
             fn=os.path.join(
                         self.working_dir,
                         'sv',
