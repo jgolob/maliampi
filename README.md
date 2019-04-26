@@ -5,7 +5,6 @@
 Maliampi is a phylogenetic placement-based pipeline for handling 16S rRNA amplicons (the most common type of microbiome study data).
 
 Maliampi's overall philosophy is to embrace and work with the inherent ambiguity involved in any PCR / seqencing based approach, as well as rationally deal with the limits of the available references mapping between sequence-space and taxonomy. 
-
 ### A typical workflow:
 1) Create sequence variants
 2) Make a reference package
@@ -97,27 +96,153 @@ Right now, maliampi relies upon a [custom-fork](https://github.com/jgolob/scilui
 
 > The tutorial uses the data in the maliampi-practice-data folder from the repository, with the command lines below assuming you are within that directory.
 
-### I. Create sequence variants
->Maliampi uses a manifest file to keep track of things. At a minimum this needs to have two columns: one for _specimen_ (a unique identifier) and _read__1_ (to point to the file path of the fastq file containing the forward read). Almost always there will be another column for the reverse read, _read__2_. Take a look at manifest.csv to see this simple example of samples from the ATCC mock community.
+### 0. Prepare our output and working directories
+`mkdir -p working/ && mkdir -p output/sv/`
 
-1. Create our working and output directories
+### 1. Create sequence variants
+>Maliampi uses a manifest file to keep track of things. At a minimum this needs to have two columns: one for _specimen_ (a unique identifier) and _read__1_ (to point to the file path of the fastq file containing the forward read). Almost always there will be another column for the reverse read, _read__2_. 
+> Another important column to include is _batch_, corresponding to a given extraction-and-sequencing run. 
+> Take a look at manifest.csv to see this simple example of samples from the ATCC mock community.
 
-`mkdir -p working/ && mkdir -p output/sv/
 
-2. Run maliampi in sv_dada2 mode:
-    ```
-    maliampi --workers 2 \
-    sv_dada2 \
-    --manifest manifest.csv \
-    --working-dir working \
-    --destination-dir output/sv/
-    ```
+```
+maliampi --workers 2 \
+sv_dada2 \
+--manifest manifest.csv \
+--working-dir working \
+--destination-dir output/sv/
+```
 
-### II. Create a reference package
-    ```
-    maliampi --workers 1 \
-    refpkg \
-    --manifest manifest.csv \
-    --working-dir working \
-    --destination-dir output/sv/
-    ```
+> A lot of log lines will spill by. Keep an eye out for 'xxx tasks pending' to get a sense of how much longer. Maliampi will run dada2 on each specimen in parallel, to the maximum number of workers you specified above at a time. 
+
+If all succeeded, you should see
+```
+===== Luigi Execution Summary =====
+
+Scheduled 70 tasks of which:
+* 9 complete ones were encountered:
+    - 9 LoadSpecimenReads(...)
+* 61 ran successfully:
+    - 9 BCCSpecimenReads(...)
+    - 1 DADA2_Combine_Seqtabs(...)
+    - 9 DADA2_DADA(...)
+    - 9 DADA2_Dereplicate(...)
+    - 9 DADA2_FilterAndTrim(...)
+    ...
+
+This progress looks :) because there were no failed tasks or missing dependencies
+
+===== Luigi Execution Summary =====
+```
+
+> You can look to see the output files created, in 
+`output\sv\`
+
+> These include a fasta file, a matrix, and a map and weight file we will use later. 
+
+### 2. Create a reference package
+```
+maliampi --workers 1 \
+refpkg \
+--working-dir working/ \
+--refpkg-destdir output/ \
+--refpkg-name tutorial \
+--sequence-variants output/sv/dada2.sv.fasta \
+--entrez-email your@email.com \
+--repo-seq-info test.repo.seq_info.csv \
+--repo-annotated-fasta test.repo.fasta
+```
+
+If this all works, you should see something like 
+```
+===== Luigi Execution Summary =====
+
+Scheduled 11 tasks of which:
+* 4 complete ones were encountered:
+    - 1 AlignmentStoToFasta(...)
+    - 1 CMAlignSeqs(...)
+    - 1 CombineRepoMatches(...)
+    - 1 ObtainCM(...)
+* 7 ran successfully:
+    - 1 BuildTaxtasticDB(...)
+    - 1 CleanupTreeInfo(...)
+    - 1 CombineRefpkg(...)
+    - 1 ConfirmSeqInfoTaxonomy(...)
+    - 1 RAxMLTree(...)
+    ...
+
+This progress looks :) because there were no failed tasks or missing dependencies
+
+===== Luigi Execution Summary =====
+```
+
+The reference package will be packaged up at `output/refpkg/tutorial.date_time.refpkg.tgz` where date and time are stamps from when your reference package was made. 
+
+### 3. Place SV on the Reference Package
+Please note, you will need to replace date_time below with the timestamp from your reference package.
+
+```
+maliampi --workers 2 \
+placement \
+--working-dir working \
+--destination-dir output \
+--sequence-variants output/sv/dada2.sv.fasta \
+--seq-map-csv output/sv/dada2.sv.map.csv \
+--sv-weights-csv output/sv/dada2.sv.weights.csv \
+--refpkg-tgz output/refpkg/tutorial.date_time.refpkg.tgz 
+```
+
+If all works, you should see something like
+```
+===== Luigi Execution Summary =====
+
+Scheduled 16 tasks of which:
+* 4 complete ones were encountered:
+    - 1 LoadFastaSeqs(...)
+    - 2 LoadFile(...)
+    - 1 LoadRefpkgTGZ(...)
+* 12 ran successfully:
+    - 1 CMAlignSeqs(...)
+    - 1 CombineAlignmentsSTO(...)
+    - 1 ExtractRefpkgAlignment(...)
+    - 1 Jplace_ADCL(...)
+    - 1 Jplace_Alpha_Diversity(...)
+    ...
+
+This progress looks :) because there were no failed tasks or missing dependencies
+
+===== Luigi Execution Summary =====
+```
+
+You can check out the placement outputs, which include a json file with the placement details, PCA, as well as alpha diversity and pairwise distance data, all in `output\placement`:
+```
+output/placement/
+├── adcl.gz
+├── alpha_diversity.csv
+├── dedup.jplace
+├── edpl.gz
+├── kr_distance.csv
+├── pca
+│   ├── epca.proj
+│   ├── epca.trans
+│   ├── epca.xml
+│   ├── lpca.proj
+│   ├── lpca.trans
+│   └── lpca.xml
+└── redup.jplace.gz
+```
+
+### 4. Taxonomic classification
+Please note, you will need to replace date_time below with the timestamp from your reference package.
+
+```
+maliampi --workers 1 \
+classify \
+--working-dir working \
+--destination-dir output \
+--sequence-variants output/sv/dada2.sv.fasta \
+--seq-map-csv output/sv/dada2.sv.map.csv \
+--sv-weights-csv output/sv/dada2.sv.weights.csv \
+--jplace output/placement/dedup.jplace \
+--refpkg-tgz output/refpkg/tutorial.date_time.refpkg.tgz
+```
