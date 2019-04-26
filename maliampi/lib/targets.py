@@ -250,11 +250,13 @@ class PlacementDB_Prepped_ContainerTargetInfo(sl.ContainerTargetInfo):
         with NamedTemporaryFile() as db_ntf:
             with self.target.open('rb') as db_h:
                 db_ntf.write(db_h.read())
+            db_ntf.flush()
             con = sqlite3.connect(db_ntf.name)
             cursor = con.cursor()
             # Check for the expected tables
             cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
             tables = {t[0] for t in cursor.fetchall()}
+
             expected_tables = {
                 'multiclass',
                 'placements',
@@ -390,6 +392,7 @@ class PlacementDB_Classified_ContainerTargetInfo(sl.ContainerTargetInfo):
         with NamedTemporaryFile() as db_ntf:
             with self.target.open('rb') as db_h:
                 db_ntf.write(db_h.read())
+            db_ntf.flush()
             con = sqlite3.connect(db_ntf.name)
             cursor = con.cursor()
             # Get all the classification runs stored in this database
@@ -438,6 +441,7 @@ class PlacementDB_MCC_ContainerTargetInfo(sl.ContainerTargetInfo):
         with NamedTemporaryFile() as db_ntf:
             with self.target.open('rb') as db_h:
                 db_ntf.write(db_h.read())
+            db_ntf.flush()
             con = sqlite3.connect(db_ntf.name)
             cursor = con.cursor()
             # Get the tables
@@ -490,6 +494,7 @@ class PlacementDB_SI_ContainerTargetInfo(sl.ContainerTargetInfo):
         with NamedTemporaryFile() as db_ntf:
             with self.target.open('rb') as db_h:
                 db_ntf.write(db_h.read())
+            db_ntf.flush()
             con = sqlite3.connect(db_ntf.name)
             cursor = con.cursor()
             # Get the tables
