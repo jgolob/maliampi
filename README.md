@@ -246,3 +246,52 @@ classify \
 --jplace output/placement/dedup.jplace \
 --refpkg-tgz output/refpkg/tutorial.date_time.refpkg.tgz
 ```
+
+If all worked, you should see
+```
+INFO: 
+===== Luigi Execution Summary =====
+
+Scheduled 16 tasks of which:
+* 5 complete ones were encountered:
+    - 1 CombineAlignmentsSTO(...)
+    - 3 LoadFile(...)
+    - 1 LoadRefpkgTGZ(...)
+* 11 ran successfully:
+    - 6 GenerateTables(...)
+    - 1 PlacementDB_AddSI(...)
+    - 1 PlacementDB_Classify_SV(...)
+    - 1 PlacementDB_MCC(...)
+    - 1 PlacementDB_Prep(...)
+    ...
+
+This progress looks :) because there were no failed tasks or missing dependencies
+
+===== Luigi Execution Summary =====
+```
+
+Look in the `output/classification/` directory to see what we've created:
+> `placement.db` is an sqlite3 database.
+```
+├── placement.db
+└── tables
+    ├── by_specimen.class.csv
+    ├── by_specimen.family.csv
+    ├── by_specimen.genus.csv
+    ├── by_specimen.order.csv
+    ├── by_specimen.phylum.csv
+    ├── by_specimen.species.csv
+    ├── by_taxon.class.csv
+    ├── by_taxon.family.csv
+    ├── by_taxon.genus.csv
+    ├── by_taxon.order.csv
+    ├── by_taxon.phylum.csv
+    ├── by_taxon.species.csv
+    ├── tallies_wide.class.csv
+    ├── tallies_wide.family.csv
+    ├── tallies_wide.genus.csv
+    ├── tallies_wide.order.csv
+    ├── tallies_wide.phylum.csv
+    └── tallies_wide.species.csv
+```
+
