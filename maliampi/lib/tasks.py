@@ -510,6 +510,68 @@ class RAxMLTree(sl.ContainerTask):
         )
 
 
+class RAxML-ngTree(sl.ContainerTask):
+    # A task that uses RAxML-ng to generate a tree from an alignment
+
+    # Define the container (in docker-style repo format) to complete this task
+    container = 'golob/raxml-ng:0.9.0_bcw_0.3.0'
+
+    # Input of an alignment in FASTA format
+    in_align_fasta = None
+
+    # Parameter: Path + filename where the resultant tree should go
+    tree_path = sl.Parameter()
+    tree_stats_path = sl.Parameter()
+    # DIRECTORY where the intermediate RAxML files should go (container fs space)
+    raxml_working_dir = sl.Parameter(default=os.path.join(
+        '/tmp',
+        str(uuid.uuid4())
+    ))
+
+    # Parameters for RAxML
+
+    raxml_model = sl.Parameter(default='GTR+G')
+    raxml_parsimony_seed = sl.Parameter(default=12345)
+
+    def out_tree(self):
+        return sl.ContainerTargetInfo(self, self.tree_path)
+
+    def out_tree_stats(self):
+        return sl.ContainerTargetInfo(self, self.tree_stats_path)
+
+    def run(self):
+        # Lots of filesystem throat-clearing
+        name = os.path.basename(os.path.splitext(self.tree_path)[0])
+
+        # Get our host paths for inputs and outputs
+        # To be mapped into the container as appropriate
+        input_targets = {
+            'in_align_fasta': self.in_align_fasta(),
+        }
+
+        output_targets = {
+            'out_tree': self.out_tree(),
+            'out_tree_stats': self.out_tree_stats(),
+        }
+
+        self.ex(
+            command='mkdir -p $raxml_working_dir && raxml-ng'
+
+                    ' --prefix %s' % name +  # Prefix/name to use for the output files
+                    ' --model %s' % self.raxml_model +  # Model to use
+                    ' --msa $in_align_fasta' +  # Path to input alignment
+                    ' --seed %d' % self.raxml_parsimony_seed +
+                    ' --threads %d' % max([int(self.containerinfo.vcpu), 2]) +  # threads (min 2)
+                    ' -w $raxml_working_dir' +  # working directory
+                    ' && cp $raxml_working_dir/RAxML_bestTree.%s $out_tree' % name +
+                    ' && cp $raxml_working_dir/RAxML_info.%s $out_tree_stats' % name +
+                    ' && rm -r $raxml_working_dir',
+            input_targets=input_targets,
+            output_targets=output_targets,
+            extra_params={'raxml_working_dir': self.raxml_working_dir},
+            inputs_mode='rw',
+        )
+
 class NT_AccessionsForQuery(sl.ContainerTask):
     # A task that takes a query and returns all of the NCBI NT accessions
     # matching
