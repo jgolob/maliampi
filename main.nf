@@ -204,7 +204,7 @@ dada2_ft_ch_for_err
 process dada2_learn_error {
     container 'golob/dada2:1.8.0.ub.1804__bcw.0.3.0A'
     label 'multithread'
-    errorStrategy "fail"
+    errorStrategy "terminate"
     publishDir '../working/batches'
 
     input:
@@ -218,10 +218,11 @@ process dada2_learn_error {
     #!/usr/bin/env Rscript
     library('dada2');
     errF <- learnErrors(
-        strsplit(
+        unlist(strsplit(
             '${forwardReads}',
-            ' '
-        ),
+            ' ',
+            fixed=TRUE
+        )),
         multithread=${task.cpus},
         MAX_CONSIST=${params.errM_maxConsist},
         randomize=${params.errM_randomize},
@@ -230,10 +231,11 @@ process dada2_learn_error {
     saveRDS(errF, "${batch}.R1.errM.rds"); 
     write.csv(errF, "${batch}.R1.errM.csv");
     errR <- learnErrors(
-        strsplit(
+        unlist(strsplit(
             '${reverseReads}',
-            ' '
-        ),
+            ' ',
+            fixed=TRUE
+        )),
         multithread=${task.cpus},
         MAX_CONSIST=${params.errM_maxConsist},
         randomize=${params.errM_randomize},
