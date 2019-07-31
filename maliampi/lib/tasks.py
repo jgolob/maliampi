@@ -1013,12 +1013,6 @@ class CombineRefpkg(sl.ContainerTask):
     # version, defaults to a timestamp of YYYYmmdd_HHMMSS
     refpkg_version = sl.Parameter(default=datetime.now().strftime('%Y%m%d_%H%M%S'))
 
-    working_dir = sl.Parameter(default=os.path.join(
-        '/tmp',
-        str(uuid.uuid4())
-    ))
-
-
     # dependencies
     in_aln_fasta = None
     in_aln_sto = None
@@ -1042,6 +1036,10 @@ class CombineRefpkg(sl.ContainerTask):
         return "{}.{}.refpkg".format(self.refpkg_name, self.refpkg_version)
 
     def run(self):
+        container_working_dir = os.path.join(
+            self.containerinfo.container_working_dir,
+            str(uuid.uuid4())
+        )
         input_targets = {
             'aln_fasta': self.in_aln_fasta(),
             'aln_sto': self.in_aln_sto(),
@@ -1073,7 +1071,7 @@ class CombineRefpkg(sl.ContainerTask):
             output_targets=output_targets,
             extra_params={
                 'refpkg_name': self.refpkg_name_ver(),
-                'working_dir': self.working_dir,
+                'working_dir': container_working_dir,
             }
         )
 
@@ -2676,7 +2674,7 @@ class DADA2_Combine_Seqtabs(sl.ContainerTask):
 
     # Parameters
     fn = sl.Parameter()
-    block_size = sl.Parameter(default=200)
+    block_size = sl.Parameter(default=500)
 
     def out_rds(self):
         return sl.ContainerTargetInfo(
