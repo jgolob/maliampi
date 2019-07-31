@@ -20,7 +20,13 @@ Maliampi's overall philosophy is to embrace and work with the inherent ambiguity
     
     While maliampi can start with fastq files straight from the sequencer, you can also opt to use your own sequence variant / OTU generation strategy and just use maliampi to make a reference package. 
 
+* Probability right to the end
 
+    Using 16S rRNA gene amplicons to establish the structure and composition of a microbial community is inherently an uncertain process. This pipeline uses software and approaches that respect this uncertainty, and bring it right to the terminal analyses. 
+
+* Runs the same locally (via docker), on slurm or PBS (via singularity), or on AWS.
+
+    Maliampi's use of containerized software allows the pipeline to run the same on a variety of different computational resources. You have slurm, but your collaborators have access to a PBS cluster? No issue. On the go? Fine to run the pipeline's computationally heavier tasks via AWS.
 
 ## Installation
 Right now, maliampi relies upon a [custom-fork](https://github.com/jgolob/sciluigi/tree/containertask) of [sciluigi](https://github.com/pharmbio/sciluigi). That means one cannot simply install with pip. (Pull request is pending).
