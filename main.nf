@@ -18,8 +18,8 @@ params.output = '.'
 params.trimLeft = 16
 params.maxN = 0
 params.maxEE = 'Inf'
-params.truncLenF = 235
-params.truncLenR = 235
+params.truncLenF = 250
+params.truncLenR = 250
 params.truncQ = 2
 params.errM_maxConsist = 10
 params.errM_randomize = 'FALSE'
@@ -144,7 +144,7 @@ else {
 process dada2_ft {
     container 'golob/dada2:1.8.0.ub.1804__bcw.0.3.0A'
     label 'io_limited'
-    errorStrategy "retry"
+    //errorStrategy "retry"
 
     input:
         set specimen, batch, R1_n, R2_n, file(R1), file(R2) from demultiplexed_ch
@@ -182,7 +182,7 @@ process dada2_derep {
         set specimen, batch, R1_n, R2_n, file(R1), file(R2) from dada2_ft_ch_for_derep
     
     output:
-        set specimen, batch, R1_n, R2_n, file("${R1_n}.dada2.ft.derep.rds"), file("${R2_n}.dada2.ft.derep.rds") into dada2_derep_ch
+        set batch, specimen, R1_n, R2_n, file("${R1_n}.dada2.ft.derep.rds"), file("${R2_n}.dada2.ft.derep.rds") into dada2_derep_ch
     
     """
     #!/usr/bin/env Rscript
@@ -204,8 +204,7 @@ dada2_ft_ch_for_err
 process dada2_learn_error {
     container 'golob/dada2:1.8.0.ub.1804__bcw.0.3.0A'
     label 'multithread'
-    errorStrategy "terminate"
-    publishDir '../working/batches'
+    errorStrategy "retry"
 
     input:
         set val(batch), file(forwardReads), file(reverseReads) from dada2_ft_batches
@@ -245,4 +244,165 @@ process dada2_learn_error {
     write.csv(errR, "${batch}.R2.errM.csv");
     """
 }
+
+// Step 1.e. Apply the correct error model to the dereplicated seqs
+    // Join in the correct error models
+    dada2_batch_error_rds
+        .cross(dada2_derep_ch)
+        .map{r -> [
+            r[0][0], // batch
+            r[1][1], // specimen
+            r[1][2], // R1_n
+            r[1][3], // R2_n
+            file(r[1][4]), // R1
+            file(r[1][5]), // R2
+            file(r[0][1]), // errM_1
+            file(r[0][2]), // errM_2
+        ]}
+        .set{ dada2_derep_w_errM_ch }
+
+
+    // and use that apply the proper error model to each specimen read pair
+    process dada2_dada {
+        container 'golob/dada2:1.8.0.ub.1804__bcw.0.3.0A'
+        label 'multithread'
+        errorStrategy "retry"
+
+        publishDir '../working/dada2/dada/', mode: 'copy'
+
+        input:
+            set batch, specimen, R1_n, R2_n, file(R1), file(R2), file(errM_1), file(errM_2) from dada2_derep_w_errM_ch
+
+        output:
+            set batch, specimen, file(R1), file(R2), file("${R1_n}.dada2.dada.rds"), file("${R2_n}.dada2.dada.rds") into dada2_dada_sp_ch
+
+        """
+        #!/usr/bin/env Rscript
+        library('dada2');
+        errM_1 <- readRDS('${errM_1}');
+        derep_1 <- readRDS('${R1}');
+        dadaResult_1 <- dada(derep_1, err=errM_1, multithread=${task.cpus}, verbose=FALSE);
+        saveRDS(dadaResult_1, '${R1_n}.dada2.dada.rds');
+        errM_2 <- readRDS('${errM_2}');
+        derep_2 <- readRDS('${R2}');
+        dadaResult_2 <- dada(derep_2, err=errM_2, multithread=${task.cpus}, verbose=FALSE);
+        saveRDS(dadaResult_2, '${R2_n}.dada2.dada.rds');
+        """
+    }
+
+// Step 1.f. Merge reads, using the dereplicated seqs and applied model
+
+process dada2_merge {
+        container 'golob/dada2:1.8.0.ub.1804__bcw.0.3.0A'
+        label 'multithread'
+        //errorStrategy "retry"
+
+        publishDir '../working/dada2/merged/', mode: 'copy'
+
+        input:
+            set batch, specimen, file(R1), file(R2), file(R1dada), file(R2dada) from dada2_dada_sp_ch
+
+        output:
+            set batch, specimen, file("${specimen}.dada2.merged.rds") into dada2_sp_merge
+
+        """
+        #!/usr/bin/env Rscript
+        library('dada2');
+        dada_1 <- readRDS('${R1dada}');
+        derep_1 <- readRDS('${R1}');
+        dada_2 <- readRDS('${R2dada}');
+        derep_2 <- readRDS('${R2}');        
+        merger <- mergePairs(
+            dada_1, derep_1,
+            dada_2, derep_2,
+            verbose=TRUE,
+        );
+        saveRDS(merger, "${specimen}.dada2.merged.rds");
+        print(dada_1);
+        print(derep_1);
+        print(dada_2);
+        print(derep_2);
+        foo;
+        """
+    }
+
+// Step 1.g. Make a seqtab
+
+process dada2_seqtab_sp {
+        container 'golob/dada2:1.8.0.ub.1804__bcw.0.3.0A'
+        label 'io_limited'
+        errorStrategy "retry"
+
+        input:
+            set batch, specimen, file(merged) from dada2_sp_merge
+
+        output:
+            set batch, specimen, file("${specimen}.dada2.seqtab.rds") into dada2_sp_seqtab
+
+        """
+        #!/usr/bin/env Rscript
+        library('dada2');
+        merged <- readRDS('${merged}');
+        seqtab <- makeSequenceTable(merged);
+        rownames(seqtab) <- c('${specimen}');
+        saveRDS(seqtab, '${specimen}.dada2.seqtab.rds');
+        """
+    }
+dada2_sp_seqtab.println()
+
+
+/*
+// Step 1.h. Combine seqtabs
+    // Do this by batch to help with massive data sets
+    dada2_sp_seqtab
+        .groupTuple(by: 0)
+        .set{ dada2_batch_seqtabs_ch }
+
+    process dada2_seqtab_batch_combine {
+        container 'golob/dada2-fast-combineseqtab:0.2.0_BCW_0.30A'
+        label 'io_limited'
+        // errorStrategy "retry"
+
+        input:
+            set val(batch), val(specimens), file(sp_seqtabs_rds) from dada2_batch_seqtabs_ch
+
+        output:
+            set batch, file("${batch}.dada2.seqtabs.rds") into dada2_batch_seqtab_ch
+
+        """
+        combine_seqtab \
+        --rds ${batch}.dada2.seqtabs.rds \
+        --seqtabs ${sp_seqtabs_rds}
+        """
+    }
+    // Then combine the batch seqtabs into the one seqtab to rule them all
+    dada2_batch_seqtab_ch
+        .collect{ it[1] }
+        .set{ batch_seqtab_files }
+    batch_seqtab_files.println()
+
+    process dada2_seqtab_combine_all {
+        container 'golob/dada2-fast-combineseqtab:0.2.0_BCW_0.30A'
+        label 'io_limited'
+        // errorStrategy "retry"
+
+        input:
+            file(batch_seqtab_files)
+
+        output:
+            file("combined.dada2.seqtabs.rds")
+
+        """
+        combine_seqtab \
+        --rds combined.dada2.seqtabs.rds \
+        --seqtabs ${batch_seqtab_files}
+        """
+    }
+
+
+
+
+// Step 1.i. Remove chimera on combined seqtab
+
+// */
 
