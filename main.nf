@@ -76,7 +76,7 @@ Channel.from(file(params.manifest))
     .splitCsv(header: true, sep: ",")
     .reduce(true){p, c ->
         return (p && (c.index__1 != null) && (c.index__2 != null))
-    }.subscribe{i -> has_index = i}
+    }.set{has_index}
 
 // If there are index files, preceed to verifying demultiplex
 if (has_index){
