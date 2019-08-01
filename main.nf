@@ -15,15 +15,16 @@ params.help = false
 params.output = '.'
 
 // dada2-sv
-params.trimLeft = 16
+params.trimLeft = 0
 params.maxN = 0
 params.maxEE = 'Inf'
-params.truncLenF = 250
-params.truncLenR = 250
+params.truncLenF = 0
+params.truncLenR = 0
 params.truncQ = 2
 params.errM_maxConsist = 10
 params.errM_randomize = 'FALSE'
 params.errM_nbases = '1e8'
+params.chimera_method = 'consensus'
 
 // Function which prints help message text
 def helpMessage() {
@@ -51,11 +52,11 @@ def helpMessage() {
                                 Maliampi will create a directory structure under this directory
         -w                    Working directory. Defaults to `./work`
       SV-DADA2 options:
-        --trimLeft            How far to trim on the left (default = 15)
+        --trimLeft            How far to trim on the left (default = 0)
         --maxN                (default = 0)
         --maxEE               (default = Inf)
-        --truncLenF           (default = 235)
-        --truncLenR           (default = 235)
+        --truncLenF           (default = 0)
+        --truncLenR           (default = 0)
         --truncQ              (default = 2)
 
     """.stripIndent()
@@ -76,10 +77,10 @@ Channel.from(file(params.manifest))
     .splitCsv(header: true, sep: ",")
     .reduce(true){p, c ->
         return (p && (c.index__1 != null) && (c.index__2 != null))
-    }.set{has_index}
+    }.set { has_index }
 
 // If there are index files, preceed to verifying demultiplex
-if (has_index){
+if (has_index.val == true){
     Channel.from(file(params.manifest))
         .splitCsv(header: true, sep: ",")
         .map { sample -> [
@@ -95,6 +96,7 @@ if (has_index){
             file(sample.index__2),
         ]}
         .set{ input_ch }
+
 
     // Use barcodecop to verify demultiplex
     process barcodecop {
@@ -187,10 +189,10 @@ process dada2_derep {
     """
     #!/usr/bin/env Rscript
     library('dada2');
-    derep1 <- derepFastq('${R1}');
-    saveRDS(derep1, '${R1_n}.dada2.ft.derep.rds');
-    derep2 <- derepFastq('${R2}');
-    saveRDS(derep1, '${R2_n}.dada2.ft.derep.rds');
+    derep_1 <- derepFastq('${R1}');
+    saveRDS(derep_1, '${R1_n}.dada2.ft.derep.rds');
+    derep_2 <- derepFastq('${R2}');
+    saveRDS(derep_2, '${R2_n}.dada2.ft.derep.rds');
     """ 
 }
 
@@ -318,11 +320,6 @@ process dada2_merge {
             verbose=TRUE,
         );
         saveRDS(merger, "${specimen}.dada2.merged.rds");
-        print(dada_1);
-        print(derep_1);
-        print(dada_2);
-        print(derep_2);
-        foo;
         """
     }
 
@@ -348,10 +345,7 @@ process dada2_seqtab_sp {
         saveRDS(seqtab, '${specimen}.dada2.seqtab.rds');
         """
     }
-dada2_sp_seqtab.println()
 
-
-/*
 // Step 1.h. Combine seqtabs
     // Do this by batch to help with massive data sets
     dada2_sp_seqtab
@@ -361,7 +355,7 @@ dada2_sp_seqtab.println()
     process dada2_seqtab_batch_combine {
         container 'golob/dada2-fast-combineseqtab:0.2.0_BCW_0.30A'
         label 'io_limited'
-        // errorStrategy "retry"
+        //errorStrategy "retry"
 
         input:
             set val(batch), val(specimens), file(sp_seqtabs_rds) from dada2_batch_seqtabs_ch
@@ -379,7 +373,8 @@ dada2_sp_seqtab.println()
     dada2_batch_seqtab_ch
         .collect{ it[1] }
         .set{ batch_seqtab_files }
-    batch_seqtab_files.println()
+
+
 
     process dada2_seqtab_combine_all {
         container 'golob/dada2-fast-combineseqtab:0.2.0_BCW_0.30A'
@@ -390,7 +385,7 @@ dada2_sp_seqtab.println()
             file(batch_seqtab_files)
 
         output:
-            file("combined.dada2.seqtabs.rds")
+            file("combined.dada2.seqtabs.rds") into combined_seqtab
 
         """
         combine_seqtab \
@@ -398,11 +393,32 @@ dada2_sp_seqtab.println()
         --seqtabs ${batch_seqtab_files}
         """
     }
-
-
-
-
 // Step 1.i. Remove chimera on combined seqtab
+    process dada2_remove_bimera {
+        container 'golob/dada2:1.8.0.ub.1804__bcw.0.3.0A'
+        label 'multithread'
+        publishDir "${params.output}/sv/", mode: 'copy'
 
+        input:
+            file(combined_seqtab)
+
+        output:
+            file("dada2.combined.seqtabs.nochimera.rds") into final_seqtab_rds
+            file("dada2.combined.seqtabs.nochimera.csv") into final_seqtab_csv
+
+        """
+        #!/usr/bin/env Rscript
+        library('dada2');
+        seqtab <- readRDS('${combined_seqtab}');
+        seqtab_nochim <- removeBimeraDenovo(
+            seqtab,
+            method = '${params.chimera_method}',
+            multithread = ${task.cpus}
+        );
+        saveRDS(seqtab_nochim, 'dada2.combined.seqtabs.nochimera.rds'); 
+        write.csv(seqtab_nochim, 'dada2.combined.seqtabs.nochimera.csv', na='');
+        print((sum(seqtab) - sum(seqtab_nochim)) / sum(seqtab));
+        """
+    }
 // */
 
