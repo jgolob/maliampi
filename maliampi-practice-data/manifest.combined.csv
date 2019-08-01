@@ -1,0 +1,13 @@
+specimen,batch,read__1,read__2,index__1,index__2,label
+m22n729-s521,m22_p4,reads/m22n729-s521_S383_L001_R1_001.fastq.gz,reads/m22n729-s521_S383_L001_R2_001.fastq.gz,reads/m22n729-s521_S383_L001_I1_001.fastq.gz,reads/m22n729-s521_S383_L001_I2_001.fastq.gz,mock comm- 10^6
+m22n729-s520,m22_p4,reads/m22n729-s520_S382_L001_R1_001.fastq.gz,reads/m22n729-s520_S382_L001_R2_001.fastq.gz,reads/m22n729-s520_S382_L001_I1_001.fastq.gz,reads/m22n729-s520_S382_L001_I2_001.fastq.gz,mock comm-50 ul
+m22n729-s522,m22_p4,reads/m22n729-s522_S384_L001_R1_001.fastq.gz,reads/m22n729-s522_S384_L001_R2_001.fastq.gz,reads/m22n729-s522_S384_L001_I1_001.fastq.gz,reads/m22n729-s522_S384_L001_I2_001.fastq.gz,mock comm-plasmid2
+m23n715-s520,m23_p3,reads/m23n715-s520_S286_L001_R1_001.fastq.gz,reads/m23n715-s520_S286_L001_R2_001.fastq.gz,reads/m23n715-s520_S286_L001_I1_001.fastq.gz,reads/m23n715-s520_S286_L001_I2_001.fastq.gz,mock
+m23n715-s521,m23_p3,reads/m23n715-s521_S287_L001_R1_001.fastq.gz,reads/m23n715-s521_S287_L001_R2_001.fastq.gz,reads/m23n715-s521_S287_L001_I1_001.fastq.gz,reads/m23n715-s521_S287_L001_I2_001.fastq.gz,mock
+m23n715-s522,m23_p3,reads/m23n715-s522_S288_L001_R1_001.fastq.gz,reads/m23n715-s522_S288_L001_R2_001.fastq.gz,reads/m23n715-s522_S288_L001_I1_001.fastq.gz,reads/m23n715-s522_S288_L001_I2_001.fastq.gz,mock
+m48n729-s521,m48_p4,reads/m48n729-s521_S383_L001_R1_001.fastq.gz,reads/m48n729-s521_S383_L001_R2_001.fastq.gz,reads/m48n729-s521_S383_L001_I1_001.fastq.gz,reads/m48n729-s521_S383_L001_I2_001.fastq.gz,mock comm- 10^6
+m48n729-s520,m48_p4,reads/m48n729-s520_S382_L001_R1_001.fastq.gz,reads/m48n729-s520_S382_L001_R2_001.fastq.gz,reads/m48n729-s520_S382_L001_I1_001.fastq.gz,reads/m48n729-s520_S382_L001_I2_001.fastq.gz,mock comm-50 ul
+m48n729-s522,m48_p4,reads/m48n729-s522_S384_L001_R1_001.fastq.gz,reads/m48n729-s522_S384_L001_R2_001.fastq.gz,reads/m48n729-s522_S384_L001_I1_001.fastq.gz,reads/m48n729-s522_S384_L001_I2_001.fastq.gz,mock comm-plasmid2
+S10_S37,noindex,reads/PS10_S37_L001_R1_001.min.fastq.gz,reads/PS10_S37_L001_R2_001.min.fastq.gz,,,
+H10_S91,noindex,reads/PH10_S91_L001_R1_001.min.fastq.gz,reads/PH10_S91_L001_R2_001.min.fastq.gz,,,
+J10_S92,noindex,reads/PJ10_S92_L001_R1_001.min.fastq.gz,reads/PJ10_S92_L001_R2_001.min.fastq.gz,,,
