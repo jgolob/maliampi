@@ -437,7 +437,7 @@ process dada2_seqtab_sp {
 
         """
         dada2-seqtab-to-pplacer \
-        --seqtable ${final_seqtab_csv} \
+        -s ${final_seqtab_csv} \
         -f dada2.sv.fasta \
         -m dada2.sv.map.csv \
         -w dada2.sv.weights.csv \
