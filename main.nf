@@ -420,5 +420,30 @@ process dada2_seqtab_sp {
         print((sum(seqtab) - sum(seqtab_nochim)) / sum(seqtab));
         """
     }
+// Step 1.j. Transform output to be pplacer and mothur style
+    process dada2_convert_output {
+        container 'golob/dada2-pplacer:0.4.1__bcw_0.3.1'
+        label 'io_limited'
+        publishDir "${params.output}/sv/", mode: 'copy'
+
+        input:
+            file(final_seqtab_csv)
+
+        output:
+            file("dada2.sv.fasta") into dada2_sv_fasta
+            file("dada2.sv.map.csv") into dada2_sv_map
+            file("dada2.sv.map.csv") into dada2_sv_map
+            file("dada2.sv.weights.csv") into dada2_sv_weights
+
+        """
+        dada2-seqtab-to-pplacer \
+        --seqtable ${final_seqtab_csv} \
+        -f dada2.sv.fasta \
+        -m dada2.sv.map.csv \
+        -w dada2.sv.weights.csv \
+        -t dada2.sv.shared.txt
+        """
+    }
+
 // */
 
