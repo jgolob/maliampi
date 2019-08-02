@@ -437,6 +437,7 @@ process dada2_seqtab_sp {
         output:
             file("dada2.sv.fasta") into dada2_sv_fasta
             file("dada2.sv.fasta") into sv_fasta
+            file("dada2.sv.fasta") into sv_fasta_for_placement
             file("dada2.sv.map.csv") into dada2_sv_map
             file("dada2.sv.weights.csv") into dada2_sv_weights
             file("dada2.sv.shared.txt") into dada2_sv_sharetable
@@ -647,7 +648,7 @@ process taxtableForSI {
     """
 }
 
-// Obtain the CM used for the alignment
+// Step 2.xx Obtain the CM used for the alignment
 process obtainCM {
     container = 'golob/infernal:1.1.2_bcw_0.2.0'
     label = 'io_limited'
@@ -660,6 +661,7 @@ process obtainCM {
     """
 }
 
+// Step 2.xx Combine into a refpkg
 process combineRefpkg {
     container = 'golob/pplacer:1.1alpha19rc_BCW_0.3.0D'
     label = 'io_limited'
@@ -677,7 +679,7 @@ process combineRefpkg {
         file(refpkg_cm)
     
     output:
-        file("refpkg.tgz")
+        file("refpkg.tgz") into refpkg_tgz_f
     
     """
     taxit create --locus 16S \
@@ -690,8 +692,230 @@ process combineRefpkg {
     --taxonomy ${refpkg_tt_f} \
     --seq-info ${refpkg_si_f} \
     --profile ${refpkg_cm} && \
-    tar czvf refpkg.tgz refpkg/*
+    ls -l refpkg/ && \
+    tar czvf refpkg.tgz  -C refpkg/ .
     """
 }
+
+//
+//  END STEP 2: Reference package
+//
+
+//
+//  START STEP 3: Placement
+//
+params.pplacer_prior_lower = 0.01
+refpkg_tgz_f.into{
+    refpkg_tgz_for_aln_f;
+    refpkg_tgz_for_placement_f;
+}
+dada2_sv_weights.into {
+    sv_weights_for_redup
+}
+
+//  Step 3.a. Align SV
+
+process alignSV {
+    container = 'golob/infernal:1.1.2_bcw_0.2.0'
+    label = 'mem_veryhigh'
+
+    input:
+        file(sv_fasta_for_placement)
+    
+    output:
+        file("sv.aln.scores") into sv_aln_scores_f
+        file("sv.aln.sto") into sv_aln_sto_f
+    
+    """
+    cmalign \
+    --cpu ${task.cpus} --noprob --dnaout --mxsize ${params.cmalign_mxsize} \
+    --sfile sv.aln.scores -o sv.aln.sto \
+    /cmalign/data/SSU_rRNA_bacteria.cm ${sv_fasta_for_placement}
+    """
+}
+
+//  Step 3.b. Combine SV and refpkg alignment
+// First extract the alignment from the refpkg
+
+process extractRefpkgAln {
+    container = "golob/fastatools:0.7.1__bcw.0.3.1"
+    label = 'io_limited'
+
+    input:
+        file(refpkg_tgz_for_aln_f)
+    
+    output:
+        file("refpkg.aln.fasta")
+        file("refpkg.aln.sto") into refpkg_aln_sto_for_placement_f
+        
+    """
+    #!/usr/bin/env python
+
+    import tarfile
+    import json
+    from Bio import AlignIO
+    import os
+
+    tar_h = tarfile.open('${refpkg_tgz_for_aln_f}')
+    tar_contents_dict = {os.path.basename(f.name): f for f in tar_h.getmembers()}
+    print(tar_contents_dict)
+    contents = json.loads(
+        tar_h.extractfile(
+            tar_contents_dict['CONTENTS.json']
+        ).read().decode('utf-8')
+    )
+    aln_fasta_intgz = contents['files'].get('aln_fasta')
+    aln_sto_intgz = contents['files'].get('aln_sto')
+
+    if aln_fasta_intgz and aln_sto_intgz:
+        # Both version of the alignment are in the refpkg
+        with open('refpkg.aln.fasta','w') as out_aln_fasta_h:
+            out_aln_fasta_h.write(
+                tar_h.extractfile(
+                    tar_contents_dict[aln_fasta_intgz]
+                ).read().decode('utf-8')
+            )
+        with open('refpkg.aln.sto','w') as out_aln_sto_h:
+            out_aln_sto_h.write(
+                tar_h.extractfile(
+                    tar_contents_dict[aln_sto_intgz]
+                ).read().decode('utf-8')
+            )
+    elif aln_fasta_intgz:
+        # Only fasta exists
+        with open('refpkg.aln.fasta','w') as out_aln_fasta_h:
+            out_aln_fasta_h.write(
+                tar_h.extractfile(
+                    tar_contents_dict[aln_fasta_intgz]
+                ).read().decode('utf-8')
+            )
+        # And convert to sto format
+        with open('refpkg.aln.sto','w') as out_aln_sto_h:
+            AlignIO.write(
+                AlignIO.read(
+                    tar_h.extractfile(tar_contents_dict[aln_fasta_intgz]),
+                    'fasta'),
+                out_aln_sto_h,
+                'stockholm'
+            )
+    elif aln_sto_intgz:
+        # Only STO exists
+        with open('refpkg.aln.sto','w') as out_aln_sto_h:
+            out_aln_sto_h.write(
+                tar_h.extractfile(
+                    tar_contents_dict[aln_sto_intgz]
+                ).read().decode('utf-8')
+            )
+        with sopen('refpkg.aln.fasta','w') as out_aln_fasta_h:
+            AlignIO.write(
+                AlignIO.read(
+                                tar_h.extractfile(tar_contents_dict[aln_sto_intgz]),
+                                'stockholm'),
+                out_aln_fasta_h,
+                'fasta'
+            )
+    else:
+        # NO alignment present
+        raise Exception("Refset does not contain an alignment")
+    """
+}
+
+process combineAln_SV_refpkg {
+    container = 'golob/infernal:1.1.2_bcw_0.2.0'
+    label = 'mem_veryhigh'
+
+    input:
+        file(sv_aln_sto_f)
+        file(refpkg_aln_sto_for_placement_f)
+        
+    
+    output:
+        file("sv_refpkg.aln.sto") into sv_refpkg_aln_sto_f
+    
+    """
+    esl-alimerge --dna \
+     -o sv_refpkg.aln.sto \
+     ${sv_aln_sto_f} ${refpkg_aln_sto_for_placement_f}
+    """
+}
+
+//  Step 3.c. Place SV via pplacer
+process pplacerPlacement {
+    container = 'golob/pplacer:1.1alpha19rc_BCW_0.3.0D'
+    label = 'mem_veryhigh'
+
+    publishDir "${params.output}/placement", mode: 'copy'
+
+    input:
+        file(sv_refpkg_aln_sto_f)
+        file(refpkg_tgz_for_placement_f)
+    output:
+        file('dedup.jplace') into dedup_jplace_f
+    
+    afterScript "rm -rf refpkg/"
+    """
+    mkdir -p refpkg/ &&
+    tar xzvf ${refpkg_tgz_for_placement_f} -C ./refpkg &&
+    pplacer -p -j ${task.cpus} \
+    --inform-prior --prior-lower ${params.pplacer_prior_lower} --map-identity \
+    -c refpkg/ ${sv_refpkg_aln_sto_f} \
+    -o dedup.jplace
+    """
+}
+
+dedup_jplace_f.into{
+    dedup_jplace_for_redup_f
+}
+
+//  Step 3.d. Reduplicate placements
+process pplacerReduplicate {
+    container = 'golob/pplacer:1.1alpha19rc_BCW_0.3.0D'
+    label = 'io_limited'
+
+    publishDir "${params.output}/placement", mode: 'copy'
+
+    input:
+        file(dedup_jplace_for_redup_f)
+        file(sv_weights_for_redup)
+    output:
+        file('redup.jplace.gz')
+    
+    """
+    guppy redup -m \
+    -o /dev/stdout \
+    -d ${sv_weights_for_redup} \
+    {dedup_jplace_for_redup_f} \
+    | gzip > redup.jplace.gz
+    """
+}
+
+
+//  Step 3.e. ADCL metric
+
+
+//  Step 3.f. EDPL metric
+
+
+//  Step 3.g. EPCA & LPCA
+
+
+//  Step 3.h. Alpha diversity
+
+
+//  Step 3.i. KR (phylogenetic) distance 
+
+//
+//  END STEP 3: Placement
+//
+
+//
+//  START STEP 4: Classification
+//
+
+//
+//  END STEP 4: Classification
+//
+
+
 // */
 
