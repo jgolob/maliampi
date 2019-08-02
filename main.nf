@@ -26,10 +26,6 @@ params.errM_randomize = 'FALSE'
 params.errM_nbases = '1e8'
 params.chimera_method = 'consensus'
 
-// refpkg
-params.repo_min_id = 0.8
-params.repo_max_accepts = 10
-
 // Function which prints help message text
 def helpMessage() {
     log.info"""
@@ -462,11 +458,19 @@ process dada2_seqtab_sp {
 //
 //  START STEP 2: Reference package
 //
+params.repo_min_id = 0.8
+params.repo_max_accepts = 10
+params.cmalign_mxsize = 8196
+params.raxml_model = 'GTRGAMMA'
+params.raxml_parsiomony_seed = 12345
 
 // Step 2.a. Search the repo for matches
 // load the repo
 Channel.from(file(params.repo_fasta))
     .set{ repo_fasta}
+Channel.from(file(params.repo_si))
+    .set{ repo_si }
+
 process refpkgSearchRepo {
     container 'golob/vsearch:2.7.1_bcw_0.2.0'
     label = 'multithread'
@@ -495,5 +499,199 @@ process refpkgSearchRepo {
     """
 }
 
+repo_recruits_combined_f = repo_recruits_f
+
+repo_recruits_combined_f.into { 
+   repo_recruits_combined_for_si_f;
+   repo_recruits_combined_for_aln_f
+}
+
+// Step 2.xx Filter SeqInfo to recruits
+process filterSeqInfo {
+    container = 'golob/fastatools:0.7.1__bcw.0.3.1'
+    label = 'io_limited'
+
+    input:
+        file(repo_recruits_combined_for_si_f)
+        file(repo_si)
+    
+    output:
+        file('refpkg.seq_info.csv') into refpkg_si_f
+        file('refpkg.seq_info.csv') into refpkg_si_for_tt_f
+
+    """
+    #!/usr/bin/env python
+    import fastalite
+    import csv
+
+    with open('${repo_recruits_combined_for_si_f}', 'rt') as fasta_in:
+        seq_ids = {sr.id for sr in fastalite.fastalite(fasta_in)}
+    with open('${repo_si}', 'rt') as si_in, open('refpkg.seq_info.csv', 'wt') as si_out:
+        si_reader = csv.DictReader(si_in)
+        si_writer = csv.DictWriter(si_out, si_reader.fieldnames)
+        si_writer.writeheader()
+        for r in si_reader:
+            if r['seqname'] in seq_ids:
+                si_writer.writerow(r)
+    """
+}
+
+
+// Step 2.xx Align recruited seqs
+
+process alignRepoRecruits {
+    container = 'golob/infernal:1.1.2_bcw_0.2.0'
+    label = 'mem_veryhigh'
+
+    input:
+        file(repo_recruits_combined_for_aln_f)
+    
+    output:
+        file("recruits.aln.scores") into recruit_aln_scores_f
+        file("recruits.aln.sto") into recruits_aln_sto_f
+        file("recruits.aln.sto") into recruits_aln_sto_for_pkg_f
+    
+    """
+    cmalign \
+    --cpu ${task.cpus} --noprob --dnaout --mxsize ${params.cmalign_mxsize} \
+    --sfile recruits.aln.scores -o recruits.aln.sto \
+    /cmalign/data/SSU_rRNA_bacteria.cm ${repo_recruits_combined_for_aln_f}
+    """
+}
+
+// Step 2.xx Convert alignment from STO -> FASTA format
+process convertAlnToFasta {
+    container = 'golob/fastatools:0.7.1__bcw.0.3.1'
+    label = 'io_limited'
+    errorStrategy "retry"
+
+    input: 
+        file(recruits_aln_sto_f)
+    
+    output:
+        file("recruits.aln.fasta") into recruits_aln_fasta_f
+        file("recruits.aln.fasta") into recruits_aln_fasta_for_pkg_f
+    
+    """
+    #!/usr/bin/env python
+    from Bio import AlignIO
+
+    with open('recruits.aln.fasta', 'wt') as out_h:
+        AlignIO.write(
+            AlignIO.read(
+                open('${recruits_aln_sto_f}', 'rt'),
+                'stockholm'
+            ),
+            out_h,
+            'fasta'
+        )
+    """
+}
+// Step 2.xx Make a tree from the alignment.
+process raxmlTree {
+    container = 'golob/raxml:8.2.11_bcw_0.3.0'
+    label = 'mem_veryhigh'
+    errorStrategy = 'retry'
+
+    input:
+        file(recruits_aln_fasta_f)
+    
+    output:
+        file("RAxML_bestTree.refpkg") into refpkg_tree_f
+        file("RAxML_info.refpkg") into refpkg_tree_stats_f
+    
+    """
+    raxml \
+    -n refpkg \
+    -m ${params.raxml_model} \
+    -s ${recruits_aln_fasta_f} \
+    -p ${params.raxml_parsiomony_seed} \
+    -T ${task.cpus} && \
+    ls -l -h 
+    """
+}
+
+// Step 2.xx (get) or build a taxonomy db
+process buildTaxtasticDB {
+    container = 'golob/pplacer:1.1alpha19rc_BCW_0.3.0D'
+    label = 'io_limited'
+    // errorStrategy = 'retry'
+
+    output:
+        file("taxonomy.db") into taxonomy_db_f
+
+    afterScript "rm -rf dl/"
+        
+    """
+    mkdir -p dl/ && \
+    taxit new_database taxonomy.db -p dl/
+    """
+}
+
+// Step 2.xx Make a tax table for the refpkg sequences
+process taxtableForSI {
+    container = 'golob/pplacer:1.1alpha19rc_BCW_0.3.0D'
+    label = 'io_limited'
+    // errorStrategy = 'retry'
+
+    input:
+        file(taxonomy_db_f)
+        file(refpkg_si_for_tt_f)
+    output:
+        file("refpkg.taxtable.csv") into refpkg_tt_f
+
+    """
+    taxit taxtable ${taxonomy_db_f} \
+    --seq-info ${refpkg_si_for_tt_f} \
+    --outfile refpkg.taxtable.csv
+    """
+}
+
+// Obtain the CM used for the alignment
+process obtainCM {
+    container = 'golob/infernal:1.1.2_bcw_0.2.0'
+    label = 'io_limited'
+
+    output:
+        file("refpkg.cm") into refpkg_cm
+    
+    """
+    cp /cmalign/data/SSU_rRNA_bacteria.cm refpkg.cm
+    """
+}
+
+process combineRefpkg {
+    container = 'golob/pplacer:1.1alpha19rc_BCW_0.3.0D'
+    label = 'io_limited'
+
+    afterScript("rm -rf refpkg/*")
+    publishDir "${params.output}/refpkg/", mode: 'copy'
+
+    input:
+        file(recruits_aln_fasta_for_pkg_f)
+        file(recruits_aln_sto_for_pkg_f)
+        file(refpkg_tree_f)
+        file(refpkg_tree_stats_f)
+        file(refpkg_tt_f)
+        file(refpkg_si_f)
+        file(refpkg_cm)
+    
+    output:
+        file("refpkg.tgz")
+    
+    """
+    taxit create --locus 16S \
+    --package-name refpkg \
+    --clobber \
+    --aln-fasta ${recruits_aln_fasta_for_pkg_f} \
+    --aln-sto ${recruits_aln_sto_for_pkg_f} \
+    --tree-file ${refpkg_tree_f} \
+    --tree-stats ${refpkg_tree_stats_f} \
+    --taxonomy ${refpkg_tt_f} \
+    --seq-info ${refpkg_si_f} \
+    --profile ${refpkg_cm} && \
+    tar czvf refpkg.tgz refpkg/*
+    """
+}
 // */
 
