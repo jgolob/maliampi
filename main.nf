@@ -865,6 +865,7 @@ process pplacerPlacement {
 
 dedup_jplace_f.into{
     dedup_jplace_for_redup_f
+    dedup_jplace_for_adcl_f
 }
 
 //  Step 3.d. Reduplicate placements
@@ -891,7 +892,23 @@ process pplacerReduplicate {
 
 
 //  Step 3.e. ADCL metric
+process pplacerADCL {
+    container = 'golob/pplacer:1.1alpha19rc_BCW_0.3.0D'
+    label = 'io_limited'
 
+    publishDir "${params.output}/placement", mode: 'copy'
+
+    input:
+        file(dedup_jplace_for_adcl_f)
+    output:
+        file('adcl.csv.gz')
+    
+    """
+    (echo name,adcl,weight && 
+    guppy adcl --no-collapse ${dedup_jplace_for_adcl_f} -o /dev/stdout) | 
+    gzip > adcl.csv.gz
+    """
+}
 
 //  Step 3.f. EDPL metric
 
