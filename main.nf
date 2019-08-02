@@ -63,7 +63,7 @@ def helpMessage() {
 }
 
 // Show help message if the user specifies the --help flag at runtime
-if (params.help){
+if (params.help || params.manifest == null){
     // Invoke the function above which prints the help message
     helpMessage()
     // Exit out and do not run anything else
