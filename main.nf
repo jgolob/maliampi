@@ -26,6 +26,10 @@ params.errM_randomize = 'FALSE'
 params.errM_nbases = '1e8'
 params.chimera_method = 'consensus'
 
+// refpkg
+params.repo_min_id = 0.8
+params.repo_max_accepts = 10
+
 // Function which prints help message text
 def helpMessage() {
     log.info"""
@@ -58,6 +62,8 @@ def helpMessage() {
         --truncLenF           (default = 0)
         --truncLenR           (default = 0)
         --truncQ              (default = 2)
+      Ref Package options:
+        --repo_fasta          FASTA file containing reference sequences
 
     """.stripIndent()
 }
@@ -69,6 +75,9 @@ if (params.help || params.manifest == null){
     // Exit out and do not run anything else
     exit 0
 }
+
+//
+//  START STEP 1: Sequence variants
 
 // Load manifest!
 
@@ -431,6 +440,7 @@ process dada2_seqtab_sp {
 
         output:
             file("dada2.sv.fasta") into dada2_sv_fasta
+            file("dada2.sv.fasta") into sv_fasta
             file("dada2.sv.map.csv") into dada2_sv_map
             file("dada2.sv.weights.csv") into dada2_sv_weights
             file("dada2.sv.shared.txt") into dada2_sv_sharetable
@@ -445,6 +455,45 @@ process dada2_seqtab_sp {
         -t dada2.sv.shared.txt
         """
     }
+//
+//  END STEP 1: Sequence variants 
+//
+
+//
+//  START STEP 2: Reference package
+//
+
+// Step 2.a. Search the repo for matches
+// load the repo
+Channel.from(file(params.repo_fasta))
+    .set{ repo_fasta}
+process refpkgSearchRepo {
+    container 'golob/vsearch:2.7.1_bcw_0.2.0'
+    label = 'multithread'
+
+    input:
+        file(sv_fasta)
+        file(repo_fasta)
+    
+    output:
+        file("${repo_fasta}.uc") into sv_repo_uc_f
+        file("${repo_fasta}.sv.nohit.fasta") into sv_repo_nohit_f
+        file("${repo_fasta}.repo.recruits.fasta") into repo_recruits_f
+
+    """
+    vsearch \
+    --threads=${task.cpus} \
+    --usearch_global ${sv_fasta} \
+    --db ${repo_fasta} \
+    --id=${params.repo_min_id} \
+    --strand both \
+    --uc=${repo_fasta}.uc --uc_allhits \
+    --notmatched=${repo_fasta}.sv.nohit.fasta \
+    --dbmatched=${repo_fasta}.repo.recruits.fasta \
+    --maxaccepts=${params.repo_max_accepts} \
+    | tee -a vsearch.log
+    """
+}
 
 // */
 
