@@ -432,8 +432,8 @@ process dada2_seqtab_sp {
         output:
             file("dada2.sv.fasta") into dada2_sv_fasta
             file("dada2.sv.map.csv") into dada2_sv_map
-            file("dada2.sv.map.csv") into dada2_sv_map
             file("dada2.sv.weights.csv") into dada2_sv_weights
+            file("dada2.sv.shared.txt") into dada2_sv_sharetable
 
         """
         dada2-seqtab-to-pplacer \
