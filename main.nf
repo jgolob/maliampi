@@ -390,7 +390,7 @@ process dada2_seqtab_sp {
             file(batch_seqtab_files)
 
         output:
-            file("combined.dada2.seqtabs.rds") into combined_seqtab
+            file "combined.dada2.seqtabs.rds" into combined_seqtab
 
         """
         combine_seqtab \
@@ -408,8 +408,8 @@ process dada2_seqtab_sp {
             file(combined_seqtab)
 
         output:
-            file("dada2.combined.seqtabs.nochimera.rds") into final_seqtab_rds
-            file("dada2.combined.seqtabs.nochimera.csv") into final_seqtab_csv
+            file "dada2.combined.seqtabs.nochimera.rds" into final_seqtab_rds
+            file "dada2.combined.seqtabs.nochimera.csv" into final_seqtab_csv
 
         """
         #!/usr/bin/env Rscript
@@ -435,11 +435,11 @@ process dada2_seqtab_sp {
             file(final_seqtab_csv)
 
         output:
-            file("dada2.sv.fasta") into dada2_sv_fasta
-            file("dada2.sv.fasta") into sv_fasta
-            file("dada2.sv.map.csv") into dada2_sv_map
-            file("dada2.sv.weights.csv") into dada2_sv_weights
-            file("dada2.sv.shared.txt") into dada2_sv_sharetable
+            file "dada2.sv.fasta" into dada2_sv_fasta_f
+            file "dada2.sv.fasta"  into sv_fasta_f
+            file "dada2.sv.map.csv"  into sv_map_f
+            file "dada2.sv.weights.csv" into sv_weights_f
+            file "dada2.sv.shared.txt" into dada2_sv_sharetable_f
 
 
         """
@@ -450,17 +450,6 @@ process dada2_seqtab_sp {
         -w dada2.sv.weights.csv \
         -t dada2.sv.shared.txt
         """
-    }
-    sv_fasta.into {
-        sv_fasta_for_refpkg;
-        sv_fasta_for_placement
-    }
-    dada2_sv_map.into {
-        sv_map_for_pca_f;
-        sv_map_for_ad_f;
-        sv_map_for_kr_f;
-        sv_map_for_db_f;
-        sv_map_for_tables_f;
     }
 
 //
@@ -478,9 +467,9 @@ params.raxml_parsiomony_seed = 12345
 
 // Step 2.a. Search the repo for matches
 // load the repo
-Channel.from(file(params.repo_fasta))
+Channel.value(file(params.repo_fasta))
     .set{ repo_fasta}
-Channel.from(file(params.repo_si))
+Channel.value(file(params.repo_si))
     .set{ repo_si }
 
 process refpkgSearchRepo {
@@ -488,18 +477,18 @@ process refpkgSearchRepo {
     label = 'multithread'
 
     input:
-        file(sv_fasta_for_refpkg)
-        file(repo_fasta)
+        file sv_fasta_f
+        file repo_fasta
     
     output:
-        file("${repo_fasta}.uc") into sv_repo_uc_f
-        file("${repo_fasta}.sv.nohit.fasta") into sv_repo_nohit_f
-        file("${repo_fasta}.repo.recruits.fasta") into repo_recruits_f
+        file "${repo_fasta}.uc" into sv_repo_uc_f
+        file "${repo_fasta}.sv.nohit.fasta" into sv_repo_nohit_f
+        file "${repo_fasta}.repo.recruits.fasta" into repo_recruits_f
 
     """
     vsearch \
     --threads=${task.cpus} \
-    --usearch_global ${sv_fasta_for_refpkg} \
+    --usearch_global ${sv_fasta_f} \
     --db ${repo_fasta} \
     --id=${params.repo_min_id} \
     --strand both \
@@ -511,12 +500,6 @@ process refpkgSearchRepo {
     """
 }
 
-repo_recruits_combined_f = repo_recruits_f
-
-repo_recruits_combined_f.into { 
-   repo_recruits_combined_for_si_f;
-   repo_recruits_combined_for_aln_f
-}
 
 // Step 2.xx Filter SeqInfo to recruits
 process filterSeqInfo {
@@ -524,19 +507,18 @@ process filterSeqInfo {
     label = 'io_limited'
 
     input:
-        file(repo_recruits_combined_for_si_f)
-        file(repo_si)
+        file repo_recruits_f
+        file repo_si
     
     output:
-        file('refpkg.seq_info.csv') into refpkg_si_f
-        file('refpkg.seq_info.csv') into refpkg_si_for_tt_f
+        file 'refpkg.seq_info.csv' into refpkg_si_f
 
     """
     #!/usr/bin/env python
     import fastalite
     import csv
 
-    with open('${repo_recruits_combined_for_si_f}', 'rt') as fasta_in:
+    with open('${repo_recruits_f}', 'rt') as fasta_in:
         seq_ids = {sr.id for sr in fastalite.fastalite(fasta_in)}
     with open('${repo_si}', 'rt') as si_in, open('refpkg.seq_info.csv', 'wt') as si_out:
         si_reader = csv.DictReader(si_in)
@@ -556,18 +538,17 @@ process alignRepoRecruits {
     label = 'mem_veryhigh'
 
     input:
-        file(repo_recruits_combined_for_aln_f)
+        file repo_recruits_f
     
     output:
-        file("recruits.aln.scores") into recruit_aln_scores_f
-        file("recruits.aln.sto") into recruits_aln_sto_f
-        file("recruits.aln.sto") into recruits_aln_sto_for_pkg_f
+        file "recruits.aln.scores" into recruit_aln_scores_f
+        file "recruits.aln.sto" into recruits_aln_sto_f
     
     """
     cmalign \
     --cpu ${task.cpus} --noprob --dnaout --mxsize ${params.cmalign_mxsize} \
     --sfile recruits.aln.scores -o recruits.aln.sto \
-    /cmalign/data/SSU_rRNA_bacteria.cm ${repo_recruits_combined_for_aln_f}
+    /cmalign/data/SSU_rRNA_bacteria.cm ${repo_recruits_f}
     """
 }
 
@@ -578,11 +559,10 @@ process convertAlnToFasta {
     errorStrategy "retry"
 
     input: 
-        file(recruits_aln_sto_f)
+        file recruits_aln_sto_f
     
     output:
-        file("recruits.aln.fasta") into recruits_aln_fasta_f
-        file("recruits.aln.fasta") into recruits_aln_fasta_for_pkg_f
+        file "recruits.aln.fasta" into recruits_aln_fasta_f
     
     """
     #!/usr/bin/env python
@@ -606,7 +586,7 @@ process raxmlTree {
     errorStrategy = 'retry'
 
     input:
-        file(recruits_aln_fasta_f)
+        file recruits_aln_fasta_f
     
     output:
         file "RAxML_bestTree.refpkg" into refpkg_tree_f
@@ -647,14 +627,14 @@ process taxtableForSI {
     // errorStrategy = 'retry'
 
     input:
-        file(taxonomy_db_f)
-        file(refpkg_si_for_tt_f)
+        file taxonomy_db_f 
+        file refpkg_si_f 
     output:
         file "refpkg.taxtable.csv" into refpkg_tt_f
 
     """
     taxit taxtable ${taxonomy_db_f} \
-    --seq-info ${refpkg_si_for_tt_f} \
+    --seq-info ${refpkg_si_f} \
     --outfile refpkg.taxtable.csv
     """
 }
@@ -665,7 +645,7 @@ process obtainCM {
     label = 'io_limited'
 
     output:
-        file("refpkg.cm") into refpkg_cm
+        file "refpkg.cm" into refpkg_cm
     
     """
     cp /cmalign/data/SSU_rRNA_bacteria.cm refpkg.cm
@@ -681,13 +661,13 @@ process combineRefpkg {
     publishDir "${params.output}/refpkg/", mode: 'copy'
 
     input:
-        file(recruits_aln_fasta_for_pkg_f)
-        file(recruits_aln_sto_for_pkg_f)
-        file(refpkg_tree_f)
-        file(refpkg_tree_stats_f)
-        file(refpkg_tt_f)
-        file(refpkg_si_f)
-        file(refpkg_cm)
+        file recruits_aln_fasta_f
+        file recruits_aln_sto_f
+        file refpkg_tree_f 
+        file refpkg_tree_stats_f 
+        file refpkg_tt_f
+        file refpkg_si_f
+        file refpkg_cm
     
     output:
         file "refpkg.tgz" into refpkg_tgz_f
@@ -696,8 +676,8 @@ process combineRefpkg {
     taxit create --locus 16S \
     --package-name refpkg \
     --clobber \
-    --aln-fasta ${recruits_aln_fasta_for_pkg_f} \
-    --aln-sto ${recruits_aln_sto_for_pkg_f} \
+    --aln-fasta ${recruits_aln_fasta_f} \
+    --aln-sto ${recruits_aln_sto_f} \
     --tree-file ${refpkg_tree_f} \
     --tree-stats ${refpkg_tree_stats_f} \
     --taxonomy ${refpkg_tt_f} \
@@ -716,18 +696,6 @@ process combineRefpkg {
 //  START STEP 3: Placement
 //
 params.pplacer_prior_lower = 0.01
-refpkg_tgz_f.into {
-    refpkg_tgz_for_aln_f;
-    refpkg_tgz_for_placement_f;
-    refpkg_tgz_for_pca_f;
-    refpkg_tgz_for_kr_f;
-    refpkg_tgz_for_db_prep_f;
-    refpkg_tgz_for_classify_f
-}
-dada2_sv_weights.into {
-    sv_weights_for_redup;
-    sv_weights_for_mcc
-}
 
 //  Step 3.a. Align SV
 
@@ -736,7 +704,7 @@ process alignSV {
     label = 'mem_veryhigh'
 
     input:
-        file(sv_fasta_for_placement)
+        file sv_fasta_f
     
     output:
         file "sv.aln.scores" into sv_aln_scores_f
@@ -746,7 +714,7 @@ process alignSV {
     cmalign \
     --cpu ${task.cpus} --noprob --dnaout --mxsize ${params.cmalign_mxsize} \
     --sfile sv.aln.scores -o sv.aln.sto \
-    /cmalign/data/SSU_rRNA_bacteria.cm ${sv_fasta_for_placement}
+    /cmalign/data/SSU_rRNA_bacteria.cm ${sv_fasta_f}
     """
 }
 
@@ -758,11 +726,11 @@ process extractRefpkgAln {
     label = 'io_limited'
 
     input:
-        file(refpkg_tgz_for_aln_f)
+        file refpkg_tgz_f
     
     output:
         file "refpkg.aln.fasta"
-        file "refpkg.aln.sto" into refpkg_aln_sto_for_placement_f
+        file "refpkg.aln.sto" into refpkg_aln_sto_f
         
     """
     #!/usr/bin/env python
@@ -772,7 +740,7 @@ process extractRefpkgAln {
     from Bio import AlignIO
     import os
 
-    tar_h = tarfile.open('${refpkg_tgz_for_aln_f}')
+    tar_h = tarfile.open('${refpkg_tgz_f}')
     tar_contents_dict = {os.path.basename(f.name): f for f in tar_h.getmembers()}
     print(tar_contents_dict)
     contents = json.loads(
@@ -841,8 +809,8 @@ process combineAln_SV_refpkg {
     label = 'mem_veryhigh'
 
     input:
-        file(sv_aln_sto_f)
-        file(refpkg_aln_sto_for_placement_f)
+        file sv_aln_sto_f 
+        file refpkg_aln_sto_f
         
     
     output:
@@ -851,14 +819,10 @@ process combineAln_SV_refpkg {
     """
     esl-alimerge --dna \
      -o sv_refpkg.aln.sto \
-     ${sv_aln_sto_f} ${refpkg_aln_sto_for_placement_f}
+     ${sv_aln_sto_f} ${refpkg_aln_sto_f}
     """
 }
 
-sv_refpkg_aln_sto_f.into {
-    sv_refpkg_aln_sto_for_placement_f;
-    sv_refpkg_aln_sto_for_classify_f
-}
 
 //  Step 3.c. Place SV via pplacer
 process pplacerPlacement {
@@ -868,30 +832,20 @@ process pplacerPlacement {
     publishDir "${params.output}/placement", mode: 'copy'
 
     input:
-        file(sv_refpkg_aln_sto_for_placement_f)
-        file(refpkg_tgz_for_placement_f)
+        file sv_refpkg_aln_sto_f
+        file refpkg_tgz_f
     output:
         file 'dedup.jplace' into dedup_jplace_f
     
     afterScript "rm -rf refpkg/"
     """
     mkdir -p refpkg/ &&
-    tar xzvf ${refpkg_tgz_for_placement_f} -C ./refpkg &&
+    tar xzvf ${refpkg_tgz_f} -C ./refpkg &&
     pplacer -p -j ${task.cpus} \
     --inform-prior --prior-lower ${params.pplacer_prior_lower} --map-identity \
-    -c refpkg/ ${sv_refpkg_aln_sto_for_placement_f} \
+    -c refpkg/ ${sv_refpkg_aln_sto_f} \
     -o dedup.jplace
     """
-}
-
-dedup_jplace_f.into {
-    dedup_jplace_for_redup_f;
-    dedup_jplace_for_adcl_f;
-    dedup_jplace_for_edpl_f;
-    dedup_jplace_for_pca_f;
-    dedup_jplace_for_ad_f;
-    dedup_jplace_for_kr_f;
-    dedup_jplace_for_classify_f
 }
 
 //  Step 3.d. Reduplicate placements
@@ -902,16 +856,16 @@ process pplacerReduplicate {
     publishDir "${params.output}/placement", mode: 'copy'
 
     input:
-        file(dedup_jplace_for_redup_f)
-        file(sv_weights_for_redup)
+        file dedup_jplace_f
+        file sv_weights_f
     output:
-        file('redup.jplace.gz')
+        file 'redup.jplace.gz'
     
     """
     guppy redup -m \
     -o /dev/stdout \
-    -d ${sv_weights_for_redup} \
-    {dedup_jplace_for_redup_f} \
+    -d ${sv_weights_f} \
+    ${dedup_jplace_f} \
     | gzip > redup.jplace.gz
     """
 }
@@ -925,13 +879,13 @@ process pplacerADCL {
     publishDir "${params.output}/placement", mode: 'copy'
 
     input:
-        file(dedup_jplace_for_adcl_f)
+        file dedup_jplace_f
     output:
         file 'adcl.csv.gz'
     
     """
     (echo name,adcl,weight && 
-    guppy adcl --no-collapse ${dedup_jplace_for_adcl_f} -o /dev/stdout) | 
+    guppy adcl --no-collapse ${dedup_jplace_f} -o /dev/stdout) | 
     gzip > adcl.csv.gz
     """
 }
@@ -944,12 +898,12 @@ process pplacerEDPL {
     publishDir "${params.output}/placement", mode: 'copy'
 
     input:
-        file(dedup_jplace_for_edpl_f)
+        file dedup_jplace_f
     output:
         file 'edpl.csv.gz'
     
     """
-    (echo name,edpl && guppy edpl --csv ${dedup_jplace_for_edpl_f} -o /dev/stdout) | 
+    (echo name,edpl && guppy edpl --csv ${dedup_jplace_f} -o /dev/stdout) | 
     gzip > edpl.csv.gz
     """
 }
@@ -962,9 +916,9 @@ process pplacerPCA {
     publishDir "${params.output}/placement", mode: 'copy'
 
     input:
-        file(refpkg_tgz_for_pca_f)
-        file(dedup_jplace_for_pca_f)
-        file(sv_map_for_pca_f)
+        file refpkg_tgz_f
+        file dedup_jplace_f
+        file sv_map_f
     output:
         file 'pca/epca.proj'
         file 'pca/epca.xml'
@@ -975,9 +929,9 @@ process pplacerPCA {
     
     """
     mkdir -p refpkg/ && mkdir -p pca/
-    tar xzvf ${refpkg_tgz_for_pca_f} -C refpkg/ &&
-    guppy epca ${dedup_jplace_for_pca_f}:${sv_map_for_pca_f} -c refpkg/ --out-dir pca/ --prefix epca &&
-    guppy lpca ${dedup_jplace_for_pca_f}:${sv_map_for_pca_f} -c refpkg/ --out-dir pca/ --prefix lpca
+    tar xzvf ${refpkg_tgz_f} -C refpkg/ &&
+    guppy epca ${dedup_jplace_f}:${sv_map_f} -c refpkg/ --out-dir pca/ --prefix epca &&
+    guppy lpca ${dedup_jplace_f}:${sv_map_f} -c refpkg/ --out-dir pca/ --prefix lpca
     """
 }
 
@@ -989,15 +943,15 @@ process pplacerAlphaDiversity {
     publishDir "${params.output}/placement", mode: 'copy'
 
     input:
-        file(dedup_jplace_for_ad_f)
-        file(sv_map_for_ad_f)
+        file dedup_jplace_f
+        file sv_map_f
     output:
         file 'alpha_diversity.csv.gz'
 
     
     """
     guppy fpd --csv --include-pendant --chao-d 0,1,1.00001,2,3,4,5 \
-    ${dedup_jplace_for_ad_f}:${sv_map_for_ad_f} |
+    ${dedup_jplace_f}:${sv_map_f} |
     gzip > alpha_diversity.csv.gz
     """
 }
@@ -1010,17 +964,17 @@ process pplacerKR {
     publishDir "${params.output}/placement", mode: 'copy'
 
     input:
-        file(refpkg_tgz_for_kr_f)
-        file(dedup_jplace_for_kr_f)
-        file(sv_map_for_kr_f)
+        file refpkg_tgz_f
+        file dedup_jplace_f
+        file sv_map_f
     output:
         file 'kr_distance.csv.gz'
 
     
     """
     mkdir -p refpkg/
-    tar xzvf ${refpkg_tgz_for_kr_f} -C refpkg/
-    guppy kr --list-out -c refpkg/ ${dedup_jplace_for_kr_f}:${sv_map_for_kr_f} |
+    tar xzvf ${refpkg_tgz_f} -C refpkg/
+    guppy kr --list-out -c refpkg/ ${dedup_jplace_f}:${sv_map_f} |
     gzip > kr_distance.csv.gz
     """
 }
@@ -1052,8 +1006,8 @@ process classifyDB_Prep {
     cache = false
 
     input:
-        file(refpkg_tgz_for_db_prep_f)
-        file(sv_map_for_db_f)
+        file refpkg_tgz_f
+        file sv_map_f
     
     output:
         file 'classify.prep.db' into classify_db_prepped
@@ -1061,9 +1015,9 @@ process classifyDB_Prep {
 
     """
     mkdir -p refpkg/
-    tar xzvf ${refpkg_tgz_for_db_prep_f} -C refpkg/
+    tar xzvf ${refpkg_tgz_f} -C refpkg/
     rppr prep_db -c refpkg/ --sqlite classify.prep.db
-    (echo "name,specimen"; cat ${sv_map_for_db_f}) |
+    (echo "name,specimen"; cat ${sv_map_f}) |
     csvsql --table seq_info --insert --snifflimit 1000 --db sqlite:///classify.prep.db
     """
 }
@@ -1076,22 +1030,22 @@ process classifySV {
     cache = false
 
     input:
-        file(refpkg_tgz_for_classify_f)
-        file(classify_db_prepped)
-        file(dedup_jplace_for_classify_f)
-        file(sv_refpkg_aln_sto_for_classify_f)
+        file refpkg_tgz_f
+        file classify_db_prepped
+        file dedup_jplace_f
+        file sv_refpkg_aln_sto_f
     
     output:
         file 'classify.classified.db' into classifyDB_classified
 
     """
     mkdir -p refpkg/
-    tar xzvf ${refpkg_tgz_for_classify_f} -C refpkg/
+    tar xzvf ${refpkg_tgz_f} -C refpkg/
     guppy classify --pp \
     --classifier ${params.pp_classifer} \
     -j ${task.cpus} \
     -c refpkg/ \
-    --nbc-sequences ${sv_refpkg_aln_sto_for_classify_f} \
+    --nbc-sequences ${sv_refpkg_aln_sto_f} \
     --sqlite ${classify_db_prepped} \
     --seed ${params.pp_seed} \
     --cutoff ${params.pp_likelihood_cutoff} \
@@ -1102,7 +1056,7 @@ process classifySV {
     --word-length ${params.pp_nbc_word_length} \
     --nbc-rank ${params.pp_nbc_target_rank} \
     --n-boot ${params.pp_nbc_boot} \
-    ${dedup_jplace_for_classify_f}
+    ${dedup_jplace_f}
     cp ${classify_db_prepped} classify.classified.db
     """
 }
@@ -1115,15 +1069,15 @@ process classifyMCC {
     publishDir "${params.output}/classify", mode: 'copy'
 
     input:
-        file(classifyDB_classified)
-        file(sv_weights_for_mcc)
+        file classifyDB_classified
+        file sv_weights_f
 
     output:
         file 'classify.mcc.db' into classifyDB_mcc
 
     """
     multiclass_concat.py -k \
-    --dedup-info ${sv_weights_for_mcc} ${classifyDB_classified}
+    --dedup-info ${sv_weights_f} ${classifyDB_classified}
     cp ${classifyDB_classified} classify.mcc.db
     """
 }
@@ -1137,7 +1091,7 @@ Channel.from(
 classify_ranks.combine(
     classifyDB_mcc
 ).combine(
-    sv_map_for_tables_f
+    sv_map_f
 ).set { classify_rank_ch }
 
 process classifyTables {
