@@ -458,7 +458,9 @@ process dada2_seqtab_sp {
     dada2_sv_map.into {
         sv_map_for_pca_f;
         sv_map_for_ad_f;
-        sv_map_for_kr_f
+        sv_map_for_kr_f;
+        sv_map_for_db_f;
+        sv_map_for_tables_f;
     }
 
 //
@@ -607,8 +609,8 @@ process raxmlTree {
         file(recruits_aln_fasta_f)
     
     output:
-        file("RAxML_bestTree.refpkg") into refpkg_tree_f
-        file("RAxML_info.refpkg") into refpkg_tree_stats_f
+        file "RAxML_bestTree.refpkg" into refpkg_tree_f
+        file "RAxML_info.refpkg" into refpkg_tree_stats_f
     
     """
     raxml \
@@ -628,7 +630,7 @@ process buildTaxtasticDB {
     // errorStrategy = 'retry'
 
     output:
-        file("taxonomy.db") into taxonomy_db_f
+        file "taxonomy.db" into taxonomy_db_f
 
     afterScript "rm -rf dl/"
         
@@ -648,7 +650,7 @@ process taxtableForSI {
         file(taxonomy_db_f)
         file(refpkg_si_for_tt_f)
     output:
-        file("refpkg.taxtable.csv") into refpkg_tt_f
+        file "refpkg.taxtable.csv" into refpkg_tt_f
 
     """
     taxit taxtable ${taxonomy_db_f} \
@@ -688,7 +690,7 @@ process combineRefpkg {
         file(refpkg_cm)
     
     output:
-        file("refpkg.tgz") into refpkg_tgz_f
+        file "refpkg.tgz" into refpkg_tgz_f
     
     """
     taxit create --locus 16S \
@@ -718,10 +720,13 @@ refpkg_tgz_f.into {
     refpkg_tgz_for_aln_f;
     refpkg_tgz_for_placement_f;
     refpkg_tgz_for_pca_f;
-    refpkg_tgz_for_kr_f
+    refpkg_tgz_for_kr_f;
+    refpkg_tgz_for_db_prep_f;
+    refpkg_tgz_for_classify_f
 }
-dada2_sv_weights.set {
-    sv_weights_for_redup
+dada2_sv_weights.into {
+    sv_weights_for_redup;
+    sv_weights_for_mcc
 }
 
 //  Step 3.a. Align SV
@@ -734,8 +739,8 @@ process alignSV {
         file(sv_fasta_for_placement)
     
     output:
-        file("sv.aln.scores") into sv_aln_scores_f
-        file("sv.aln.sto") into sv_aln_sto_f
+        file "sv.aln.scores" into sv_aln_scores_f
+        file "sv.aln.sto" into sv_aln_sto_f
     
     """
     cmalign \
@@ -756,8 +761,8 @@ process extractRefpkgAln {
         file(refpkg_tgz_for_aln_f)
     
     output:
-        file("refpkg.aln.fasta")
-        file("refpkg.aln.sto") into refpkg_aln_sto_for_placement_f
+        file "refpkg.aln.fasta"
+        file "refpkg.aln.sto" into refpkg_aln_sto_for_placement_f
         
     """
     #!/usr/bin/env python
@@ -841,13 +846,18 @@ process combineAln_SV_refpkg {
         
     
     output:
-        file("sv_refpkg.aln.sto") into sv_refpkg_aln_sto_f
+        file "sv_refpkg.aln.sto" into sv_refpkg_aln_sto_f
     
     """
     esl-alimerge --dna \
      -o sv_refpkg.aln.sto \
      ${sv_aln_sto_f} ${refpkg_aln_sto_for_placement_f}
     """
+}
+
+sv_refpkg_aln_sto_f.into {
+    sv_refpkg_aln_sto_for_placement_f;
+    sv_refpkg_aln_sto_for_classify_f
 }
 
 //  Step 3.c. Place SV via pplacer
@@ -858,10 +868,10 @@ process pplacerPlacement {
     publishDir "${params.output}/placement", mode: 'copy'
 
     input:
-        file(sv_refpkg_aln_sto_f)
+        file(sv_refpkg_aln_sto_for_placement_f)
         file(refpkg_tgz_for_placement_f)
     output:
-        file('dedup.jplace') into dedup_jplace_f
+        file 'dedup.jplace' into dedup_jplace_f
     
     afterScript "rm -rf refpkg/"
     """
@@ -869,7 +879,7 @@ process pplacerPlacement {
     tar xzvf ${refpkg_tgz_for_placement_f} -C ./refpkg &&
     pplacer -p -j ${task.cpus} \
     --inform-prior --prior-lower ${params.pplacer_prior_lower} --map-identity \
-    -c refpkg/ ${sv_refpkg_aln_sto_f} \
+    -c refpkg/ ${sv_refpkg_aln_sto_for_placement_f} \
     -o dedup.jplace
     """
 }
@@ -880,7 +890,8 @@ dedup_jplace_f.into {
     dedup_jplace_for_edpl_f;
     dedup_jplace_for_pca_f;
     dedup_jplace_for_ad_f;
-    dedup_jplace_for_kr_f
+    dedup_jplace_for_kr_f;
+    dedup_jplace_for_classify_f
 }
 
 //  Step 3.d. Reduplicate placements
@@ -916,7 +927,7 @@ process pplacerADCL {
     input:
         file(dedup_jplace_for_adcl_f)
     output:
-        file('adcl.csv.gz')
+        file 'adcl.csv.gz'
     
     """
     (echo name,adcl,weight && 
@@ -935,7 +946,7 @@ process pplacerEDPL {
     input:
         file(dedup_jplace_for_edpl_f)
     output:
-        file('edpl.csv.gz')
+        file 'edpl.csv.gz'
     
     """
     (echo name,edpl && guppy edpl --csv ${dedup_jplace_for_edpl_f} -o /dev/stdout) | 
@@ -955,12 +966,12 @@ process pplacerPCA {
         file(dedup_jplace_for_pca_f)
         file(sv_map_for_pca_f)
     output:
-        file('pca/epca.proj')
-        file('pca/epca.xml')
-        file('pca/epca.trans')
-        file('pca/lpca.proj')
-        file('pca/lpca.xml')
-        file('pca/lpca.trans')
+        file 'pca/epca.proj'
+        file 'pca/epca.xml'
+        file 'pca/epca.trans'
+        file 'pca/lpca.proj'
+        file 'pca/lpca.xml'
+        file 'pca/lpca.trans'
     
     """
     mkdir -p refpkg/ && mkdir -p pca/
@@ -981,7 +992,7 @@ process pplacerAlphaDiversity {
         file(dedup_jplace_for_ad_f)
         file(sv_map_for_ad_f)
     output:
-        file('alpha_diversity.csv.gz')
+        file 'alpha_diversity.csv.gz'
 
     
     """
@@ -1003,12 +1014,12 @@ process pplacerKR {
         file(dedup_jplace_for_kr_f)
         file(sv_map_for_kr_f)
     output:
-        file('kr_distance.csv.gz')
+        file 'kr_distance.csv.gz'
 
     
     """
     mkdir -p refpkg/
-    tar xzvf ${refpkg_tgz_for_kr_f} -C refpkg/ &&
+    tar xzvf ${refpkg_tgz_for_kr_f} -C refpkg/
     guppy kr --list-out -c refpkg/ ${dedup_jplace_for_kr_f}:${sv_map_for_kr_f} |
     gzip > kr_distance.csv.gz
     """
@@ -1020,6 +1031,137 @@ process pplacerKR {
 //
 //  START STEP 4: Classification
 //
+
+params.pp_classifer = 'hybrid2'
+
+params.pp_likelihood_cutoff = 0.9
+params.pp_bayes_cutoff = 1.0
+params.pp_multiclass_min = 0.2
+params.pp_bootstrap_cutoff = 0.8
+params.pp_bootstrap_extension_cutoff = 0.4
+params.pp_nbc_boot = 100
+params.pp_nbc_target_rank = 'genus'
+params.pp_nbc_word_length = 8
+params.pp_seed = 1
+
+// Step 4.a. Prep the placement DB
+process classifyDB_Prep {
+    container = 'golob/pplacer:1.1alpha19rc_BCW_0.3.0D'
+    label = 'io_limited'
+    afterScript "rm -r refpkg/"
+    cache = false
+
+    input:
+        file(refpkg_tgz_for_db_prep_f)
+        file(sv_map_for_db_f)
+    
+    output:
+        file 'classify.prep.db' into classify_db_prepped
+    
+
+    """
+    mkdir -p refpkg/
+    tar xzvf ${refpkg_tgz_for_db_prep_f} -C refpkg/
+    rppr prep_db -c refpkg/ --sqlite classify.prep.db
+    (echo "name,specimen"; cat ${sv_map_for_db_f}) |
+    csvsql --table seq_info --insert --snifflimit 1000 --db sqlite:///classify.prep.db
+    """
+}
+
+// Step 4.b. Classify SV
+process classifySV {
+    container = 'golob/pplacer:1.1alpha19rc_BCW_0.3.0D'
+    label = 'mem_veryhigh'
+    afterScript "rm -r refpkg/"
+    cache = false
+
+    input:
+        file(refpkg_tgz_for_classify_f)
+        file(classify_db_prepped)
+        file(dedup_jplace_for_classify_f)
+        file(sv_refpkg_aln_sto_for_classify_f)
+    
+    output:
+        file 'classify.classified.db' into classifyDB_classified
+
+    """
+    mkdir -p refpkg/
+    tar xzvf ${refpkg_tgz_for_classify_f} -C refpkg/
+    guppy classify --pp \
+    --classifier ${params.pp_classifer} \
+    -j ${task.cpus} \
+    -c refpkg/ \
+    --nbc-sequences ${sv_refpkg_aln_sto_for_classify_f} \
+    --sqlite ${classify_db_prepped} \
+    --seed ${params.pp_seed} \
+    --cutoff ${params.pp_likelihood_cutoff} \
+    --bayes-cutoff ${params.pp_bayes_cutoff} \
+    --multiclass-min ${params.pp_multiclass_min} \
+    --bootstrap-cutoff ${params.pp_bootstrap_cutoff} \
+    --bootstrap-extension-cutoff ${params.pp_bootstrap_extension_cutoff} \
+    --word-length ${params.pp_nbc_word_length} \
+    --nbc-rank ${params.pp_nbc_target_rank} \
+    --n-boot ${params.pp_nbc_boot} \
+    ${dedup_jplace_for_classify_f}
+    cp ${classify_db_prepped} classify.classified.db
+    """
+}
+
+// Step 4.c. Concatenate placements
+process classifyMCC {
+    container = 'golob/pplacer:1.1alpha19rc_BCW_0.3.0D'
+    label = 'io_limited'
+    cache = false
+    publishDir "${params.output}/classify", mode: 'copy'
+
+    input:
+        file(classifyDB_classified)
+        file(sv_weights_for_mcc)
+
+    output:
+        file 'classify.mcc.db' into classifyDB_mcc
+
+    """
+    multiclass_concat.py -k \
+    --dedup-info ${sv_weights_for_mcc} ${classifyDB_classified}
+    cp ${classifyDB_classified} classify.mcc.db
+    """
+}
+
+// Step 4.d. Tabular outputs
+
+Channel.from(
+    'phylum', 'class', 'order', 'family', 'genus', 'species'
+).set { classify_ranks }
+
+classify_ranks.combine(
+    classifyDB_mcc
+).combine(
+    sv_map_for_tables_f
+).set { classify_rank_ch }
+
+process classifyTables {
+    container = 'golob/pplacer:1.1alpha19rc_BCW_0.3.0D'
+    label = 'io_limited'
+    publishDir "${params.output}/classify", mode: 'copy'
+
+    input:
+        set val(rank), file(classifyDB_mcc), file(sv_map_for_tables_f) from classify_rank_ch
+
+    output:
+        set val(rank), file("tables/by_specimen.${rank}.csv"), file("tables/by_taxon.${rank}.csv"), file("tables/tallies_wide.${rank}.csv") into classify_rank_tables_ch
+
+    """
+    mkdir -p tables/
+    python2 /usr/bin/classif_table.py ${classifyDB_mcc} \
+    tables/by_taxon.${rank}.csv \
+    --rank ${rank} \
+    --specimen-map ${sv_map_for_tables_f} \
+    --by-specimen tables/by_specimen.${rank}.csv \
+    --tallies-wide tables/tallies_wide.${rank}.csv
+    """
+}
+
 
 //
 //  END STEP 4: Classification
