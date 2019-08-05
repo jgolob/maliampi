@@ -437,7 +437,6 @@ process dada2_seqtab_sp {
         output:
             file("dada2.sv.fasta") into dada2_sv_fasta
             file("dada2.sv.fasta") into sv_fasta
-            file("dada2.sv.fasta") into sv_fasta_for_placement
             file("dada2.sv.map.csv") into dada2_sv_map
             file("dada2.sv.weights.csv") into dada2_sv_weights
             file("dada2.sv.shared.txt") into dada2_sv_sharetable
@@ -452,6 +451,16 @@ process dada2_seqtab_sp {
         -t dada2.sv.shared.txt
         """
     }
+    sv_fasta.into {
+        sv_fasta_for_refpkg;
+        sv_fasta_for_placement
+    }
+    dada2_sv_map.into {
+        sv_map_for_pca_f;
+        sv_map_for_ad_f;
+        sv_map_for_kr_f
+    }
+
 //
 //  END STEP 1: Sequence variants 
 //
@@ -477,7 +486,7 @@ process refpkgSearchRepo {
     label = 'multithread'
 
     input:
-        file(sv_fasta)
+        file(sv_fasta_for_refpkg)
         file(repo_fasta)
     
     output:
@@ -488,7 +497,7 @@ process refpkgSearchRepo {
     """
     vsearch \
     --threads=${task.cpus} \
-    --usearch_global ${sv_fasta} \
+    --usearch_global ${sv_fasta_for_refpkg} \
     --db ${repo_fasta} \
     --id=${params.repo_min_id} \
     --strand both \
@@ -705,11 +714,13 @@ process combineRefpkg {
 //  START STEP 3: Placement
 //
 params.pplacer_prior_lower = 0.01
-refpkg_tgz_f.into{
+refpkg_tgz_f.into {
     refpkg_tgz_for_aln_f;
     refpkg_tgz_for_placement_f;
+    refpkg_tgz_for_pca_f;
+    refpkg_tgz_for_kr_f
 }
-dada2_sv_weights.into {
+dada2_sv_weights.set {
     sv_weights_for_redup
 }
 
@@ -863,9 +874,13 @@ process pplacerPlacement {
     """
 }
 
-dedup_jplace_f.into{
-    dedup_jplace_for_redup_f
-    dedup_jplace_for_adcl_f
+dedup_jplace_f.into {
+    dedup_jplace_for_redup_f;
+    dedup_jplace_for_adcl_f;
+    dedup_jplace_for_edpl_f;
+    dedup_jplace_for_pca_f;
+    dedup_jplace_for_ad_f;
+    dedup_jplace_for_kr_f
 }
 
 //  Step 3.d. Reduplicate placements
@@ -911,16 +926,93 @@ process pplacerADCL {
 }
 
 //  Step 3.f. EDPL metric
+process pplacerEDPL {
+    container = 'golob/pplacer:1.1alpha19rc_BCW_0.3.0D'
+    label = 'io_limited'
 
+    publishDir "${params.output}/placement", mode: 'copy'
 
-//  Step 3.g. EPCA & LPCA
+    input:
+        file(dedup_jplace_for_edpl_f)
+    output:
+        file('edpl.csv.gz')
+    
+    """
+    (echo name,edpl && guppy edpl --csv ${dedup_jplace_for_edpl_f} -o /dev/stdout) | 
+    gzip > edpl.csv.gz
+    """
+}
 
+//  Step 3.g. (e/l)PCA
+process pplacerPCA {
+    container = 'golob/pplacer:1.1alpha19rc_BCW_0.3.0D'
+    label = 'io_limited'
+    afterScript "rm -r refpkg/"
+    publishDir "${params.output}/placement", mode: 'copy'
+
+    input:
+        file(refpkg_tgz_for_pca_f)
+        file(dedup_jplace_for_pca_f)
+        file(sv_map_for_pca_f)
+    output:
+        file('pca/epca.proj')
+        file('pca/epca.xml')
+        file('pca/epca.trans')
+        file('pca/lpca.proj')
+        file('pca/lpca.xml')
+        file('pca/lpca.trans')
+    
+    """
+    mkdir -p refpkg/ && mkdir -p pca/
+    tar xzvf ${refpkg_tgz_for_pca_f} -C refpkg/ &&
+    guppy epca ${dedup_jplace_for_pca_f}:${sv_map_for_pca_f} -c refpkg/ --out-dir pca/ --prefix epca &&
+    guppy lpca ${dedup_jplace_for_pca_f}:${sv_map_for_pca_f} -c refpkg/ --out-dir pca/ --prefix lpca
+    """
+}
 
 //  Step 3.h. Alpha diversity
+process pplacerAlphaDiversity {
+    container = 'golob/pplacer:1.1alpha19rc_BCW_0.3.0D'
+    label = 'io_limited'
 
+    publishDir "${params.output}/placement", mode: 'copy'
+
+    input:
+        file(dedup_jplace_for_ad_f)
+        file(sv_map_for_ad_f)
+    output:
+        file('alpha_diversity.csv.gz')
+
+    
+    """
+    guppy fpd --csv --include-pendant --chao-d 0,1,1.00001,2,3,4,5 \
+    ${dedup_jplace_for_ad_f}:${sv_map_for_ad_f} |
+    gzip > alpha_diversity.csv.gz
+    """
+}
 
 //  Step 3.i. KR (phylogenetic) distance 
+process pplacerKR {
+    container = 'golob/pplacer:1.1alpha19rc_BCW_0.3.0D'
+    label = 'io_limited'
+    afterScript "rm -r refpkg/"
+    publishDir "${params.output}/placement", mode: 'copy'
 
+    input:
+        file(refpkg_tgz_for_kr_f)
+        file(dedup_jplace_for_kr_f)
+        file(sv_map_for_kr_f)
+    output:
+        file('kr_distance.csv.gz')
+
+    
+    """
+    mkdir -p refpkg/
+    tar xzvf ${refpkg_tgz_for_kr_f} -C refpkg/ &&
+    guppy kr --list-out -c refpkg/ ${dedup_jplace_for_kr_f}:${sv_map_for_kr_f} |
+    gzip > kr_distance.csv.gz
+    """
+}
 //
 //  END STEP 3: Placement
 //
