@@ -465,6 +465,7 @@ params.cmalign_mxsize = 8196
 params.raxml_model = 'GTRGAMMA'
 params.raxml_parsiomony_seed = 12345
 
+
 // Step 2.a. Search the repo for matches
 // load the repo
 Channel.value(file(params.repo_fasta))
@@ -530,6 +531,44 @@ process filterSeqInfo {
     """
 }
 
+// Step 2.xx (get) or build a taxonomy db
+process buildTaxtasticDB {
+    container = 'golob/pplacer:1.1alpha19rc_BCW_0.3.0D'
+    label = 'io_limited'
+    // errorStrategy = 'retry'
+
+    output:
+        file "taxonomy.db" into taxonomy_db_f
+
+    afterScript "rm -rf dl/"
+        
+    """
+    mkdir -p dl/ && \
+    taxit new_database taxonomy.db -p dl/
+    """
+}
+
+// Step 2.xx Confirm seq info taxonomy matches taxdb
+
+process confirmSI {
+    container = 'golob/seqinfo_taxonomy_sync:0.2.1__bcw.0.3.0'
+    label = 'io_limited'
+
+    input:
+        file taxonomy_db_f
+        file refpkg_si_f
+    
+    output:
+        file "${refpkg_si_f.baseName}.corr.csv" into refpkg_si_corr_f
+    
+    """
+    seqinfo_taxonomy_sync.py \
+    ${refpkg_si_f} ${refpkg_si_f.baseName}.corr.csv \
+    --db ${taxonomy_db_f} --email ${params.email}
+    """
+
+
+}
 
 // Step 2.xx Align recruited seqs
 
@@ -603,22 +642,7 @@ process raxmlTree {
     """
 }
 
-// Step 2.xx (get) or build a taxonomy db
-process buildTaxtasticDB {
-    container = 'golob/pplacer:1.1alpha19rc_BCW_0.3.0D'
-    label = 'io_limited'
-    // errorStrategy = 'retry'
 
-    output:
-        file "taxonomy.db" into taxonomy_db_f
-
-    afterScript "rm -rf dl/"
-        
-    """
-    mkdir -p dl/ && \
-    taxit new_database taxonomy.db -p dl/
-    """
-}
 
 // Step 2.xx Make a tax table for the refpkg sequences
 process taxtableForSI {
@@ -666,7 +690,7 @@ process combineRefpkg {
         file refpkg_tree_f 
         file refpkg_tree_stats_f 
         file refpkg_tt_f
-        file refpkg_si_f
+        file refpkg_si_corr_f
         file refpkg_cm
     
     output:
@@ -681,7 +705,7 @@ process combineRefpkg {
     --tree-file ${refpkg_tree_f} \
     --tree-stats ${refpkg_tree_stats_f} \
     --taxonomy ${refpkg_tt_f} \
-    --seq-info ${refpkg_si_f} \
+    --seq-info ${refpkg_si_corr_f} \
     --profile ${refpkg_cm} && \
     ls -l refpkg/ && \
     tar czvf refpkg.tgz  -C refpkg/ .
@@ -914,6 +938,7 @@ process pplacerPCA {
     label = 'io_limited'
     afterScript "rm -r refpkg/"
     publishDir "${params.output}/placement", mode: 'copy'
+    errorStrategy = 'ignore'
 
     input:
         file refpkg_tgz_f
