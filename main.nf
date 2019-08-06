@@ -91,10 +91,6 @@ if (has_index.val == true){
         .map { sample -> [
             sample.specimen,
             sample.batch,
-            // base names below, lacking .fq.gz
-            file(sample.read__1).name.replaceAll(/.fastq.gz$/, "").replaceAll(/.fq.gz$/, ""), 
-            file(sample.read__2).name.replaceAll(/.fastq.gz$/, "").replaceAll(/.fq.gz$/, ""),
-            // Actual files
             file(sample.read__1),
             file(sample.read__2),
             file(sample.index__1),
@@ -110,10 +106,10 @@ if (has_index.val == true){
       errorStrategy "retry"
 
       input:
-        set specimen, batch, R1_n, R2_n, file(R1), file(R2), file(I1), file(I2) from input_ch
+        set specimen, batch, file(R1), file(R2), file(I1), file(I2) from input_ch
       
       output:
-        set specimen, batch, R1_n, R2_n, file("${R1_n}.bcc.fq.gz"), file("${R2_n}.bcc.fq.gz") into demultiplexed_ch
+        set specimen, batch, file("${R1.getSimpleName()}.bcc.fq.gz"), file("${R2.getSimpleName()}.bcc.fq.gz") into demultiplexed_ch
       """
       set -e
 
@@ -121,12 +117,12 @@ if (has_index.val == true){
       ${I1} ${I2} \
       --match-filter \
       -f ${R1} \
-      -o ${R1_n}.bcc.fq.gz &&
+      -o ${R1.getSimpleName()}.bcc.fq.gz &&
       barcodecop \
       ${I1} ${I2} \
       --match-filter \
       -f ${R2} \
-      -o ${R2_n}.bcc.fq.gz
+      -o ${R2.getSimpleName()}.bcc.fq.gz
       """
     }
 }
@@ -137,9 +133,6 @@ else {
         .map { sample -> [
             sample.specimen,
             sample.batch,
-            // base names below, lacking .fq.gz
-            file(sample.read__1).name.replaceAll(/.fastq.gz$/, "").replaceAll(/.fq.gz$/, ""), 
-            file(sample.read__2).name.replaceAll(/.fastq.gz$/, "").replaceAll(/.fq.gz$/, ""),
             // Actual files
             file(sample.read__1),
             file(sample.read__2),
@@ -154,18 +147,18 @@ process dada2_ft {
     //errorStrategy "retry"
 
     input:
-        set specimen, batch, R1_n, R2_n, file(R1), file(R2) from demultiplexed_ch
+        set specimen, batch, file(R1), file(R2) from demultiplexed_ch
     
     output:
-        set specimen, batch, R1_n, R2_n, file("${R1_n}.dada2.ft.fq.gz"), file("${R2_n}.dada2.ft.fq.gz") into dada2_ft_ch_for_derep
-        set batch, file("${R1_n}.dada2.ft.fq.gz"), file("${R2_n}.dada2.ft.fq.gz") into dada2_ft_ch_for_err
+        set specimen, batch, file("${R1.getSimpleName()}.dada2.ft.fq.gz"), file("${R2.getSimpleName()}.dada2.ft.fq.gz") into dada2_ft_ch_for_derep
+        set batch, file("${R1.getSimpleName()}.dada2.ft.fq.gz"), file("${R2.getSimpleName()}.dada2.ft.fq.gz") into dada2_ft_ch_for_err
     
     """
     #!/usr/bin/env Rscript
     library('dada2'); 
     filterAndTrim(
-        '${R1}', '${R1_n}.dada2.ft.fq.gz',
-        '${R2}', '${R2_n}.dada2.ft.fq.gz',
+        '${R1}', '${R1.getSimpleName()}.dada2.ft.fq.gz',
+        '${R2}', '${R2.getSimpleName()}.dada2.ft.fq.gz',
         trimLeft = ${params.trimLeft},
         maxN = ${params.maxN},
         maxEE = ${params.maxEE},
@@ -186,18 +179,18 @@ process dada2_derep {
     errorStrategy "retry"
 
     input:
-        set specimen, batch, R1_n, R2_n, file(R1), file(R2) from dada2_ft_ch_for_derep
+        set specimen, batch, file(R1), file(R2) from dada2_ft_ch_for_derep
     
     output:
-        set batch, specimen, R1_n, R2_n, file("${R1_n}.dada2.ft.derep.rds"), file("${R2_n}.dada2.ft.derep.rds") into dada2_derep_ch
+        set batch, specimen, file("${R1.getSimpleName()}.dada2.ft.derep.rds"), file("${R2.getSimpleName()}.dada2.ft.derep.rds") into dada2_derep_ch
     
     """
     #!/usr/bin/env Rscript
     library('dada2');
     derep_1 <- derepFastq('${R1}');
-    saveRDS(derep_1, '${R1_n}.dada2.ft.derep.rds');
+    saveRDS(derep_1, '${R1.getSimpleName()}.dada2.ft.derep.rds');
     derep_2 <- derepFastq('${R2}');
-    saveRDS(derep_2, '${R2_n}.dada2.ft.derep.rds');
+    saveRDS(derep_2, '${R2.getSimpleName()}.dada2.ft.derep.rds');
     """ 
 }
 
@@ -259,10 +252,8 @@ process dada2_learn_error {
         .map{r -> [
             r[0][0], // batch
             r[1][1], // specimen
-            r[1][2], // R1_n
-            r[1][3], // R2_n
-            file(r[1][4]), // R1
-            file(r[1][5]), // R2
+            file(r[1][2]), // R1
+            file(r[1][3]), // R2
             file(r[0][1]), // errM_1
             file(r[0][2]), // errM_2
         ]}
@@ -278,10 +269,10 @@ process dada2_learn_error {
         publishDir '../working/dada2/dada/', mode: 'copy'
 
         input:
-            set batch, specimen, R1_n, R2_n, file(R1), file(R2), file(errM_1), file(errM_2) from dada2_derep_w_errM_ch
+            set batch, specimen, file(R1), file(R2), file(errM_1), file(errM_2) from dada2_derep_w_errM_ch
 
         output:
-            set batch, specimen, file(R1), file(R2), file("${R1_n}.dada2.dada.rds"), file("${R2_n}.dada2.dada.rds") into dada2_dada_sp_ch
+            set batch, specimen, file(R1), file(R2), file("${R1.getSimpleName()}.dada2.dada.rds"), file("${R2.getSimpleName()}.dada2.dada.rds") into dada2_dada_sp_ch
 
         """
         #!/usr/bin/env Rscript
@@ -456,6 +447,7 @@ process dada2_seqtab_sp {
 //  END STEP 1: Sequence variants 
 //
 
+/*
 //
 //  START STEP 2: Reference package
 //
