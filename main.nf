@@ -280,11 +280,11 @@ process dada2_learn_error {
         errM_1 <- readRDS('${errM_1}');
         derep_1 <- readRDS('${R1}');
         dadaResult_1 <- dada(derep_1, err=errM_1, multithread=${task.cpus}, verbose=FALSE);
-        saveRDS(dadaResult_1, '${R1_n}.dada2.dada.rds');
+        saveRDS(dadaResult_1, '${R1.getSimpleName()}.dada2.dada.rds');
         errM_2 <- readRDS('${errM_2}');
         derep_2 <- readRDS('${R2}');
         dadaResult_2 <- dada(derep_2, err=errM_2, multithread=${task.cpus}, verbose=FALSE);
-        saveRDS(dadaResult_2, '${R2_n}.dada2.dada.rds');
+        saveRDS(dadaResult_2, '${R2.getSimpleName()}.dada2.dada.rds');
         """
     }
 
@@ -447,7 +447,7 @@ process dada2_seqtab_sp {
 //  END STEP 1: Sequence variants 
 //
 
-/*
+
 //
 //  START STEP 2: Reference package
 //
