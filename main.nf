@@ -77,68 +77,125 @@ if (params.help || params.manifest == null){
 
 // Load manifest!
 
-// Check if the manifest has index files.
+// For each, figure out if an index is available, and split into with index and without channels
+// Also check that we have at least a specimen and read__1 and read__2 provided
+
+input_w_index_ch = Channel.create()
+input_no_index_ch = Channel.create()
+input_invalid_ch = Channel.create()
+
 Channel.from(file(params.manifest))
     .splitCsv(header: true, sep: ",")
-    .reduce(true){p, c ->
-        return (p && (c.index__1 != null) && (c.index__2 != null))
-    }.set { has_index }
-
-// If there are index files, preceed to verifying demultiplex
-if (has_index.val == true){
-    Channel.from(file(params.manifest))
-        .splitCsv(header: true, sep: ",")
-        .map { sample -> [
-            sample.specimen,
-            sample.batch,
-            file(sample.read__1),
-            file(sample.read__2),
-            file(sample.index__1),
-            file(sample.index__2),
-        ]}
-        .set{ input_ch }
-
-
-    // Use barcodecop to verify demultiplex
-    process barcodecop {
-      container "golob/barcodecop:0.4.1__bcw_0.3.0"
-      label 'io_limited'
-      errorStrategy "retry"
-
-      input:
-        set specimen, batch, file(R1), file(R2), file(I1), file(I2) from input_ch
-      
-      output:
-        set specimen, batch, file("${R1.getSimpleName()}.bcc.fq.gz"), file("${R2.getSimpleName()}.bcc.fq.gz") into demultiplexed_ch
-      """
-      set -e
-
-      barcodecop \
-      ${I1} ${I2} \
-      --match-filter \
-      -f ${R1} \
-      -o ${R1.getSimpleName()}.bcc.fq.gz &&
-      barcodecop \
-      ${I1} ${I2} \
-      --match-filter \
-      -f ${R2} \
-      -o ${R2.getSimpleName()}.bcc.fq.gz
-      """
+    .choice(
+        input_invalid_ch,
+        input_no_index_ch,
+        input_w_index_ch,
+    ) {
+        r -> if (
+            (r.specimen == null) ||
+            (r.read__1 == null) ||
+            (r.read__2 == null) ||
+            (r.specimen == "") ||
+            (r.read__1 == "") ||
+            (r.read__2 == "")
+        ) return 0;
+        else if (
+            (r.index__1 != null) && 
+            (r.index__2 != null) && 
+            (r.index__1 != "") &&
+            (r.index__2 != "")
+            ) return 2;
+        else return 1;
     }
+
+input_invalid_ch.subscribe{
+    print "Missing required specimen, read__1 or read__2: "
+    println it
 }
+
+
+// Now check to be sure the files exist and are not empty.
+// If any file in a row is empty, make a note of it and proceed with the remainder
+
+input_w_index_invalid_ch = Channel.create()
+input_w_index_valid_ch = Channel.create()
+input_w_index_ch.choice(
+    input_w_index_invalid_ch,
+    input_w_index_valid_ch
+) {
+    r -> (file(r.read__1).isEmpty() || file(r.read__2).isEmpty() || file(r.index__1).isEmpty() || file(r.index__2).isEmpty()) ? 0 : 1
+}
+
+input_no_index_invalid_ch = Channel.create()
+input_no_index_valid_ch = Channel.create()
+input_no_index_ch.choice(
+    input_no_index_invalid_ch,
+    input_no_index_valid_ch
+) {
+    r -> (file(r.read__1).isEmpty() || file(r.read__2).isEmpty()) ? 0 : 1
+}
+
+// Handle the invalids. Here we are just going to print them as we see them.
+input_no_index_invalid_ch.subscribe{
+    print "Missing / Empty files for: "
+    println it
+}
+input_w_index_invalid_ch.subscribe{
+    print "Missing / Empty files for: "
+    println it
+}
+
+// For those with an index, make a channel for barcodecop
+input_w_index_valid_ch
+    .map{ sample -> [
+        sample.specimen,
+        sample.batch,
+        file(sample.read__1),
+        file(sample.read__2),
+        file(sample.index__1),
+        file(sample.index__2),
+    ]}
+    .set{ for_bcc_ch }
+
+// Use barcodecop to verify demultiplex
+process barcodecop {
+    container "golob/barcodecop:0.4.1__bcw_0.3.0"
+    label 'io_limited'
+    errorStrategy "retry"
+
+    input:
+    set specimen, batch, file(R1), file(R2), file(I1), file(I2) from for_bcc_ch
+    
+    output:
+    set specimen, batch, file("${R1.getSimpleName()}.bcc.fq.gz"), file("${R2.getSimpleName()}.bcc.fq.gz") into demultiplexed_ch
+    """
+    set -e
+
+    barcodecop \
+    ${I1} ${I2} \
+    --match-filter \
+    -f ${R1} \
+    -o ${R1.getSimpleName()}.bcc.fq.gz &&
+    barcodecop \
+    ${I1} ${I2} \
+    --match-filter \
+    -f ${R2} \
+    -o ${R2.getSimpleName()}.bcc.fq.gz
+    """
+}
+
 // Else, proceed with the file pairs as-is
-else {
-    Channel.from(file(params.manifest))
-        .splitCsv(header: true, sep: ",")
-        .map { sample -> [
-            sample.specimen,
-            sample.batch,
-            // Actual files
-            file(sample.read__1),
-            file(sample.read__2),
-        ]}
-        .set{ demultiplexed_ch }
-}
+
+input_no_index_valid_ch
+    .map { sample -> [
+        sample.specimen,
+        sample.batch,
+        // Actual files
+        file(sample.read__1),
+        file(sample.read__2),
+    ]}
+    .set{ demultiplexed_ch }
+
 
 // Step 1.b. next step: filter and trim reads with dada2
 process dada2_ft {
@@ -447,7 +504,7 @@ process dada2_seqtab_sp {
 //  END STEP 1: Sequence variants 
 //
 
-
+/*
 //
 //  START STEP 2: Reference package
 //
