@@ -75,6 +75,10 @@ if (params.help || params.manifest == null){
 //
 //  START STEP 1: Sequence variants
 
+// Create a channel for specimens whose reads are filtered away at one of the steps
+// The structure is a tuple, first is the specimen ID, the second is the step.
+filtered_specimens_ch = Channel.create()
+
 // Load manifest!
 
 // For each, figure out if an index is available, and split into with index and without channels
@@ -155,7 +159,7 @@ input_w_index_valid_ch
         file(sample.index__1),
         file(sample.index__2),
     ]}
-    .set{ for_bcc_ch }
+    .set{ to_bcc_ch }
 
 // Use barcodecop to verify demultiplex
 process barcodecop {
@@ -164,10 +168,10 @@ process barcodecop {
     errorStrategy "retry"
 
     input:
-    set specimen, batch, file(R1), file(R2), file(I1), file(I2) from for_bcc_ch
+    set specimen, batch, file(R1), file(R2), file(I1), file(I2) from to_bcc_ch
     
     output:
-    set specimen, batch, file("${R1.getSimpleName()}.bcc.fq.gz"), file("${R2.getSimpleName()}.bcc.fq.gz") into demultiplexed_ch
+    set specimen, batch, file("${R1.getSimpleName()}.bcc.fq.gz"), file("${R2.getSimpleName()}.bcc.fq.gz") into from_bcc_ch
     """
     set -e
 
@@ -184,6 +188,24 @@ process barcodecop {
     """
 }
 
+
+bcc_to_ft_ch = Channel.create()
+bcc_empty_ch = Channel.create()
+from_bcc_ch
+    .choice(
+        bcc_to_ft_ch,
+        bcc_empty_ch
+    ) {
+        r -> (file(r[2]).isEmpty() || file(r[3]).isEmpty()) ? 1 : 0
+    }
+
+bcc_empty_ch.subscribe {
+    filtered_specimens_ch.bind([it[0], 'BCC']);
+    print "No reads from "
+    print it[0]
+    println " survived BCC"
+}
+
 // Else, proceed with the file pairs as-is
 
 input_no_index_valid_ch
@@ -194,8 +216,11 @@ input_no_index_valid_ch
         file(sample.read__1),
         file(sample.read__2),
     ]}
-    .set{ demultiplexed_ch }
+    .set{ no_index_to_ft_ch }
 
+no_index_to_ft_ch.mix(bcc_to_ft_ch).set{
+    demultiplexed_ch
+}
 
 // Step 1.b. next step: filter and trim reads with dada2
 process dada2_ft {
@@ -207,8 +232,7 @@ process dada2_ft {
         set specimen, batch, file(R1), file(R2) from demultiplexed_ch
     
     output:
-        set specimen, batch, file("${R1.getSimpleName()}.dada2.ft.fq.gz"), file("${R2.getSimpleName()}.dada2.ft.fq.gz") into dada2_ft_ch_for_derep
-        set batch, file("${R1.getSimpleName()}.dada2.ft.fq.gz"), file("${R2.getSimpleName()}.dada2.ft.fq.gz") into dada2_ft_ch_for_err
+        set specimen, batch, file("${R1.getSimpleName()}.dada2.ft.fq.gz"), file("${R2.getSimpleName()}.dada2.ft.fq.gz") into dada2_post_ft_ch
     
     """
     #!/usr/bin/env Rscript
@@ -228,6 +252,30 @@ process dada2_ft {
     """
 }
 
+// Filter out specimens with no surviving reads after FT
+dada2_ft_ch = Channel.create()
+dada2_ft_empty_ch = Channel.create()
+
+dada2_post_ft_ch
+    .choice(
+        dada2_ft_ch,
+        dada2_ft_empty_ch
+    ) {
+        ( file(it[2]).isEmpty() || file(it[3]).isEmpty() ) ? 1 : 0
+    }
+
+dada2_ft_ch.into{
+    dada2_ft_for_derep_ch;
+    dada2_ft_ch_for_err
+}
+
+dada2_ft_empty_ch.subscribe{
+    filtered_specimens_ch.bind([it[0], 'FT']);
+    print "No reads from "
+    print it[0]
+    println " survived filter/trim"    
+}
+
 // Step 1.c. dereplicate reads with dada2
 
 process dada2_derep {
@@ -236,7 +284,7 @@ process dada2_derep {
     errorStrategy "retry"
 
     input:
-        set specimen, batch, file(R1), file(R2) from dada2_ft_ch_for_derep
+        set specimen, batch, file(R1), file(R2) from dada2_ft_for_derep_ch
     
     output:
         set batch, specimen, file("${R1.getSimpleName()}.dada2.ft.derep.rds"), file("${R2.getSimpleName()}.dada2.ft.derep.rds") into dada2_derep_ch
@@ -253,7 +301,7 @@ process dada2_derep {
 
 // Step 1.d. learn errors by batch
 dada2_ft_ch_for_err
-    .groupTuple(by: 0)
+    .groupTuple(by: 1)
     .set{
         dada2_ft_batches
     }
@@ -264,7 +312,7 @@ process dada2_learn_error {
     errorStrategy "retry"
 
     input:
-        set val(batch), file(forwardReads), file(reverseReads) from dada2_ft_batches
+        set val(batch_specimens), val(batch), file(forwardReads), file(reverseReads) from dada2_ft_batches
 
     output:
         set batch, file("${batch}.R1.errM.rds"), file("${batch}.R2.errM.rds")  into dada2_batch_error_rds
@@ -358,7 +406,7 @@ process dada2_merge {
             set batch, specimen, file(R1), file(R2), file(R1dada), file(R2dada) from dada2_dada_sp_ch
 
         output:
-            set batch, specimen, file("${specimen}.dada2.merged.rds") into dada2_sp_merge
+            set batch, specimen, file("${specimen}.dada2.merged.rds") into dada2_sp_post_merge_ch
 
         """
         #!/usr/bin/env Rscript
@@ -376,6 +424,25 @@ process dada2_merge {
         """
     }
 
+dada2_sp_merge_ch = Channel.create()
+dada2_sp_merge_empty_ch = Channel.create()
+
+dada2_sp_post_merge_ch
+    .choice(
+        dada2_sp_merge_ch,
+        dada2_sp_merge_empty_ch 
+    ) {
+        file(it[2]).isEmpty() ? 1 : 0
+    }
+
+dada2_sp_merge_empty_ch
+    .subscribe{
+        filtered_specimens_ch.bind([it[1], 'merge']);
+        print "No reads from "
+        print it[1]
+        println " survived merge"         
+    }
+
 // Step 1.g. Make a seqtab
 
 process dada2_seqtab_sp {
@@ -384,7 +451,7 @@ process dada2_seqtab_sp {
         errorStrategy "retry"
 
         input:
-            set batch, specimen, file(merged) from dada2_sp_merge
+            set batch, specimen, file(merged) from dada2_sp_merge_ch
 
         output:
             set batch, specimen, file("${specimen}.dada2.seqtab.rds") into dada2_sp_seqtab
@@ -500,11 +567,30 @@ process dada2_seqtab_sp {
         """
     }
 
+// Step 1.k. Output any failed specimens, and the step at which they failed.
+    filtered_specimens_ch.reduce('specimen,step\n'){
+        p, c -> return p+="${c[0]},${c[1]}\n";
+    }.set {filtered_specimens_str }
+    process output_failed {
+        container = "golob/dada2-pplacer:0.4.1__bcw_0.3.1"
+        publishDir "${params.output}/sv/", mode: 'copy'
+
+        input:
+            val filtered_specimens_str
+        output:
+            file "failed_specimens.csv"
+
+        """
+        echo "${filtered_specimens_str}" > failed_specimens.csv
+        """
+
+    }
+
 //
 //  END STEP 1: Sequence variants 
 //
 
-/*
+
 //
 //  START STEP 2: Reference package
 //
