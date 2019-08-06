@@ -226,7 +226,7 @@ no_index_to_ft_ch.mix(bcc_to_ft_ch).set{
 process dada2_ft {
     container 'golob/dada2:1.8.0.ub.1804__bcw.0.3.0A'
     label 'io_limited'
-    //errorStrategy "retry"
+    errorStrategy "retry"
 
     input:
         set specimen, batch, file(R1), file(R2) from demultiplexed_ch
