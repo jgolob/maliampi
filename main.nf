@@ -226,7 +226,7 @@ no_index_to_ft_ch.mix(bcc_to_ft_ch).set{
 
 // Step 1.b. next step: filter and trim reads with dada2
 process dada2_ft {
-    container 'golob/dada2:1.8.0.ub.1804__bcw.0.3.0A'
+    container 'golob/dada2:1.12.0.ub.1804__bcw.0.3.1'
     label 'io_limited'
     errorStrategy "retry"
 
@@ -281,7 +281,7 @@ dada2_ft_empty_ch.subscribe{
 // Step 1.c. dereplicate reads with dada2
 
 process dada2_derep {
-    container 'golob/dada2:1.8.0.ub.1804__bcw.0.3.0A'
+    container 'golob/dada2:1.12.0.ub.1804__bcw.0.3.1'
     label 'io_limited'
     errorStrategy "retry"
 
@@ -309,7 +309,7 @@ dada2_ft_ch_for_err
     }
 
 process dada2_learn_error {
-    container 'golob/dada2:1.8.0.ub.1804__bcw.0.3.0A'
+    container 'golob/dada2:1.12.0.ub.1804__bcw.0.3.1'
     label 'multithread'
     errorStrategy "retry"
     //maxForks 5
@@ -353,60 +353,84 @@ process dada2_learn_error {
     """
 }
 
-// Step 1.e. Apply the correct error model to the dereplicated seqs
-    // Join in the correct error models
-    dada2_batch_error_rds
-        .cross(dada2_derep_ch)
-        .map{r -> [
-            r[0][0], // batch
-            r[1][1], // specimen
-            file(r[1][2]), // R1
-            file(r[1][3]), // R2
-            file(r[0][1]), // errM_1
-            file(r[0][2]), // errM_2
-        ]}
-        .set{ dada2_derep_w_errM_ch }
+// Step 1.e. Apply the error model by batch, using pseudo-pooling to improve yield.
+
+dada2_batch_error_rds.cross(
+    dada2_derep_ch.groupTuple(by: 0)
+).map{[
+    it[0][0],  // Batch
+    it[0][1],  // errM_F
+    it[0][2], // errM_R,
+    it[1][1], // specimens
+    it[1][2], // Forward derep files,
+    it[1][3], // Reverse derep files,
+    it[1][2].collect { file(it).getName()+'.dada.rds' }, // Forward dada FN
+    it[1][3].collect { file(it).getName()+'.dada.rds' }, // Reverse dada FN
+]}.set{ batch_err_derep_ch }
 
 
-    // and use that apply the proper error model to each specimen read pair
-    process dada2_dada {
-        container 'golob/dada2:1.8.0.ub.1804__bcw.0.3.0A'
+process dada2_dada {
+        container 'golob/dada2:1.12.0.ub.1804__bcw.0.3.1'
         label 'multithread'
-        errorStrategy "retry"
-
-        publishDir '../working/dada2/dada/', mode: 'copy'
+        errorStrategy "terminate"
 
         input:
-            set batch, specimen, file(R1), file(R2), file(errM_1), file(errM_2) from dada2_derep_w_errM_ch
+            set batch, file(errM_1), file(errM_2), val(specimens), file(derep_1), file(derep_2), val(dada_1), val(dada_2) from batch_err_derep_ch
 
         output:
-            set batch, specimen, file(R1), file(R2), file("${R1.getSimpleName()}.dada2.dada.rds"), file("${R2.getSimpleName()}.dada2.dada.rds") into dada2_dada_sp_ch
-
+            //set batch, specimen, file(R1), file(R2), file("${R1.getSimpleName()}.dada2.dada.rds"), file("${R2.getSimpleName()}.dada2.dada.rds") into dada2_dada_sp_ch
+            set batch, val(specimens), file(derep_1), file(dada_1), file(derep_2), file(dada_2) into dada2_dada_batch_ch
         """
         #!/usr/bin/env Rscript
         library('dada2');
         errM_1 <- readRDS('${errM_1}');
-        derep_1 <- readRDS('${R1}');
-        dadaResult_1 <- dada(derep_1, err=errM_1, multithread=${task.cpus}, verbose=FALSE);
-        saveRDS(dadaResult_1, '${R1.getSimpleName()}.dada2.dada.rds');
+        derep_1 <- lapply(
+            unlist(strsplit('${derep_1}', ' ', fixed=TRUE)),
+            readRDS
+        );
+        dadaResult_1 <- dada(derep_1, err=errM_1, multithread=${task.cpus}, verbose=TRUE, pool="pseudo");
+        dada_1_names <- sapply(strsplit('${derep_1}', ' ', fixed=TRUE), function(n) paste(n, ".dada.rds", sep=""));
+        sapply(1:length(derep_1), function(i) {
+            saveRDS(dadaResult_1[i], dada_1_names[i]);
+        });
         errM_2 <- readRDS('${errM_2}');
-        derep_2 <- readRDS('${R2}');
-        dadaResult_2 <- dada(derep_2, err=errM_2, multithread=${task.cpus}, verbose=FALSE);
-        saveRDS(dadaResult_2, '${R2.getSimpleName()}.dada2.dada.rds');
+        derep_2 <- lapply(
+            unlist(strsplit('${derep_2}', ' ', fixed=TRUE)),
+            readRDS
+        );
+        dadaResult_2 <- dada(derep_2, err=errM_2, multithread=${task.cpus}, verbose=TRUE, pool="pseudo");
+        dada_2_names <- sapply(strsplit('${derep_2}', ' ', fixed=TRUE), function(n) paste(n, ".dada.rds", sep=""));
+        sapply(1:length(derep_2), function(i) {
+            saveRDS(dadaResult_2[i], dada_2_names[i]);
+        });
         """
+    }
+
+// Flatten things back out to one-specimen-per
+
+Channel.create().set{ dada2_dada_sp_ch }
+
+dada2_dada_batch_ch
+    .map{
+        r -> r[1].eachWithIndex{it, i -> dada2_dada_sp_ch.bind([
+            r[0],
+            r[1][i],
+            r[2][i],
+            r[3][i],
+            r[4][i],
+            r[5][i]
+        ])};
     }
 
 // Step 1.f. Merge reads, using the dereplicated seqs and applied model
 
 process dada2_merge {
-        container 'golob/dada2:1.8.0.ub.1804__bcw.0.3.0A'
+        container 'golob/dada2:1.12.0.ub.1804__bcw.0.3.1'
         label 'multithread'
         //errorStrategy "retry"
 
-        publishDir '../working/dada2/merged/', mode: 'copy'
-
         input:
-            set batch, specimen, file(R1), file(R2), file(R1dada), file(R2dada) from dada2_dada_sp_ch
+            set batch, specimen, file(R1), file(R1dada), file(R2), file(R2dada) from dada2_dada_sp_ch
 
         output:
             set batch, specimen, file("${specimen}.dada2.merged.rds") into dada2_sp_post_merge_ch
@@ -449,7 +473,7 @@ dada2_sp_merge_empty_ch
 // Step 1.g. Make a seqtab
 
 process dada2_seqtab_sp {
-        container 'golob/dada2:1.8.0.ub.1804__bcw.0.3.0A'
+        container 'golob/dada2:1.12.0.ub.1804__bcw.0.3.1'
         label 'io_limited'
         errorStrategy "retry"
 
@@ -518,7 +542,7 @@ process dada2_seqtab_sp {
     }
 // Step 1.i. Remove chimera on combined seqtab
     process dada2_remove_bimera {
-        container 'golob/dada2:1.8.0.ub.1804__bcw.0.3.0A'
+        container 'golob/dada2:1.12.0.ub.1804__bcw.0.3.1'
         label 'multithread'
         publishDir "${params.output}/sv/", mode: 'copy'
 
@@ -592,7 +616,7 @@ process dada2_seqtab_sp {
 //
 //  END STEP 1: Sequence variants 
 //
-
+/*
 
 //
 //  START STEP 2: Reference package
