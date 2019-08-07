@@ -168,6 +168,7 @@ process barcodecop {
     container "golob/barcodecop:0.4.1__bcw_0.3.0"
     label 'io_limited'
     errorStrategy "retry"
+    maxForks 100
 
     input:
     set specimen, batch, file(R1), file(R2), file(I1), file(I2) from to_bcc_ch
@@ -229,6 +230,7 @@ process dada2_ft {
     container 'golob/dada2:1.12.0.ub.1804__bcw.0.3.1'
     label 'io_limited'
     errorStrategy "retry"
+    maxForks 100
 
     input:
         set specimen, batch, file(R1), file(R2) from demultiplexed_ch
@@ -284,6 +286,7 @@ process dada2_derep {
     container 'golob/dada2:1.12.0.ub.1804__bcw.0.3.1'
     label 'io_limited'
     errorStrategy "retry"
+    maxForks 100
 
     input:
         set specimen, batch, file(R1), file(R2) from dada2_ft_for_derep_ch
@@ -312,7 +315,7 @@ process dada2_learn_error {
     container 'golob/dada2:1.12.0.ub.1804__bcw.0.3.1'
     label 'multithread'
     errorStrategy "retry"
-    //maxForks 5
+    beforeScript 'export ECS_TASK_METADATA_RPS_LIMIT="10"'
 
     input:
         set val(batch_specimens), val(batch), file(forwardReads), file(reverseReads) from dada2_ft_batches
@@ -372,7 +375,8 @@ dada2_batch_error_rds.cross(
 process dada2_dada {
         container 'golob/dada2:1.12.0.ub.1804__bcw.0.3.1'
         label 'multithread'
-        errorStrategy "terminate"
+        errorStrategy "retry"
+        beforeScript 'export ECS_TASK_METADATA_RPS_LIMIT="10"'
 
         input:
             set batch, file(errM_1), file(errM_2), val(specimens), file(derep_1), file(derep_2), val(dada_1), val(dada_2) from batch_err_derep_ch
