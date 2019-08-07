@@ -619,7 +619,7 @@ process dada2_seqtab_sp {
 //
 //  END STEP 1: Sequence variants 
 //
-/*
+
 
 //
 //  START STEP 2: Reference package
