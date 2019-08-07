@@ -420,7 +420,7 @@ dada2_dada_batch_ch
             r[4][i],
             r[5][i]
         ])};
-    }
+    }.subscribe onComplete: { dada2_dada_sp_ch.close() }
 
 // Step 1.f. Merge reads, using the dereplicated seqs and applied model
 
@@ -463,11 +463,14 @@ dada2_sp_post_merge_ch
     }
 
 dada2_sp_merge_empty_ch
-    .subscribe{
+    .subscribe onNext: {
         filtered_specimens_ch.bind([it[1], 'merge']);
         print "No reads from "
         print it[1]
         println " survived merge"         
+    }
+    onComplete: {
+        filtered_specimens_ch.close()
     }
 
 // Step 1.g. Make a seqtab
@@ -616,7 +619,7 @@ process dada2_seqtab_sp {
 //
 //  END STEP 1: Sequence variants 
 //
-
+/*
 
 //
 //  START STEP 2: Reference package
