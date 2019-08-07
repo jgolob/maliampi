@@ -26,6 +26,7 @@ params.errM_randomize = 'FALSE'
 params.errM_nbases = '1e8'
 params.chimera_method = 'consensus'
 
+
 // Function which prints help message text
 def helpMessage() {
     log.info"""
@@ -58,6 +59,7 @@ def helpMessage() {
         --truncLenF           (default = 0)
         --truncLenR           (default = 0)
         --truncQ              (default = 2)
+        --taxdmp              Path to taxdmp.zip. If not provided, it will be downloaded
       Ref Package options:
         --repo_fasta          FASTA file containing reference sequences
 
@@ -310,6 +312,7 @@ process dada2_learn_error {
     container 'golob/dada2:1.8.0.ub.1804__bcw.0.3.0A'
     label 'multithread'
     errorStrategy "retry"
+    //maxForks 5
 
     input:
         set val(batch_specimens), val(batch), file(forwardReads), file(reverseReads) from dada2_ft_batches
@@ -667,21 +670,45 @@ process filterSeqInfo {
 }
 
 // Step 2.xx (get) or build a taxonomy db
-process buildTaxtasticDB {
-    container = 'golob/pplacer:1.1alpha19rc_BCW_0.3.0D'
-    label = 'io_limited'
-    // errorStrategy = 'retry'
 
-    output:
-        file "taxonomy.db" into taxonomy_db_f
+if ( (params.taxdmp == null) || file(params.taxdmp).isEmpty() ) {
+    process DlBuildTaxtasticDB {
+        container = 'golob/pplacer:1.1alpha19rc_BCW_0.3.0D'
+        label = 'io_limited'
+        // errorStrategy = 'retry'
 
-    afterScript "rm -rf dl/"
-        
-    """
-    mkdir -p dl/ && \
-    taxit new_database taxonomy.db -p dl/
-    """
+        output:
+            file "taxonomy.db" into taxonomy_db_f
+
+        afterScript "rm -rf dl/"
+
+
+        """
+        mkdir -p dl/ && \
+        taxit new_database taxonomy.db -p dl/
+        """
+
+    }
+
+} else {
+    taxdump_zip_f = file(params.taxdmp)
+    process buildTaxtasticDB {
+        container = 'golob/pplacer:1.1alpha19rc_BCW_0.3.0D'
+        label = 'io_limited'
+        // errorStrategy = 'retry'
+
+        input:
+            file taxdump_zip_f
+
+        output:
+            file "taxonomy.db" into taxonomy_db_f
+
+        """
+        taxit new_database taxonomy.db -z ${taxdump_zip_f}
+        """
+    }
 }
+
 
 // Step 2.xx Confirm seq info taxonomy matches taxdb
 
