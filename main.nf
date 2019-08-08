@@ -80,6 +80,7 @@ if (params.help || params.manifest == null){
 // Create a list for specimens whose reads are filtered away at one of the steps
 // The structure is a tuple, first is the specimen ID (if available), the second is the step.
 filtered_specimens_list = []
+filtered_specimens_ch = Channel.create()
 
 // Load manifest!
 
@@ -390,10 +391,10 @@ process dada2_derep_batches {
     errorStrategy 'finish'
 
     input:
-        set val(batch), val(read_num), val(specimens), file(dereps), file(errM), val(dada_fns) from batch_err_dereps_ch
+        set val(batch), val(read_num), val(specimens), file(dereps), val(errM), val(dada_fns) from batch_err_dereps_ch
     
     output:
-        set val(batch), val(read_num), val(specimens), file(dereps), file("${batch}_${read_num}_derep.rds"), file(errM), val(dada_fns) into batch_err_derep_ch
+        set val(batch), val(read_num), val(specimens), file("${batch}_${read_num}_derep.rds"), val(errM), val(dada_fns) into batch_err_derep_ch
     
     """
     #!/usr/bin/env Rscript
@@ -414,10 +415,10 @@ process dada2_dada {
 
 
         input:
-            set val(batch), val(read_num), val(specimens), file(dereps), file(derep), file(errM), val(dada_fns) from batch_err_derep_ch
+            set val(batch), val(read_num), val(specimens), file(derep), file(errM), val(dada_fns) from batch_err_derep_ch
 
         output:
-            set val(batch), val(read_num), val(specimens), file("${batch}_${read_num}_dada.rds"), file(dereps), val(dada_fns) into dada2_dada_batch_ch
+            set val(batch), val(read_num), val(specimens), file("${batch}_${read_num}_dada.rds"), val(dada_fns) into dada2_dada_batch_ch
         """
         #!/usr/bin/env Rscript
         library('dada2');
@@ -435,10 +436,10 @@ process dada2_demultiplex_dada {
     errorStrategy 'terminate'
 
     input:
-        set val(batch), val(read_num), val(specimens), file(dada), file(dereps), val(dada_fns) from dada2_dada_batch_ch
+        set val(batch), val(read_num), val(specimens), file(dada), val(dada_fns) from dada2_dada_batch_ch
     
     output:
-        set val(batch), val(read_num), val(specimens), file(dada_fns), file(dereps) into dada2_dada_batch_split_ch
+        set val(batch), val(read_num), val(specimens), file(dada_fns) into dada2_dada_batch_split_ch
 
     """
     #!/usr/bin/env Rscript
@@ -461,7 +462,10 @@ dada2_dada_batch_split_ch
         fl = [];
         br[2].eachWithIndex{ 
             it, i ->  fl.add([
-                br[2][i], br[1], br[3][i], br[4][i], br[0]
+                br[2][i], // specimen
+                br[1], // readnum
+                br[3][i], // dada file
+                br[0] // batch
             ])
         }
         return fl;
@@ -470,25 +474,23 @@ dada2_dada_batch_split_ch
         r1_idx = spr[1].indexOf('R1')
         r2_idx = spr[1].indexOf('R2')
         [
-            spr[4][0], // batch
             spr[0],  // specimen
-            spr[3][r1_idx], // derep_1
-            spr[2][r1_idx], // dada_1
-            spr[3][r2_idx], // derep_2
-            spr[2][r2_idx], // dada_2
+            spr[3][0], // batch
+            file(spr[2][r1_idx]), // dada_1
+            file(spr[2][r2_idx]), // dada_2
         ]}
+    .join(dada2_derep_ch)
     .set { dada2_dada_sp_ch }
-
 
 // Step 1.f. Merge reads, using the dereplicated seqs and applied model
 
 process dada2_merge {
         container 'golob/dada2:1.12.0.ub.1804__bcw.0.3.1'
         label 'multithread'
-        errorStrategy "retry"
+        //errorStrategy "retry"
 
         input:
-            set batch, specimen, file(R1), file(R1dada), file(R2), file(R2dada) from dada2_dada_sp_ch
+            set specimen, batch, file(R1dada), file(R2dada), file(R1), file(R2) from dada2_dada_sp_ch
 
         output:
             set batch, specimen, file("${specimen}.dada2.merged.rds") into dada2_sp_post_merge_ch
@@ -529,7 +531,10 @@ dada2_sp_merge_empty_ch
         println " survived merge"         
     }
     onComplete: {
-        filtered_specimens_ch = Channel.from(filtered_specimens_list)
+        filtered_specimens_list.each {
+             filtered_specimens_ch.bind(it)
+        }
+        filtered_specimens_ch.close()
     }
 
 // Step 1.g. Make a seqtab
@@ -582,8 +587,6 @@ process dada2_seqtab_sp {
     dada2_batch_seqtab_ch
         .collect{ it[1] }
         .set{ batch_seqtab_files }
-
-
 
     process dada2_seqtab_combine_all {
         container 'golob/dada2-fast-combineseqtab:0.2.0_BCW_0.30A'
@@ -657,28 +660,21 @@ process dada2_seqtab_sp {
     }
 
 // Step 1.k. Output any failed specimens, and the step at which they failed.
-    filtered_specimens_ch.reduce('specimen,step\n'){
-        p, c -> return p+="${c[0]},${c[1]}\n";
-    }.set {filtered_specimens_str }
+/*
+    failed_f = file("${params.output}/sv/failed_specimens.csv")
+    failed_f.text = "specimen,reason\n"
     process output_failed {
-        container = "golob/dada2-pplacer:0.4.1__bcw_0.3.1"
-        publishDir "${params.output}/sv/", mode: 'copy'
-
         input:
-            val filtered_specimens_str
-        output:
-            file "failed_specimens.csv"
+            set val(specimen), val(reason) from filtered_specimens_ch
 
-        """
-        echo "${filtered_specimens_str}" > failed_specimens.csv
-        """
-
+        exec:
+            failed_f.append("${specimen},${reason}\n")
     }
-
+*/
 //
 //  END STEP 1: Sequence variants 
 //
-
+/*
 
 //
 //  START STEP 2: Reference package
