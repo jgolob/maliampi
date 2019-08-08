@@ -22,7 +22,7 @@ params.truncLenF = 0
 params.truncLenR = 0
 params.truncQ = 2
 params.errM_maxConsist = 10
-params.errM_randomize = 'FALSE'
+params.errM_randomize = 'TRUE'
 params.errM_nbases = '1e8'
 params.chimera_method = 'consensus'
 
@@ -77,9 +77,9 @@ if (params.help || params.manifest == null){
 //
 //  START STEP 1: Sequence variants
 
-// Create a channel for specimens whose reads are filtered away at one of the steps
-// The structure is a tuple, first is the specimen ID, the second is the step.
-filtered_specimens_ch = Channel.create()
+// Create a list for specimens whose reads are filtered away at one of the steps
+// The structure is a tuple, first is the specimen ID (if available), the second is the step.
+filtered_specimens_list = []
 
 // Load manifest!
 
@@ -117,6 +117,8 @@ Channel.from(file(params.manifest))
 input_invalid_ch.subscribe{
     print "Missing required specimen, read__1 or read__2: "
     println it
+    filtered_specimens_list.add(
+        [it.specimen, 'missing required elements'])
 }
 
 
@@ -145,10 +147,14 @@ input_no_index_ch.choice(
 input_no_index_invalid_ch.subscribe{
     print "Missing / Empty files for: "
     println it
+    filtered_specimens_list.add(
+        [it.specimen, 'missing reads'])
 }
 input_w_index_invalid_ch.subscribe{
     print "Missing / Empty files for: "
     println it
+    filtered_specimens_list.add(
+        [it.specimen, 'missing reads'])
 }
 
 // For those with an index, make a channel for barcodecop
@@ -203,10 +209,11 @@ from_bcc_ch
     }
 
 bcc_empty_ch.subscribe {
-    filtered_specimens_ch.bind([it[0], 'BCC']);
     print "No reads from "
     print it[0]
     println " survived BCC"
+    filtered_specimens_list.add(
+        [it[0], 'BCC'])
 }
 
 // Else, proceed with the file pairs as-is
@@ -230,7 +237,6 @@ process dada2_ft {
     container 'golob/dada2:1.12.0.ub.1804__bcw.0.3.1'
     label 'io_limited'
     errorStrategy "retry"
-    maxForks 100
 
     input:
         set specimen, batch, file(R1), file(R2) from demultiplexed_ch
@@ -274,7 +280,8 @@ dada2_ft_ch.into{
 }
 
 dada2_ft_empty_ch.subscribe{
-    filtered_specimens_ch.bind([it[0], 'FT']);
+    filtered_specimens_list.add(
+        [it[0], 'FT'])
     print "No reads from "
     print it[0]
     println " survived filter/trim"    
@@ -286,13 +293,14 @@ process dada2_derep {
     container 'golob/dada2:1.12.0.ub.1804__bcw.0.3.1'
     label 'io_limited'
     errorStrategy "retry"
-    maxForks 100
 
     input:
         set specimen, batch, file(R1), file(R2) from dada2_ft_for_derep_ch
     
     output:
-        set batch, specimen, file("${R1.getSimpleName()}.dada2.ft.derep.rds"), file("${R2.getSimpleName()}.dada2.ft.derep.rds") into dada2_derep_ch
+        set specimen, file("${R1.getSimpleName()}.dada2.ft.derep.rds"), file("${R2.getSimpleName()}.dada2.ft.derep.rds") into dada2_derep_ch
+        set batch, val('R1'), specimen, file("${R1.getSimpleName()}.dada2.ft.derep.rds") into dada2_derep_R1_ch
+        set batch, val('R2'), specimen, file("${R2.getSimpleName()}.dada2.ft.derep.rds") into dada2_derep_R2_ch
     
     """
     #!/usr/bin/env Rscript
@@ -305,31 +313,44 @@ process dada2_derep {
 }
 
 // Step 1.d. learn errors by batch
+
+// separate into forward and reverse reads
+dada2_ft_batches_F_ch = Channel.create()
+dada2_ft_batches_R_ch = Channel.create()
 dada2_ft_ch_for_err
     .groupTuple(by: 1)
-    .set{
-        dada2_ft_batches
+    .separate(
+        dada2_ft_batches_F_ch,
+        dada2_ft_batches_R_ch
+    ) {
+        r -> [
+            [r[0], r[1], r[2], 'R1'],
+            [r[0], r[1], r[3], 'R2']
+        ]
     }
+
+dada2_ft_batches_F_ch
+    .mix(dada2_ft_batches_R_ch)
+    .set { dada2_ft_batches_split_ch }
 
 process dada2_learn_error {
     container 'golob/dada2:1.12.0.ub.1804__bcw.0.3.1'
     label 'multithread'
     errorStrategy "retry"
-    beforeScript 'export ECS_TASK_METADATA_RPS_LIMIT="10"'
 
     input:
-        set val(batch_specimens), val(batch), file(forwardReads), file(reverseReads) from dada2_ft_batches
+        set val(batch_specimens), val(batch), file(reads), val(read_num) from dada2_ft_batches_split_ch
 
     output:
-        set batch, file("${batch}.R1.errM.rds"), file("${batch}.R2.errM.rds")  into dada2_batch_error_rds
-        set batch, file("${batch}.R1.errM.csv"), file("${batch}.R2.errM.csv")  into dada2_batch_error_csv
+        set batch, read_num, file("${batch}.${read_num}.errM.rds") into dada2_batch_error_rds
+        set batch, read_num, file("${batch}.${read_num}.errM.csv") into dada2_batch_error_csv
 
     """
     #!/usr/bin/env Rscript
     library('dada2');
-    errF <- learnErrors(
+    err <- learnErrors(
         unlist(strsplit(
-            '${forwardReads}',
+            '${reads}',
             ' ',
             fixed=TRUE
         )),
@@ -338,93 +359,79 @@ process dada2_learn_error {
         randomize=${params.errM_randomize},
         nbases=${params.errM_nbases}
     );
-    saveRDS(errF, "${batch}.R1.errM.rds"); 
-    write.csv(errF, "${batch}.R1.errM.csv");
-    errR <- learnErrors(
-        unlist(strsplit(
-            '${reverseReads}',
-            ' ',
-            fixed=TRUE
-        )),
-        multithread=${task.cpus},
-        MAX_CONSIST=${params.errM_maxConsist},
-        randomize=${params.errM_randomize},
-        nbases=${params.errM_nbases}
-    );
-    saveRDS(errR, "${batch}.R2.errM.rds"); 
-    write.csv(errR, "${batch}.R2.errM.csv");
+    saveRDS(err, "${batch}.${read_num}.errM.rds"); 
+    write.csv(err, "${batch}.${read_num}.errM.csv");
     """
 }
 
+// Combine the errM and dereplicated reads into a channel to be consumed by dada
+
+dada2_derep_R1_ch.mix(dada2_derep_R2_ch)
+    .groupTuple(by: [0, 1])
+    .combine(dada2_batch_error_rds, by: [0,1])
+    .map{ r-> [
+        r[0], // batch
+        r[1], // read_num
+        r[2],  // specimen names (list)
+        r[3],  // derep files (list)
+        r[4],  // errM file
+        r[3].collect { f -> return file(f).getName()+".dada.rds" }
+    ]}
+    .set { batch_err_derep_ch }
+
 // Step 1.e. Apply the error model by batch, using pseudo-pooling to improve yield.
-
-dada2_batch_error_rds.cross(
-    dada2_derep_ch.groupTuple(by: 0)
-).map{[
-    it[0][0],  // Batch
-    it[0][1],  // errM_F
-    it[0][2], // errM_R,
-    it[1][1], // specimens
-    it[1][2], // Forward derep files,
-    it[1][3], // Reverse derep files,
-    it[1][2].collect { file(it).getName()+'.dada.rds' }, // Forward dada FN
-    it[1][3].collect { file(it).getName()+'.dada.rds' }, // Reverse dada FN
-]}.set{ batch_err_derep_ch }
-
 
 process dada2_dada {
         container 'golob/dada2:1.12.0.ub.1804__bcw.0.3.1'
         label 'multithread'
         errorStrategy "retry"
-        beforeScript 'export ECS_TASK_METADATA_RPS_LIMIT="10"'
+
 
         input:
-            set batch, file(errM_1), file(errM_2), val(specimens), file(derep_1), file(derep_2), val(dada_1), val(dada_2) from batch_err_derep_ch
+            set val(batch), val(read_num), val(specimens), file(dereps), file(errM), val(dada_fns) from batch_err_derep_ch
 
         output:
-            //set batch, specimen, file(R1), file(R2), file("${R1.getSimpleName()}.dada2.dada.rds"), file("${R2.getSimpleName()}.dada2.dada.rds") into dada2_dada_sp_ch
-            set batch, val(specimens), file(derep_1), file(dada_1), file(derep_2), file(dada_2) into dada2_dada_batch_ch
+            set val(batch), val(read_num), val(specimens), file(dereps), file(dada_fns) into dada2_dada_batch_ch
         """
         #!/usr/bin/env Rscript
         library('dada2');
-        errM_1 <- readRDS('${errM_1}');
-        derep_1 <- lapply(
-            unlist(strsplit('${derep_1}', ' ', fixed=TRUE)),
+        errM <- readRDS('${errM}');
+        derep <- lapply(
+            unlist(strsplit('${dereps}', ' ', fixed=TRUE)),
             readRDS
         );
-        dadaResult_1 <- dada(derep_1, err=errM_1, multithread=${task.cpus}, verbose=TRUE, pool="pseudo");
-        dada_1_names <- sapply(strsplit('${derep_1}', ' ', fixed=TRUE), function(n) paste(n, ".dada.rds", sep=""));
-        sapply(1:length(derep_1), function(i) {
-            saveRDS(dadaResult_1[i], dada_1_names[i]);
-        });
-        errM_2 <- readRDS('${errM_2}');
-        derep_2 <- lapply(
-            unlist(strsplit('${derep_2}', ' ', fixed=TRUE)),
-            readRDS
-        );
-        dadaResult_2 <- dada(derep_2, err=errM_2, multithread=${task.cpus}, verbose=TRUE, pool="pseudo");
-        dada_2_names <- sapply(strsplit('${derep_2}', ' ', fixed=TRUE), function(n) paste(n, ".dada.rds", sep=""));
-        sapply(1:length(derep_2), function(i) {
-            saveRDS(dadaResult_2[i], dada_2_names[i]);
+        dadaResult <- dada(derep, err=errM, multithread=${task.cpus}, verbose=TRUE, pool="pseudo");
+        dada_names <- sapply(strsplit('${dereps}', ' ', fixed=TRUE), function(n) paste(n, ".dada.rds", sep=""));
+        sapply(1:length(derep), function(i) {
+            saveRDS(dadaResult[i], dada_names[i]);
         });
         """
     }
-
-// Flatten things back out to one-specimen-per
-
-Channel.create().set{ dada2_dada_sp_ch }
-
+// Flatten things back out to one-specimen-per-row
 dada2_dada_batch_ch
-    .map{
-        r -> r[1].eachWithIndex{it, i -> dada2_dada_sp_ch.bind([
-            r[0],
-            r[1][i],
-            r[2][i],
-            r[3][i],
-            r[4][i],
-            r[5][i]
-        ])};
-    }.subscribe onComplete: { dada2_dada_sp_ch.close() }
+    .flatMap{
+        br -> 
+        fl = [];
+        br[2].eachWithIndex{ 
+            it, i ->  fl.add([
+                br[2][i], br[1], br[3][i], br[4][i], br[0]
+            ])
+        }
+        return fl;
+    }
+    .groupTuple(by: [0])
+    .map { spr ->
+        r1_idx = spr[1].indexOf('R1')
+        r2_idx = spr[1].indexOf('R2')
+        [
+            spr[4][0], // batch
+            spr[0],  // specimen
+            spr[2][r1_idx], // derep_1
+            spr[3][r1_idx], // dada_1
+            spr[2][r2_idx], // derep_2
+            spr[3][r2_idx], // dada_2
+        ]}
+    .set { dada2_dada_sp_ch }
 
 // Step 1.f. Merge reads, using the dereplicated seqs and applied model
 
@@ -468,13 +475,14 @@ dada2_sp_post_merge_ch
 
 dada2_sp_merge_empty_ch
     .subscribe onNext: {
-        filtered_specimens_ch.bind([it[1], 'merge']);
+        filtered_specimens_list.add(
+            [it[1], 'merge'])
         print "No reads from "
         print it[1]
         println " survived merge"         
     }
     onComplete: {
-        filtered_specimens_ch.close()
+        filtered_specimens_ch = Channel.from(filtered_specimens_list)
     }
 
 // Step 1.g. Make a seqtab
@@ -633,6 +641,7 @@ params.repo_max_accepts = 10
 params.cmalign_mxsize = 8196
 params.raxml_model = 'GTRGAMMA'
 params.raxml_parsiomony_seed = 12345
+params.taxdmp = false
 
 
 // Step 2.a. Search the repo for matches
@@ -702,7 +711,7 @@ process filterSeqInfo {
 
 // Step 2.xx (get) or build a taxonomy db
 
-if ( (params.taxdmp == null) || file(params.taxdmp).isEmpty() ) {
+if ( (params.taxdmp == false) || file(params.taxdmp).isEmpty() ) {
     process DlBuildTaxtasticDB {
         container = 'golob/pplacer:1.1alpha19rc_BCW_0.3.0D'
         label = 'io_limited'
