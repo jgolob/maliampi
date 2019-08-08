@@ -357,7 +357,8 @@ process dada2_learn_error {
         multithread=${task.cpus},
         MAX_CONSIST=${params.errM_maxConsist},
         randomize=${params.errM_randomize},
-        nbases=${params.errM_nbases}
+        nbases=${params.errM_nbases},
+        verbose=TRUE
     );
     saveRDS(err, "${batch}.${read_num}.errM.rds"); 
     write.csv(err, "${batch}.${read_num}.errM.csv");
@@ -375,40 +376,86 @@ dada2_derep_R1_ch.mix(dada2_derep_R2_ch)
         r[2],  // specimen names (list)
         r[3],  // derep files (list)
         r[4],  // errM file
-        r[3].collect { f -> return file(f).getName()+".dada.rds" }
+        r[3].collect { f -> return file(f).getSimpleName()+".dada.rds" }
     ]}
-    .set { batch_err_derep_ch }
+    .set { batch_err_dereps_ch }
 
 // Step 1.e. Apply the error model by batch, using pseudo-pooling to improve yield.
+
+// combine the derep objects into one RDS to ease file staging later
+
+process dada2_derep_batches {
+    container 'golob/dada2:1.12.0.ub.1804__bcw.0.3.1'
+    label 'io_limited'
+    errorStrategy 'finish'
+
+    input:
+        set val(batch), val(read_num), val(specimens), file(dereps), file(errM), val(dada_fns) from batch_err_dereps_ch
+    
+    output:
+        set val(batch), val(read_num), val(specimens), file(dereps), file("${batch}_${read_num}_derep.rds"), file(errM), val(dada_fns) into batch_err_derep_ch
+    
+    """
+    #!/usr/bin/env Rscript
+    library('dada2');
+    derep <- lapply(
+        unlist(strsplit('${dereps}', ' ', fixed=TRUE)),
+        readRDS
+    );
+    saveRDS(derep, "${batch}_${read_num}_derep.rds")
+    """
+
+}
 
 process dada2_dada {
         container 'golob/dada2:1.12.0.ub.1804__bcw.0.3.1'
         label 'multithread'
-        errorStrategy "retry"
+        //errorStrategy "retry"
 
 
         input:
-            set val(batch), val(read_num), val(specimens), file(dereps), file(errM), val(dada_fns) from batch_err_derep_ch
+            set val(batch), val(read_num), val(specimens), file(dereps), file(derep), file(errM), val(dada_fns) from batch_err_derep_ch
 
         output:
-            set val(batch), val(read_num), val(specimens), file(dereps), file(dada_fns) into dada2_dada_batch_ch
+            set val(batch), val(read_num), val(specimens), file("${batch}_${read_num}_dada.rds"), file(dereps), val(dada_fns) into dada2_dada_batch_ch
         """
         #!/usr/bin/env Rscript
         library('dada2');
         errM <- readRDS('${errM}');
-        derep <- lapply(
-            unlist(strsplit('${dereps}', ' ', fixed=TRUE)),
-            readRDS
-        );
+        derep <- readRDS('${derep}');
         dadaResult <- dada(derep, err=errM, multithread=${task.cpus}, verbose=TRUE, pool="pseudo");
-        dada_names <- sapply(strsplit('${dereps}', ' ', fixed=TRUE), function(n) paste(n, ".dada.rds", sep=""));
-        sapply(1:length(derep), function(i) {
-            saveRDS(dadaResult[i], dada_names[i]);
-        });
+        saveRDS(dadaResult, "${batch}_${read_num}_dada.rds");
         """
     }
+ // split the data2 results out
+
+process dada2_demultiplex_dada {
+    container 'golob/dada2:1.12.0.ub.1804__bcw.0.3.1'
+    label 'io_limited'
+    errorStrategy 'terminate'
+
+    input:
+        set val(batch), val(read_num), val(specimens), file(dada), file(dereps), val(dada_fns) from dada2_dada_batch_ch
+    
+    output:
+        set val(batch), val(read_num), val(specimens), file(dada_fns), file(dereps) into dada2_dada_batch_split_ch
+
+    """
+    #!/usr/bin/env Rscript
+    library('dada2');
+    dadaResult <- readRDS('${dada}');
+    dada_names <- unlist(strsplit(
+        gsub('(\\\\[|\\\\])', "", "${dada_fns}"),
+        ", "));
+    print(dada_names);
+    sapply(1:length(dadaResult), function(i) {
+        saveRDS(dadaResult[i], dada_names[i]);
+    });
+    """
+}
+
 // Flatten things back out to one-specimen-per-row
-dada2_dada_batch_ch
+dada2_dada_batch_split_ch
     .flatMap{
         br -> 
         fl = [];
@@ -418,27 +465,27 @@ dada2_dada_batch_ch
             ])
         }
         return fl;
-    }
-    .groupTuple(by: [0])
+    }.groupTuple(by: [0])
     .map { spr ->
         r1_idx = spr[1].indexOf('R1')
         r2_idx = spr[1].indexOf('R2')
         [
             spr[4][0], // batch
             spr[0],  // specimen
-            spr[2][r1_idx], // derep_1
-            spr[3][r1_idx], // dada_1
-            spr[2][r2_idx], // derep_2
-            spr[3][r2_idx], // dada_2
+            spr[3][r1_idx], // derep_1
+            spr[2][r1_idx], // dada_1
+            spr[3][r2_idx], // derep_2
+            spr[2][r2_idx], // dada_2
         ]}
     .set { dada2_dada_sp_ch }
+
 
 // Step 1.f. Merge reads, using the dereplicated seqs and applied model
 
 process dada2_merge {
         container 'golob/dada2:1.12.0.ub.1804__bcw.0.3.1'
         label 'multithread'
-        //errorStrategy "retry"
+        errorStrategy "retry"
 
         input:
             set batch, specimen, file(R1), file(R1dada), file(R2), file(R2dada) from dada2_dada_sp_ch
@@ -517,7 +564,7 @@ process dada2_seqtab_sp {
     process dada2_seqtab_batch_combine {
         container 'golob/dada2-fast-combineseqtab:0.2.0_BCW_0.30A'
         label 'io_limited'
-        //errorStrategy "retry"
+        errorStrategy "retry"
 
         input:
             set val(batch), val(specimens), file(sp_seqtabs_rds) from dada2_batch_seqtabs_ch
@@ -541,7 +588,7 @@ process dada2_seqtab_sp {
     process dada2_seqtab_combine_all {
         container 'golob/dada2-fast-combineseqtab:0.2.0_BCW_0.30A'
         label 'io_limited'
-        // errorStrategy "retry"
+        errorStrategy "retry"
 
         input:
             file(batch_seqtab_files)
