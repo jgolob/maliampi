@@ -149,7 +149,6 @@ process barcodecop {
     container "golob/barcodecop:0.4.1__bcw_0.3.0"
     label 'io_limited'
     errorStrategy "retry"
-    maxForks 100
 
     input:
     set specimen, batch, file(R1), file(R2), file(I1), file(I2) from to_bcc_ch
@@ -299,6 +298,7 @@ process dada2_learn_error {
     container 'golob/dada2:1.12.0.ub.1804__bcw.0.3.1'
     label 'multithread'
     errorStrategy "retry"
+    maxRetries 10
 
     input:
         set val(batch_specimens), val(batch), file(reads), val(read_num) from dada2_ft_batches_split_ch
@@ -351,7 +351,8 @@ dada2_derep_R1_ch.mix(dada2_derep_R2_ch)
 process dada2_derep_batches {
     container 'golob/dada2:1.12.0.ub.1804__bcw.0.3.1'
     label 'io_limited'
-    errorStrategy 'finish'
+    errorStrategy "retry"
+    maxRetries 10
 
     input:
         set val(batch), val(read_num), val(specimens), file(dereps), val(errM), val(dada_fns) from batch_err_dereps_ch
@@ -373,31 +374,33 @@ process dada2_derep_batches {
 
 // Dada steps should be by batch to allow for pseudo pooling
 process dada2_dada {
-        container 'golob/dada2:1.12.0.ub.1804__bcw.0.3.1'
-        label 'multithread'
-        //errorStrategy "retry"
+    container 'golob/dada2:1.12.0.ub.1804__bcw.0.3.1'
+    label 'multithread'
+    errorStrategy "retry"
+    maxRetries 10
 
 
-        input:
-            set val(batch), val(read_num), val(specimens), file(derep), file(errM), val(dada_fns) from batch_err_derep_ch
+    input:
+        set val(batch), val(read_num), val(specimens), file(derep), file(errM), val(dada_fns) from batch_err_derep_ch
 
-        output:
-            set val(batch), val(read_num), val(specimens), file("${batch}_${read_num}_dada.rds"), val(dada_fns) into dada2_dada_batch_ch
-        """
-        #!/usr/bin/env Rscript
-        library('dada2');
-        errM <- readRDS('${errM}');
-        derep <- readRDS('${derep}');
-        dadaResult <- dada(derep, err=errM, multithread=${task.cpus}, verbose=TRUE, pool="pseudo");
-        saveRDS(dadaResult, "${batch}_${read_num}_dada.rds");
-        """
-    }
+    output:
+        set val(batch), val(read_num), val(specimens), file("${batch}_${read_num}_dada.rds"), val(dada_fns) into dada2_dada_batch_ch
+    """
+    #!/usr/bin/env Rscript
+    library('dada2');
+    errM <- readRDS('${errM}');
+    derep <- readRDS('${derep}');
+    dadaResult <- dada(derep, err=errM, multithread=${task.cpus}, verbose=TRUE, pool="pseudo");
+    saveRDS(dadaResult, "${batch}_${read_num}_dada.rds");
+    """
+}
  // split the data2 results out
 
 process dada2_demultiplex_dada {
     container 'golob/dada2:1.12.0.ub.1804__bcw.0.3.1'
     label 'io_limited'
-    errorStrategy 'terminate'
+    errorStrategy "retry"
+    maxRetries 10
 
     input:
         set val(batch), val(read_num), val(specimens), file(dada), val(dada_fns) from dada2_dada_batch_ch
@@ -452,31 +455,32 @@ dada2_dada_batch_split_ch
 // Step 1.f. Merge reads, using the dereplicated seqs and applied model
 
 process dada2_merge {
-        container 'golob/dada2:1.12.0.ub.1804__bcw.0.3.1'
-        label 'multithread'
-        errorStrategy "retry"
+    container 'golob/dada2:1.12.0.ub.1804__bcw.0.3.1'
+    label 'multithread'
+    errorStrategy "retry"
+    maxRetries 10
 
-        input:
-            set specimen, batch, file(R1dada), file(R2dada), file(R1), file(R2) from dada2_dada_sp_ch
+    input:
+        set specimen, batch, file(R1dada), file(R2dada), file(R1), file(R2) from dada2_dada_sp_ch
 
-        output:
-            set batch, specimen, file("${specimen}.dada2.merged.rds") into dada2_sp_post_merge_ch
+    output:
+        set batch, specimen, file("${specimen}.dada2.merged.rds") into dada2_sp_post_merge_ch
 
-        """
-        #!/usr/bin/env Rscript
-        library('dada2');
-        dada_1 <- readRDS('${R1dada}');
-        derep_1 <- readRDS('${R1}');
-        dada_2 <- readRDS('${R2dada}');
-        derep_2 <- readRDS('${R2}');        
-        merger <- mergePairs(
-            dada_1, derep_1,
-            dada_2, derep_2,
-            verbose=TRUE,
-        );
-        saveRDS(merger, "${specimen}.dada2.merged.rds");
-        """
-    }
+    """
+    #!/usr/bin/env Rscript
+    library('dada2');
+    dada_1 <- readRDS('${R1dada}');
+    derep_1 <- readRDS('${R1}');
+    dada_2 <- readRDS('${R2dada}');
+    derep_2 <- readRDS('${R2}');        
+    merger <- mergePairs(
+        dada_1, derep_1,
+        dada_2, derep_2,
+        verbose=TRUE,
+    );
+    saveRDS(merger, "${specimen}.dada2.merged.rds");
+    """
+}
 
 dada2_sp_merge_ch = Channel.create()
 dada2_sp_merge_empty_ch = Channel.create()
@@ -493,25 +497,26 @@ dada2_sp_post_merge_ch
 // Step 1.g. Make a seqtab
 
 process dada2_seqtab_sp {
-        container 'golob/dada2:1.12.0.ub.1804__bcw.0.3.1'
-        label 'io_limited'
-        errorStrategy "retry"
+    container 'golob/dada2:1.12.0.ub.1804__bcw.0.3.1'
+    label 'io_limited'
+    errorStrategy "retry"
+    maxRetries 10
 
-        input:
-            set batch, specimen, file(merged) from dada2_sp_merge_ch
+    input:
+        set batch, specimen, file(merged) from dada2_sp_merge_ch
 
-        output:
-            set batch, specimen, file("${specimen}.dada2.seqtab.rds") into dada2_sp_seqtab
+    output:
+        set batch, specimen, file("${specimen}.dada2.seqtab.rds") into dada2_sp_seqtab
 
-        """
-        #!/usr/bin/env Rscript
-        library('dada2');
-        merged <- readRDS('${merged}');
-        seqtab <- makeSequenceTable(merged);
-        rownames(seqtab) <- c('${specimen}');
-        saveRDS(seqtab, '${specimen}.dada2.seqtab.rds');
-        """
-    }
+    """
+    #!/usr/bin/env Rscript
+    library('dada2');
+    merged <- readRDS('${merged}');
+    seqtab <- makeSequenceTable(merged);
+    rownames(seqtab) <- c('${specimen}');
+    saveRDS(seqtab, '${specimen}.dada2.seqtab.rds');
+    """
+}
 
 // Step 1.h. Combine seqtabs
     // Do this by batch to help with massive data sets
@@ -523,6 +528,7 @@ process dada2_seqtab_sp {
         container 'golob/dada2-fast-combineseqtab:0.2.0_BCW_0.30A'
         label 'io_limited'
         errorStrategy "retry"
+        maxRetries 10
 
         input:
             set val(batch), val(specimens), file(sp_seqtabs_rds) from dada2_batch_seqtabs_ch
@@ -543,8 +549,9 @@ process dada2_seqtab_sp {
 
     process dada2_seqtab_combine_all {
         container 'golob/dada2-fast-combineseqtab:0.2.0_BCW_0.30A'
-        label 'io_limited'
+        label 'mem_veryhigh'
         errorStrategy "retry"
+        maxRetries 10
 
         input:
             file(batch_seqtab_files)
@@ -561,7 +568,9 @@ process dada2_seqtab_sp {
 // Step 1.i. Remove chimera on combined seqtab
     process dada2_remove_bimera {
         container 'golob/dada2:1.12.0.ub.1804__bcw.0.3.1'
-        label 'multithread'
+        label 'mem_veryhigh'
+        errorStrategy "retry"
+        maxRetries 10
         publishDir "${params.output}/sv/", mode: 'copy'
 
         input:
