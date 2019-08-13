@@ -77,11 +77,6 @@ if (params.help || params.manifest == null){
 //
 //  START STEP 1: Sequence variants
 
-// Create a list for specimens whose reads are filtered away at one of the steps
-// The structure is a tuple, first is the specimen ID (if available), the second is the step.
-filtered_specimens_list = []
-filtered_specimens_ch = Channel.create()
-
 // Load manifest!
 
 // For each, figure out if an index is available, and split into with index and without channels
@@ -115,13 +110,6 @@ Channel.from(file(params.manifest))
         else return 1;
     }
 
-input_invalid_ch.subscribe{
-    print "Missing required specimen, read__1 or read__2: "
-    println it
-    filtered_specimens_list.add(
-        [it.specimen, 'missing required elements'])
-}
-
 
 // Now check to be sure the files exist and are not empty.
 // If any file in a row is empty, make a note of it and proceed with the remainder
@@ -142,20 +130,6 @@ input_no_index_ch.choice(
     input_no_index_valid_ch
 ) {
     r -> (file(r.read__1).isEmpty() || file(r.read__2).isEmpty()) ? 0 : 1
-}
-
-// Handle the invalids. Here we are just going to print them as we see them.
-input_no_index_invalid_ch.subscribe{
-    print "Missing / Empty files for: "
-    println it
-    filtered_specimens_list.add(
-        [it.specimen, 'missing reads'])
-}
-input_w_index_invalid_ch.subscribe{
-    print "Missing / Empty files for: "
-    println it
-    filtered_specimens_list.add(
-        [it.specimen, 'missing reads'])
 }
 
 // For those with an index, make a channel for barcodecop
@@ -209,14 +183,6 @@ from_bcc_ch
         r -> (file(r[2]).isEmpty() || file(r[3]).isEmpty()) ? 1 : 0
     }
 
-bcc_empty_ch.subscribe {
-    print "No reads from "
-    print it[0]
-    println " survived BCC"
-    filtered_specimens_list.add(
-        [it[0], 'BCC'])
-}
-
 // Else, proceed with the file pairs as-is
 
 input_no_index_valid_ch
@@ -232,6 +198,7 @@ input_no_index_valid_ch
 no_index_to_ft_ch.mix(bcc_to_ft_ch).set{
     demultiplexed_ch
 }
+
 
 // Step 1.b. next step: filter and trim reads with dada2
 process dada2_ft {
@@ -280,14 +247,6 @@ dada2_ft_ch.into{
     dada2_ft_ch_for_err
 }
 
-dada2_ft_empty_ch.subscribe{
-    filtered_specimens_list.add(
-        [it[0], 'FT'])
-    print "No reads from "
-    print it[0]
-    println " survived filter/trim"    
-}
-
 // Step 1.c. dereplicate reads with dada2
 
 process dada2_derep {
@@ -314,11 +273,13 @@ process dada2_derep {
 }
 
 // Step 1.d. learn errors by batch
-
+// Group reads into batches and proceed
 // separate into forward and reverse reads
 dada2_ft_batches_F_ch = Channel.create()
 dada2_ft_batches_R_ch = Channel.create()
 dada2_ft_ch_for_err
+    .toSortedList({a, b -> a[0] <=> b[0]})
+    .flatMap()
     .groupTuple(by: 1)
     .separate(
         dada2_ft_batches_F_ch,
@@ -369,6 +330,8 @@ process dada2_learn_error {
 // Combine the errM and dereplicated reads into a channel to be consumed by dada
 
 dada2_derep_R1_ch.mix(dada2_derep_R2_ch)
+    .toSortedList({a, b -> a[2] <=> b[2]})
+    .flatMap()
     .groupTuple(by: [0, 1])
     .combine(dada2_batch_error_rds, by: [0,1])
     .map{ r-> [
@@ -408,6 +371,7 @@ process dada2_derep_batches {
 
 }
 
+// Dada steps should be by batch to allow for pseudo pooling
 process dada2_dada {
         container 'golob/dada2:1.12.0.ub.1804__bcw.0.3.1'
         label 'multithread'
@@ -469,7 +433,10 @@ dada2_dada_batch_split_ch
             ])
         }
         return fl;
-    }.groupTuple(by: [0])
+    }
+    .toSortedList({a, b -> a[0] <=> b[0]})
+    .flatMap()
+    .groupTuple(by: [0])
     .map { spr ->
         r1_idx = spr[1].indexOf('R1')
         r2_idx = spr[1].indexOf('R2')
@@ -487,7 +454,7 @@ dada2_dada_batch_split_ch
 process dada2_merge {
         container 'golob/dada2:1.12.0.ub.1804__bcw.0.3.1'
         label 'multithread'
-        //errorStrategy "retry"
+        errorStrategy "retry"
 
         input:
             set specimen, batch, file(R1dada), file(R2dada), file(R1), file(R2) from dada2_dada_sp_ch
@@ -522,20 +489,6 @@ dada2_sp_post_merge_ch
         file(it[2]).isEmpty() ? 1 : 0
     }
 
-dada2_sp_merge_empty_ch
-    .subscribe onNext: {
-        filtered_specimens_list.add(
-            [it[1], 'merge'])
-        print "No reads from "
-        print it[1]
-        println " survived merge"         
-    }
-    onComplete: {
-        filtered_specimens_list.each {
-             filtered_specimens_ch.bind(it)
-        }
-        filtered_specimens_ch.close()
-    }
 
 // Step 1.g. Make a seqtab
 
@@ -659,22 +612,36 @@ process dada2_seqtab_sp {
         """
     }
 
+// Collect and transform all the failures
+input_invalid_ch
+    .map({r -> [r.specimen, "Missing required elements"] })
+    .mix(input_w_index_invalid_ch.map({r -> [r.specimen, "Empty / Missing Index File"] }))
+    .mix(input_no_index_invalid_ch.map({r -> [r.specimen, "Empty / Missing Read file"] }))
+    .mix(bcc_empty_ch.map({r -> [r[0], "No reads after barcodecop filtering"] }))
+    .mix(dada2_ft_empty_ch.map({r -> [r[0], "No reads after DADA2 FilterTrim"] }))
+    .mix(dada2_sp_merge_empty_ch.map({r -> [r[1], "No reads merged per DADA2"] }))
+    .set {
+        invalid_ch
+    }
+
+
 // Step 1.k. Output any failed specimens, and the step at which they failed.
-/*
+
     failed_f = file("${params.output}/sv/failed_specimens.csv")
     failed_f.text = "specimen,reason\n"
     process output_failed {
+        //publishDir "${params.output}/sv/", mode: 'copy'
+
         input:
-            set val(specimen), val(reason) from filtered_specimens_ch
+            set val(specimen), val(reason) from invalid_ch
 
         exec:
             failed_f.append("${specimen},${reason}\n")
     }
-*/
+
 //
 //  END STEP 1: Sequence variants 
 //
-/*
 
 //
 //  START STEP 2: Reference package
