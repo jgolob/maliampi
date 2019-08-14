@@ -567,7 +567,7 @@ process dada2_seqtab_sp {
         .set{ dada2_batch_seqtabs_ch }
 
     process dada2_seqtab_batch_combine {
-        container 'golob/dada2-fast-combineseqtab:0.2.0_BCW_0.30A'
+        container 'golob/dada2-fast-combineseqtab:0.2.0__1.12.0__BCW_0.3.1B'
         label 'io_limited'
         errorStrategy "retry"
 
@@ -589,8 +589,8 @@ process dada2_seqtab_sp {
         .set{ batch_seqtab_files }
 
     process dada2_seqtab_combine_all {
-        container 'golob/dada2-fast-combineseqtab:0.2.0_BCW_0.30A'
-        label 'io_limited'
+        container 'golob/dada2-fast-combineseqtab:0.2.0__1.12.0__BCW_0.3.1B'
+        label 'io_mem'
         errorStrategy "retry"
 
         input:
@@ -674,7 +674,7 @@ process dada2_seqtab_sp {
 //
 //  END STEP 1: Sequence variants 
 //
-/*
+
 
 //
 //  START STEP 2: Reference package
