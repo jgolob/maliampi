@@ -526,7 +526,7 @@ process dada2_seqtab_sp {
 
     process dada2_seqtab_batch_combine {
         container 'golob/dada2-fast-combineseqtab:0.3.0__1.12.0__BCW_0.3.1B'
-        label 'io_limited'
+        label 'io_mem'
         errorStrategy "retry"
         maxRetries 10
 
