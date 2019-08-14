@@ -527,7 +527,7 @@ process dada2_seqtab_sp {
     process dada2_seqtab_batch_combine {
         container 'golob/dada2-fast-combineseqtab:0.3.0__1.12.0__BCW_0.3.1B'
         label 'io_limited'
-        //errorStrategy "retry"
+        errorStrategy "retry"
         maxRetries 10
 
         input:
@@ -552,7 +552,7 @@ process dada2_seqtab_sp {
     process dada2_seqtab_combine_all {
         container 'golob/dada2-fast-combineseqtab:0.3.0__1.12.0__BCW_0.3.1B'
         label 'io_mem'
-        //errorStrategy "retry"
+        errorStrategy "retry"
         maxRetries 10
 
         input:
@@ -603,6 +603,7 @@ process dada2_seqtab_sp {
         container 'golob/dada2-pplacer:0.4.1__bcw_0.3.1'
         label 'io_limited'
         publishDir "${params.output}/sv/", mode: 'copy'
+        errorStrategy "retry"
 
         input:
             file(final_seqtab_csv)
@@ -645,6 +646,7 @@ process output_failed {
     container 'golob/dada2-pplacer:0.4.1__bcw_0.3.1'
     label 'io_limited'
     publishDir "${params.output}/sv/", mode: 'copy'
+    errorStrategy 'retry'
 
     input:
         set val(specimens), val(reasons) from invalid_ch
