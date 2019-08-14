@@ -525,9 +525,9 @@ process dada2_seqtab_sp {
         .set{ dada2_batch_seqtabs_ch }
 
     process dada2_seqtab_batch_combine {
-        container 'golob/dada2-fast-combineseqtab:0.2.0__1.12.0__BCW_0.3.1B'
+        container 'golob/dada2-fast-combineseqtab:0.3.0__1.12.0__BCW_0.3.1A'
         label 'io_limited'
-        errorStrategy "retry"
+        //errorStrategy "retry"
         maxRetries 10
 
         input:
@@ -537,6 +537,8 @@ process dada2_seqtab_sp {
             set batch, file("${batch}.dada2.seqtabs.rds") into dada2_batch_seqtab_ch
 
         """
+        set -e
+
         combine_seqtab \
         --rds ${batch}.dada2.seqtabs.rds \
         --seqtabs ${sp_seqtabs_rds}
@@ -548,7 +550,7 @@ process dada2_seqtab_sp {
         .set{ batch_seqtab_files }
 
     process dada2_seqtab_combine_all {
-        container 'golob/dada2-fast-combineseqtab:0.2.0__1.12.0__BCW_0.3.1B'
+        container 'golob/dada2-fast-combineseqtab:0.3.0__1.12.0__BCW_0.3.1A'
         label 'io_mem'
         errorStrategy "retry"
         maxRetries 10
@@ -560,6 +562,8 @@ process dada2_seqtab_sp {
             file "combined.dada2.seqtabs.rds" into combined_seqtab
 
         """
+        set -e
+
         combine_seqtab \
         --rds combined.dada2.seqtabs.rds \
         --seqtabs ${batch_seqtab_files}
@@ -569,7 +573,7 @@ process dada2_seqtab_sp {
     process dada2_remove_bimera {
         container 'golob/dada2:1.12.0.ub.1804__bcw.0.3.1'
         label 'mem_veryhigh'
-        errorStrategy "retry"
+        //errorStrategy "retry"
         maxRetries 10
         publishDir "${params.output}/sv/", mode: 'copy'
 
@@ -621,6 +625,7 @@ process dada2_seqtab_sp {
         """
     }
 
+// Step 1.k. Output any failed specimens, and the step at which they failed.
 // Collect and transform all the failures
 input_invalid_ch
     .map({r -> [r.specimen, "Missing required elements"] })
@@ -629,29 +634,45 @@ input_invalid_ch
     .mix(bcc_empty_ch.map({r -> [r[0], "No reads after barcodecop filtering"] }))
     .mix(dada2_ft_empty_ch.map({r -> [r[0], "No reads after DADA2 FilterTrim"] }))
     .mix(dada2_sp_merge_empty_ch.map({r -> [r[1], "No reads merged per DADA2"] }))
+    .reduce([
+        [], []
+    ]) { p, c -> p[0].add(c[0]); p[1].add(c[1]); return p; }
     .set {
         invalid_ch
     }
 
+process output_failed {
+    container 'golob/dada2-pplacer:0.4.1__bcw_0.3.1'
+    label 'io_limited'
+    publishDir "${params.output}/sv/", mode: 'copy'
 
-// Step 1.k. Output any failed specimens, and the step at which they failed.
+    input:
+        set val(specimens), val(reasons) from invalid_ch
+    output:
+        file "failed_specimens.csv"
 
-    failed_f = file("${params.output}/sv/failed_specimens.csv")
-    failed_f.text = "specimen,reason\n"
-    process output_failed {
-        //publishDir "${params.output}/sv/", mode: 'copy'
+    """
+    #!/usr/bin/env python
+    import csv
+    import re
+    specimens = re.sub(r'\\[|\\]', "", "${specimens}").split(',')
+    reasons = re.sub(r'\\[|\\]', "", "${reasons}").split(',')
 
-        input:
-            set val(specimen), val(reason) from invalid_ch
-
-        exec:
-            failed_f.append("${specimen},${reason}\n")
-    }
+    with open("failed_specimens.csv", 'wt') as out_h:
+        w = csv.writer(out_h)
+        w.writerow([
+            'specimen',
+            'reason'
+        ])
+        for sp, reason in zip(specimens, reasons):
+            w.writerow([sp.strip(), reason.strip()])
+    """
+}
 
 //
 //  END STEP 1: Sequence variants 
 //
-
+/*
 //
 //  START STEP 2: Reference package
 //
