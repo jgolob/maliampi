@@ -677,7 +677,7 @@ process output_failed {
 //
 //  END STEP 1: Sequence variants 
 //
-/*
+
 //
 //  START STEP 2: Reference package
 //
