@@ -299,6 +299,7 @@ process dada2_learn_error {
     label 'multithread'
     errorStrategy "retry"
     maxRetries 10
+    publishDir "${params.output}/sv/errM/${batch}", mode: 'copy'
 
     input:
         set val(batch_specimens), val(batch), file(reads), val(read_num) from dada2_ft_batches_split_ch
@@ -600,8 +601,8 @@ process dada2_seqtab_sp {
     }
 // Step 1.j. Transform output to be pplacer and mothur style
     process dada2_convert_output {
-        container 'golob/dada2-pplacer:0.4.1__bcw_0.3.1'
-        label 'io_limited'
+        container 'golob/dada2-pplacer:0.6.0__bcw_0.3.1'
+        label 'io_mem'
         publishDir "${params.output}/sv/", mode: 'copy'
         errorStrategy "retry"
 
@@ -613,6 +614,7 @@ process dada2_seqtab_sp {
             file "dada2.sv.fasta"  into sv_fasta_f
             file "dada2.sv.map.csv"  into sv_map_f
             file "dada2.sv.weights.csv" into sv_weights_f
+            file "dada2.specimen.sv.long.csv" into dada2_specimen_sv_long_f
             file "dada2.sv.shared.txt" into dada2_sv_sharetable_f
 
 
@@ -622,6 +624,7 @@ process dada2_seqtab_sp {
         -f dada2.sv.fasta \
         -m dada2.sv.map.csv \
         -w dada2.sv.weights.csv \
+        -L dada2.specimen.sv.long.csv \
         -t dada2.sv.shared.txt
         """
     }
@@ -643,7 +646,7 @@ input_invalid_ch
     }
 
 process output_failed {
-    container 'golob/dada2-pplacer:0.4.1__bcw_0.3.1'
+    container 'golob/dada2-pplacer:0.6.0__bcw_0.3.1'
     label 'io_limited'
     publishDir "${params.output}/sv/", mode: 'copy'
     errorStrategy 'retry'
