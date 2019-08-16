@@ -601,7 +601,7 @@ process dada2_seqtab_sp {
     }
 // Step 1.j. Transform output to be pplacer and mothur style
     process dada2_convert_output {
-        container 'golob/dada2-pplacer:0.6.0__bcw_0.3.1'
+        container 'golob/dada2-pplacer:0.6.2__bcw_0.3.1'
         label 'io_mem'
         publishDir "${params.output}/sv/", mode: 'copy'
         errorStrategy "retry"
@@ -646,7 +646,7 @@ input_invalid_ch
     }
 
 process output_failed {
-    container 'golob/dada2-pplacer:0.6.0__bcw_0.3.1'
+    container 'golob/dada2-pplacer:0.6.2__bcw_0.3.1'
     label 'io_limited'
     publishDir "${params.output}/sv/", mode: 'copy'
     errorStrategy 'retry'
@@ -677,7 +677,7 @@ process output_failed {
 //
 //  END STEP 1: Sequence variants 
 //
-
+/*
 //
 //  START STEP 2: Reference package
 //
