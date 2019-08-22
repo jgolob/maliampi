@@ -770,7 +770,7 @@ if ( (params.taxdmp == false) || file(params.taxdmp).isEmpty() ) {
 
         """
         mkdir -p dl/ && \
-        taxit new_database taxonomy.db -p dl/
+        taxit new_database taxonomy.db -u ftp://ftp.ncbi.nlm.nih.gov/pub/taxonomy/taxdmp.zip -p dl/
         """
 
     }
@@ -889,7 +889,32 @@ process raxmlTree {
     """
 }
 
+// Step 2.xx Remove cruft from tree stats
 
+process raxmlTree_cleanupInfo {
+    container = 'golob/raxml:8.2.11_bcw_0.3.0'
+    label = 'io_limited'
+    errorStrategy = 'retry'
+
+    input:
+        file "RAxML_info.unclean.refpkg" from refpkg_tree_stats_f
+    
+    output:
+        file "RAxML_info.refpkg" into refpkg_tree_stats_clean_f
+
+
+"""
+#!/usr/bin/env python
+with open("RAxML_info.refpkg",'wt') as out_h:
+    with open("RAxML_info.unclean.refpkg", 'rt') as in_h:
+        past_cruft = False
+        for l in in_h:
+            if "This is RAxML version" == l[0:21]:
+                past_cruft = True
+            if past_cruft:
+                out_h.write(l)
+"""
+}
 
 // Step 2.xx Make a tax table for the refpkg sequences
 process taxtableForSI {
@@ -935,7 +960,7 @@ process combineRefpkg {
         file recruits_aln_fasta_f
         file recruits_aln_sto_f
         file refpkg_tree_f 
-        file refpkg_tree_stats_f 
+        file refpkg_tree_stats_clean_f 
         file refpkg_tt_f
         file refpkg_si_corr_f
         file refpkg_cm
@@ -950,7 +975,7 @@ process combineRefpkg {
     --aln-fasta ${recruits_aln_fasta_f} \
     --aln-sto ${recruits_aln_sto_f} \
     --tree-file ${refpkg_tree_f} \
-    --tree-stats ${refpkg_tree_stats_f} \
+    --tree-stats ${refpkg_tree_stats_clean_f} \
     --taxonomy ${refpkg_tt_f} \
     --seq-info ${refpkg_si_corr_f} \
     --profile ${refpkg_cm} && \
