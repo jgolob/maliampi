@@ -14,7 +14,7 @@
 container__barcodecop = "golob/barcodecop:0.4.1__bcw_0.3.0"
 container__dada2 = "golob/dada2:1.12.0.ub.1804__bcw.0.3.1"
 container__fastcombineseqtab = "golob/dada2-fast-combineseqtab:0.5.0__1.12.0__BCW_0.3.1"
-container__dada2pplacer = "golob/dada2-pplacer:0.8.0__bcw_0.3.1"
+container__dada2pplacer = "golob/dada2-pplacer:0.8.0__bcw_0.3.1A"
 container__vsearch = "golob/vsearch:2.7.1_bcw_0.2.0"
 container__fastatools = "golob/fastatools:0.7.1__bcw.0.3.1"
 container__pplacer = "golob/pplacer:1.1alpha19rc_BCW_0.3.1A"
