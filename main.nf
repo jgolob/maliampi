@@ -9,6 +9,19 @@
     4) Classify the SV using the placements + reference package
 */
 
+
+// container versions!
+container__barcodecop = "golob/barcodecop:0.4.1__bcw_0.3.0"
+container__dada2 = "golob/dada2:1.12.0.ub.1804__bcw.0.3.1"
+container__fastcombineseqtab = "golob/dada2-fast-combineseqtab:0.5.0__1.12.0__BCW_0.3.1"
+container__dada2pplacer = "golob/dada2-pplacer:0.8.0__bcw_0.3.1"
+container__vsearch = "golob/vsearch:2.7.1_bcw_0.2.0"
+container__fastatools = "golob/fastatools:0.7.1__bcw.0.3.1"
+container__pplacer = "golob/pplacer:1.1alpha19rc_BCW_0.3.0D"
+container__seqinfosync = "golob/seqinfo_taxonomy_sync:0.2.1__bcw.0.3.0"
+container__infernal = "golob/infernal:1.1.2_bcw_0.2.0"
+container__raxml = "golob/raxml:8.2.11_bcw_0.3.0"
+
 // Defaults for parameters
 params.help = false
 // common
@@ -146,7 +159,7 @@ input_w_index_valid_ch
 
 // Use barcodecop to verify demultiplex
 process barcodecop {
-    container "golob/barcodecop:0.4.1__bcw_0.3.0"
+    container "${container__barcodecop}"
     label 'io_limited'
     errorStrategy "retry"
 
@@ -201,7 +214,7 @@ no_index_to_ft_ch.mix(bcc_to_ft_ch).set{
 
 // Step 1.b. next step: filter and trim reads with dada2
 process dada2_ft {
-    container 'golob/dada2:1.12.0.ub.1804__bcw.0.3.1'
+    container "${container__dada2}"
     label 'io_limited'
     errorStrategy "retry"
 
@@ -249,7 +262,7 @@ dada2_ft_ch.into{
 // Step 1.c. dereplicate reads with dada2
 
 process dada2_derep {
-    container 'golob/dada2:1.12.0.ub.1804__bcw.0.3.1'
+    container "${container__dada2}"
     label 'io_limited'
     errorStrategy "retry"
 
@@ -295,7 +308,7 @@ dada2_ft_batches_F_ch
     .set { dada2_ft_batches_split_ch }
 
 process dada2_learn_error {
-    container 'golob/dada2:1.12.0.ub.1804__bcw.0.3.1'
+    container "${container__dada2}"
     label 'multithread'
     errorStrategy "retry"
     maxRetries 10
@@ -350,7 +363,7 @@ dada2_derep_R1_ch.mix(dada2_derep_R2_ch)
 // combine the derep objects into one RDS to ease file staging later
 
 process dada2_derep_batches {
-    container 'golob/dada2:1.12.0.ub.1804__bcw.0.3.1'
+    container "${container__dada2}"
     label 'io_limited'
     errorStrategy "retry"
     maxRetries 10
@@ -375,7 +388,7 @@ process dada2_derep_batches {
 
 // Dada steps should be by batch to allow for pseudo pooling
 process dada2_dada {
-    container 'golob/dada2:1.12.0.ub.1804__bcw.0.3.1'
+    container "${container__dada2}"
     label 'multithread'
     errorStrategy "retry"
     maxRetries 10
@@ -398,7 +411,7 @@ process dada2_dada {
  // split the data2 results out
 
 process dada2_demultiplex_dada {
-    container 'golob/dada2:1.12.0.ub.1804__bcw.0.3.1'
+    container "${container__dada2}"
     label 'io_limited'
     errorStrategy "retry"
     maxRetries 10
@@ -456,7 +469,7 @@ dada2_dada_batch_split_ch
 // Step 1.f. Merge reads, using the dereplicated seqs and applied model
 
 process dada2_merge {
-    container 'golob/dada2:1.12.0.ub.1804__bcw.0.3.1'
+    container "${container__dada2}"
     label 'multithread'
     errorStrategy "retry"
     maxRetries 10
@@ -498,7 +511,7 @@ dada2_sp_post_merge_ch
 // Step 1.g. Make a seqtab
 
 process dada2_seqtab_sp {
-    container 'golob/dada2:1.12.0.ub.1804__bcw.0.3.1'
+    container "${container__dada2}"
     label 'io_limited'
     errorStrategy "retry"
     maxRetries 10
@@ -526,7 +539,7 @@ process dada2_seqtab_sp {
         .set{ dada2_batch_seqtabs_ch }
 
     process dada2_seqtab_batch_combine {
-        container 'golob/dada2-fast-combineseqtab:0.5.0__1.12.0__BCW_0.3.1'
+        container "${container__fastcombineseqtab}"
         label 'io_mem'
         errorStrategy "retry"
         maxRetries 10
@@ -551,7 +564,7 @@ process dada2_seqtab_sp {
         .set{ batch_seqtab_files }
 
     process dada2_seqtab_combine_all {
-        container 'golob/dada2-fast-combineseqtab:0.5.0__1.12.0__BCW_0.3.1'
+        container "${container__fastcombineseqtab}"
         label 'io_mem'
         errorStrategy "retry"
         maxRetries 10
@@ -572,7 +585,7 @@ process dada2_seqtab_sp {
     }
 // Step 1.i. Remove chimera on combined seqtab
     process dada2_remove_bimera {
-        container 'golob/dada2:1.12.0.ub.1804__bcw.0.3.1'
+        container "${container__dada2}"
         label 'mem_veryhigh'
         errorStrategy "retry"
         maxRetries 10
@@ -601,7 +614,7 @@ process dada2_seqtab_sp {
     }
 // Step 1.j. Transform output to be pplacer and mothur style
     process dada2_convert_output {
-        container 'golob/dada2-pplacer:0.8.0__bcw_0.3.1'
+        container "${container__dada2pplacer}"
         label 'io_mem'
         publishDir "${params.output}/sv/", mode: 'copy'
         errorStrategy "retry"
@@ -646,7 +659,7 @@ input_invalid_ch
     }
 
 process output_failed {
-    container 'golob/dada2-pplacer:0.8.0__bcw_0.3.1'
+    container "${container__dada2pplacer}"
     label 'io_limited'
     publishDir "${params.output}/sv/", mode: 'copy'
     errorStrategy 'retry'
@@ -697,7 +710,7 @@ Channel.value(file(params.repo_si))
     .set{ repo_si }
 
 process refpkgSearchRepo {
-    container 'golob/vsearch:2.7.1_bcw_0.2.0'
+    container "${container__vsearch}"
     label = 'multithread'
 
     input:
@@ -727,7 +740,7 @@ process refpkgSearchRepo {
 
 // Step 2.xx Filter SeqInfo to recruits
 process filterSeqInfo {
-    container = 'golob/fastatools:0.7.1__bcw.0.3.1'
+    container = "${container__fastatools}"
     label = 'io_limited'
 
     input:
@@ -758,7 +771,7 @@ process filterSeqInfo {
 
 if ( (params.taxdmp == false) || file(params.taxdmp).isEmpty() ) {
     process DlBuildTaxtasticDB {
-        container = 'golob/pplacer:1.1alpha19rc_BCW_0.3.0D'
+        container = "${container__pplacer}"
         label = 'io_limited'
         // errorStrategy = 'retry'
 
@@ -778,7 +791,7 @@ if ( (params.taxdmp == false) || file(params.taxdmp).isEmpty() ) {
 } else {
     taxdump_zip_f = file(params.taxdmp)
     process buildTaxtasticDB {
-        container = 'golob/pplacer:1.1alpha19rc_BCW_0.3.0D'
+        container = "${container__pplacer}"
         label = 'io_limited'
         // errorStrategy = 'retry'
 
@@ -798,7 +811,7 @@ if ( (params.taxdmp == false) || file(params.taxdmp).isEmpty() ) {
 // Step 2.xx Confirm seq info taxonomy matches taxdb
 
 process confirmSI {
-    container = 'golob/seqinfo_taxonomy_sync:0.2.1__bcw.0.3.0'
+    container = "${container__seqinfosync}"
     label = 'io_limited'
 
     input:
@@ -820,7 +833,7 @@ process confirmSI {
 // Step 2.xx Align recruited seqs
 
 process alignRepoRecruits {
-    container = 'golob/infernal:1.1.2_bcw_0.2.0'
+    container = "${container__infernal}"
     label = 'mem_veryhigh'
 
     input:
@@ -840,7 +853,7 @@ process alignRepoRecruits {
 
 // Step 2.xx Convert alignment from STO -> FASTA format
 process convertAlnToFasta {
-    container = 'golob/fastatools:0.7.1__bcw.0.3.1'
+    container = "${container__fastatools}"
     label = 'io_limited'
     errorStrategy "retry"
 
@@ -867,7 +880,7 @@ process convertAlnToFasta {
 }
 // Step 2.xx Make a tree from the alignment.
 process raxmlTree {
-    container = 'golob/raxml:8.2.11_bcw_0.3.0'
+    container = "${container__raxml}"
     label = 'mem_veryhigh'
     errorStrategy = 'retry'
 
@@ -892,7 +905,7 @@ process raxmlTree {
 // Step 2.xx Remove cruft from tree stats
 
 process raxmlTree_cleanupInfo {
-    container = 'golob/raxml:8.2.11_bcw_0.3.0'
+    container = "${container__raxml}"
     label = 'io_limited'
     errorStrategy = 'retry'
 
@@ -918,7 +931,7 @@ with open("RAxML_info.refpkg",'wt') as out_h:
 
 // Step 2.xx Make a tax table for the refpkg sequences
 process taxtableForSI {
-    container = 'golob/pplacer:1.1alpha19rc_BCW_0.3.0D'
+    container = "${container__pplacer}"
     label = 'io_limited'
     // errorStrategy = 'retry'
 
@@ -937,7 +950,7 @@ process taxtableForSI {
 
 // Step 2.xx Obtain the CM used for the alignment
 process obtainCM {
-    container = 'golob/infernal:1.1.2_bcw_0.2.0'
+    container = "${container__infernal}"
     label = 'io_limited'
 
     output:
@@ -950,7 +963,7 @@ process obtainCM {
 
 // Step 2.xx Combine into a refpkg
 process combineRefpkg {
-    container = 'golob/pplacer:1.1alpha19rc_BCW_0.3.0D'
+    container = "${container__pplacer}"
     label = 'io_limited'
 
     afterScript("rm -rf refpkg/*")
@@ -996,7 +1009,7 @@ params.pplacer_prior_lower = 0.01
 //  Step 3.a. Align SV
 
 process alignSV {
-    container = 'golob/infernal:1.1.2_bcw_0.2.0'
+    container = "${container__infernal}"
     label = 'mem_veryhigh'
 
     input:
@@ -1018,7 +1031,7 @@ process alignSV {
 // First extract the alignment from the refpkg
 
 process extractRefpkgAln {
-    container = "golob/fastatools:0.7.1__bcw.0.3.1"
+    container = "${container__fastatools}"
     label = 'io_limited'
 
     input:
@@ -1101,7 +1114,7 @@ process extractRefpkgAln {
 }
 
 process combineAln_SV_refpkg {
-    container = 'golob/infernal:1.1.2_bcw_0.2.0'
+    container = "${container__infernal}"
     label = 'mem_veryhigh'
 
     input:
@@ -1122,7 +1135,7 @@ process combineAln_SV_refpkg {
 
 //  Step 3.c. Place SV via pplacer
 process pplacerPlacement {
-    container = 'golob/pplacer:1.1alpha19rc_BCW_0.3.0D'
+    container = "${container__pplacer}"
     label = 'mem_veryhigh'
 
     publishDir "${params.output}/placement", mode: 'copy'
@@ -1146,7 +1159,7 @@ process pplacerPlacement {
 
 //  Step 3.d. Reduplicate placements
 process pplacerReduplicate {
-    container = 'golob/pplacer:1.1alpha19rc_BCW_0.3.0D'
+    container = "${container__pplacer}"
     label = 'io_limited'
 
     publishDir "${params.output}/placement", mode: 'copy'
@@ -1169,7 +1182,7 @@ process pplacerReduplicate {
 
 //  Step 3.e. ADCL metric
 process pplacerADCL {
-    container = 'golob/pplacer:1.1alpha19rc_BCW_0.3.0D'
+    container = "${container__pplacer}"
     label = 'io_limited'
 
     publishDir "${params.output}/placement", mode: 'copy'
@@ -1188,7 +1201,7 @@ process pplacerADCL {
 
 //  Step 3.f. EDPL metric
 process pplacerEDPL {
-    container = 'golob/pplacer:1.1alpha19rc_BCW_0.3.0D'
+    container = "${container__pplacer}"
     label = 'io_limited'
 
     publishDir "${params.output}/placement", mode: 'copy'
@@ -1206,7 +1219,7 @@ process pplacerEDPL {
 
 //  Step 3.g. (e/l)PCA
 process pplacerPCA {
-    container = 'golob/pplacer:1.1alpha19rc_BCW_0.3.0D'
+    container = "${container__pplacer}"
     label = 'io_limited'
     afterScript "rm -r refpkg/"
     publishDir "${params.output}/placement", mode: 'copy'
@@ -1234,7 +1247,7 @@ process pplacerPCA {
 
 //  Step 3.h. Alpha diversity
 process pplacerAlphaDiversity {
-    container = 'golob/pplacer:1.1alpha19rc_BCW_0.3.0D'
+    container = "${container__pplacer}"
     label = 'io_limited'
 
     publishDir "${params.output}/placement", mode: 'copy'
@@ -1255,7 +1268,7 @@ process pplacerAlphaDiversity {
 
 //  Step 3.i. KR (phylogenetic) distance 
 process pplacerKR {
-    container = 'golob/pplacer:1.1alpha19rc_BCW_0.3.0D'
+    container = "${container__pplacer}"
     label = 'io_limited'
     afterScript "rm -r refpkg/"
     publishDir "${params.output}/placement", mode: 'copy'
@@ -1297,7 +1310,7 @@ params.pp_seed = 1
 
 // Step 4.a. Prep the placement DB
 process classifyDB_Prep {
-    container = 'golob/pplacer:1.1alpha19rc_BCW_0.3.0D'
+    container = "${container__pplacer}"
     label = 'io_limited'
     afterScript "rm -r refpkg/"
     cache = false
@@ -1321,7 +1334,7 @@ process classifyDB_Prep {
 
 // Step 4.b. Classify SV
 process classifySV {
-    container = 'golob/pplacer:1.1alpha19rc_BCW_0.3.0D'
+    container = "${container__pplacer}"
     label = 'mem_veryhigh'
     afterScript "rm -r refpkg/"
     cache = false
@@ -1360,7 +1373,7 @@ process classifySV {
 
 // Step 4.c. Concatenate placements
 process classifyMCC {
-    container = 'golob/pplacer:1.1alpha19rc_BCW_0.3.0D'
+    container = "${container__pplacer}"
     label = 'io_limited'
     cache = false
     publishDir "${params.output}/classify", mode: 'copy'
@@ -1392,7 +1405,7 @@ classify_ranks.combine(
 ).set { classify_rank_ch }
 
 process classifyTables {
-    container = 'golob/pplacer:1.1alpha19rc_BCW_0.3.0D'
+    container = "${container__pplacer}"
     label = 'io_limited'
     publishDir "${params.output}/classify", mode: 'copy'
 
