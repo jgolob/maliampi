@@ -937,13 +937,13 @@ process taxtableForSI {
 
     input:
         file taxonomy_db_f 
-        file refpkg_si_f 
+        file refpkg_si_corr_f
     output:
         file "refpkg.taxtable.csv" into refpkg_tt_f
 
     """
     taxit taxtable ${taxonomy_db_f} \
-    --seq-info ${refpkg_si_f} \
+    --seq-info ${refpkg_si_corr_f} \
     --outfile refpkg.taxtable.csv
     """
 }
