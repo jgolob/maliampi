@@ -45,37 +45,58 @@ def helpMessage() {
     log.info"""
     Usage:
 
-    nextflow run golob/maliampi <ARGUMENTS>
+    nextflow run jgolob/maliampi <ARGUMENTS>
     
     Required Arguments:
-      --manifest            CSV file listing samples
-                            At a minimum must have columns:
-                                specimen: A unique identifier 
-                                read__1: forward read
-                                read__2: reverse read fq
+        --manifest            CSV file listing samples
+                                At a minimum must have columns:
+                                    specimen: A unique identifier 
+                                    read__1: forward read
+                                    read__2: reverse read fq
 
                                 optional columns:
-                                batch: sequencing / library batch. Should be filename safe
-
-                                index__1: forward index file (for checking demultiplexing)
-                                index__2: reverse index file 
-
+                                    batch: sequencing / library batch. Should be filename safe
+                                    index__1: forward index file (for checking demultiplexing)
+                                    index__2: reverse index file
+        --repo_fasta          Repository of 16S rRNA genes.
+        --repo_si             Information about the 16S rRNA genes.
     Options:
       Common to all:
         --output              Directory to place outputs (default invocation dir)
                                 Maliampi will create a directory structure under this directory
         -w                    Working directory. Defaults to `./work`
-      SV-DADA2 options:
-        --trimLeft            How far to trim on the left (default = 0)
-        --maxN                (default = 0)
-        --maxEE               (default = Inf)
-        --truncLenF           (default = 0)
-        --truncLenR           (default = 0)
-        --truncQ              (default = 2)
-        --taxdmp              Path to taxdmp.zip. If not provided, it will be downloaded
-      Ref Package options:
-        --repo_fasta          FASTA file containing reference sequences
+        -resume                 Attempt to restart from a prior run, only completely changed steps
 
+      SV-DADA2 options:
+        --trimLeft              How far to trim on the left (default = 0)
+        --maxN                  (default = 0)
+        --maxEE                 (default = Inf)
+        --truncLenF             (default = 0)
+        --truncLenR             (default = 0)
+        --truncQ                (default = 2)
+
+      Ref Package required:
+        --repo_fasta            FASTA file containing reference sequences (required)
+        --repo_si               CSV file with information about the repo reads (required)
+      Ref Package options (defaults generally fine):
+        --repo_min_id           Minimum percent ID to a SV to be recruited (default = 0.8)
+        --repo_max_accepts      Maximum number of recruits per SV (default = 10)
+        --cmalign_mxsize        Infernal cmalign mxsize (default = 8196)
+        --raxml_model           RAxML model for tree formation (default = 'GTRGAMMA')
+        --raxml_parsiomony_seed (default = 12345)
+        --taxdmp                Path to taxdmp.zip. If not provided, it will be downloaded
+
+      Placement / Classification Options (defaults generally fine):
+        --pp_classifer                  pplacer classifer (default = 'hybrid2')
+        --pp_likelihood_cutoff          (default = 0.9)
+        --pp_bayes_cutoff               (default = 1.0)
+        --pp_multiclass_min             (default = 0.2)
+        --pp_bootstrap_cutoff           (default = 0.8)
+        --pp_bootstrap_extension_cutoff (default = 0.4)
+        --pp_nbc_boot                   (default = 100)
+        --pp_nbc_target_rank            (default = 'genus')
+        --pp_nbc_word_length            (default = 8)
+        --pp_seed                       (default = 1)
     """.stripIndent()
 }
 
@@ -1296,7 +1317,6 @@ process pplacerKR {
 //
 
 params.pp_classifer = 'hybrid2'
-
 params.pp_likelihood_cutoff = 0.9
 params.pp_bayes_cutoff = 1.0
 params.pp_multiclass_min = 0.2
