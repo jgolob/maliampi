@@ -193,7 +193,28 @@ class Workflow_DADA2(sl.WorkflowTask):
             )
             specimen_tasks[specimen]['dada2_seqtab'].in_merge = specimen_tasks[specimen]['dada2_merge'].out_rds
 
-        # Combine seqtabs
+        # Combine seqtabs by batch
+        batch_seqtab = {}
+        for batch, batched_specimens in manifest.batched_specimens():
+            batch_seqtab[batch] = self.new_task(
+                'dada2_combine_seqtabs_{}'.format(batch),
+                DADA2_Combine_Seqtabs,
+                containerinfo=light_containerinfo,
+                fn=os.path.join(
+                            self.working_dir,
+                            'sv',
+                            'dada2',
+                            'seqtab',
+                            'batches',
+                            'seqtab.{}.combined.rds'.format(batch),
+                        )
+            )
+            batch_seqtab[batch].in_seqtabs = [
+                    specimen_tasks[s]['dada2_seqtab'].out_rds
+                    for s in specimen_tasks
+                    if s in batched_specimens
+                ]
+        # Now combine all the batch_seqtabs into one master seqtab
         combined_seqtab = self.new_task(
             'dada2_combine_seqtabs',
             DADA2_Combine_Seqtabs,
@@ -206,8 +227,8 @@ class Workflow_DADA2(sl.WorkflowTask):
                     )
         )
         combined_seqtab.in_seqtabs = [
-                specimen_tasks[s]['dada2_seqtab'].out_rds
-                for s in specimens
+                st.out_rds
+                for st in batch_seqtab.values()
             ]
 
         combined_seqtab_nochim = self.new_task(
