@@ -60,6 +60,7 @@ def helpMessage() {
                                     index__2: reverse index file
         --repo_fasta          Repository of 16S rRNA genes.
         --repo_si             Information about the 16S rRNA genes.
+        --email               Email (for NCBI)
     Options:
       Common to all:
         --output              Directory to place outputs (default invocation dir)
@@ -116,55 +117,80 @@ if (params.help || params.manifest == null){
 // For each, figure out if an index is available, and split into with index and without channels
 // Also check that we have at least a specimen and read__1 and read__2 provided
 
-input_w_index_ch = Channel.create()
-input_no_index_ch = Channel.create()
-input_invalid_ch = Channel.create()
-
 Channel.from(file(params.manifest))
     .splitCsv(header: true, sep: ",")
-    .choice(
-        input_invalid_ch,
-        input_no_index_ch,
-        input_w_index_ch,
-    ) {
-        r -> if (
-            (r.specimen == null) ||
-            (r.read__1 == null) ||
-            (r.read__2 == null) ||
-            (r.specimen == "") ||
-            (r.read__1 == "") ||
-            (r.read__2 == "")
-        ) return 0;
-        else if (
-            (r.index__1 != null) && 
-            (r.index__2 != null) && 
-            (r.index__1 != "") &&
-            (r.index__2 != "")
-            ) return 2;
-        else return 1;
+    .into {
+        input_w_index_ch;
+        input_no_index_ch;
+        input_invalid_ch
     }
 
+input_invalid_ch
+    .filter{ r -> 
+        (r.specimen == null) ||
+        (r.read__1 == null) ||
+        (r.read__2 == null) ||
+        (r.specimen == "") ||
+        (r.read__1 == "") ||
+        (r.read__2 == "")            
+    }.set{
+        input_invalid_ch
+    }
 
-// Now check to be sure the files exist and are not empty.
-// If any file in a row is empty, make a note of it and proceed with the remainder
+input_w_index_ch
+    .filter{ r-> 
+        (r.specimen != null) &&
+        (r.read__1 != null) &&
+        (r.read__2 != null) &&
+        (r.specimen != "") &&
+        (r.read__1 != "") &&
+        (r.read__2 != "") &&
+        (r.index__1 != null) &&
+        (r.index__2 != null) &&
+        (r.index__1 != "") &&
+        (r.index__2 != "")
+    }.into {
+        input_w_index_invalid_ch;
+        input_w_index_valid_ch
+    }
+// Further filter by if the files are empty or not
+input_w_index_invalid_ch
+    .filter{
+        r -> (file(r.read__1).isEmpty() || file(r.read__2).isEmpty() || file(r.index__1).isEmpty() || file(r.index__2).isEmpty())
+    }
+    .set{ input_w_index_invalid_ch }
 
-input_w_index_invalid_ch = Channel.create()
-input_w_index_valid_ch = Channel.create()
-input_w_index_ch.choice(
-    input_w_index_invalid_ch,
-    input_w_index_valid_ch
-) {
-    r -> (file(r.read__1).isEmpty() || file(r.read__2).isEmpty() || file(r.index__1).isEmpty() || file(r.index__2).isEmpty()) ? 0 : 1
-}
+input_w_index_valid_ch
+    .filter{
+        r -> (!file(r.read__1).isEmpty() && !file(r.read__2).isEmpty() && !file(r.index__1).isEmpty() && !file(r.index__2).isEmpty())
+    }
+    .set{ input_w_index_valid_ch }
 
-input_no_index_invalid_ch = Channel.create()
-input_no_index_valid_ch = Channel.create()
-input_no_index_ch.choice(
-    input_no_index_invalid_ch,
-    input_no_index_valid_ch
-) {
-    r -> (file(r.read__1).isEmpty() || file(r.read__2).isEmpty()) ? 0 : 1
-}
+input_no_index_ch
+    .filter{ r-> 
+        (r.specimen != null) &&
+        (r.read__1 != null) &&
+        (r.read__2 != null) &&
+        (r.specimen != "") &&
+        (r.read__1 != "") &&
+        (r.read__2 != "") &&
+        (
+            (r.index__1 == null) ||
+            (r.index__2 == null) ||
+            (r.index__1 == "") ||
+            (r.index__2 == "")
+        )
+    }.into {
+        input_no_index_invalid_ch;
+        input_no_index_valid_ch
+    }
+// same deal here, filter by empty files or not
+input_no_index_invalid_ch
+    .filter{ r -> (file(r.read__1).isEmpty() || file(r.read__2).isEmpty()) }
+    .set { input_no_index_invalid_ch }
+input_no_index_valid_ch
+    .filter{ r -> (!file(r.read__1).isEmpty() && !file(r.read__2).isEmpty()) }
+    .set { input_no_index_valid_ch }
 
 // For those with an index, make a channel for barcodecop
 input_w_index_valid_ch
@@ -188,7 +214,8 @@ process barcodecop {
     set specimen, batch, file(R1), file(R2), file(I1), file(I2) from to_bcc_ch
     
     output:
-    set specimen, batch, file("${R1.getSimpleName()}.bcc.fq.gz"), file("${R2.getSimpleName()}.bcc.fq.gz") into from_bcc_ch
+    set specimen, batch, file("${R1.getSimpleName()}.bcc.fq.gz"), file("${R2.getSimpleName()}.bcc.fq.gz") into bcc_to_ft_ch
+    set specimen, batch, file("${R1.getSimpleName()}.bcc.fq.gz"), file("${R2.getSimpleName()}.bcc.fq.gz") into bcc_empty_ch
     """
     set -e
 
@@ -204,16 +231,20 @@ process barcodecop {
     -o ${R2.getSimpleName()}.bcc.fq.gz
     """
 }
-
-
-bcc_to_ft_ch = Channel.create()
-bcc_empty_ch = Channel.create()
-from_bcc_ch
-    .choice(
-        bcc_to_ft_ch,
+// Filter by empty files or not
+bcc_to_ft_ch
+    .filter { r -> 
+        !file(r[2]).isEmpty() && !file(r[3]).isEmpty()
+    }
+    .set { 
+        bcc_to_ft_ch
+    }
+bcc_empty_ch
+    .filter { r -> 
+        file(r[2]).isEmpty() || file(r[3]).isEmpty()
+    }
+    .set { 
         bcc_empty_ch
-    ) {
-        r -> (file(r[2]).isEmpty() || file(r[3]).isEmpty()) ? 1 : 0
     }
 
 // Else, proceed with the file pairs as-is
@@ -243,8 +274,8 @@ process dada2_ft {
         set specimen, batch, file(R1), file(R2) from demultiplexed_ch
     
     output:
-        set specimen, batch, file("${R1.getSimpleName()}.dada2.ft.fq.gz"), file("${R2.getSimpleName()}.dada2.ft.fq.gz") into dada2_post_ft_ch
-    
+        set specimen, batch, file("${R1.getSimpleName()}.dada2.ft.fq.gz"), file("${R2.getSimpleName()}.dada2.ft.fq.gz") into dada2_ft_ch
+        set specimen, batch, file("${R1.getSimpleName()}.dada2.ft.fq.gz"), file("${R2.getSimpleName()}.dada2.ft.fq.gz") into dada2_ft_empty_ch
     """
     #!/usr/bin/env Rscript
     library('dada2'); 
@@ -264,21 +295,22 @@ process dada2_ft {
 }
 
 // Filter out specimens with no surviving reads after FT
-dada2_ft_ch = Channel.create()
-dada2_ft_empty_ch = Channel.create()
-
-dada2_post_ft_ch
-    .choice(
-        dada2_ft_ch,
+dada2_ft_ch
+    .filter {
+        r -> ( !file(r[2]).isEmpty() & !file(r[3]).isEmpty() )
+    }
+    .into {
+        dada2_ft_for_derep_ch;
+        dada2_ft_ch_for_err
+    }
+dada2_ft_empty_ch
+    .filter {
+        r -> ( file(r[2]).isEmpty() || file(r[3]).isEmpty() )
+    }
+    .set {
         dada2_ft_empty_ch
-    ) {
-        ( file(it[2]).isEmpty() || file(it[3]).isEmpty() ) ? 1 : 0
     }
 
-dada2_ft_ch.into{
-    dada2_ft_for_derep_ch;
-    dada2_ft_ch_for_err
-}
 
 // Step 1.c. dereplicate reads with dada2
 
@@ -498,7 +530,9 @@ process dada2_merge {
         set specimen, batch, file(R1dada), file(R2dada), file(R1), file(R2) from dada2_dada_sp_ch
 
     output:
-        set batch, specimen, file("${specimen}.dada2.merged.rds") into dada2_sp_post_merge_ch
+        set batch, specimen, file("${specimen}.dada2.merged.rds") into dada2_sp_merge_ch
+        set batch, specimen, file("${specimen}.dada2.merged.rds") into dada2_sp_merge_empty_ch
+
 
     """
     #!/usr/bin/env Rscript
@@ -516,17 +550,21 @@ process dada2_merge {
     """
 }
 
-dada2_sp_merge_ch = Channel.create()
-dada2_sp_merge_empty_ch = Channel.create()
-
-dada2_sp_post_merge_ch
-    .choice(
-        dada2_sp_merge_ch,
-        dada2_sp_merge_empty_ch 
-    ) {
-        file(it[2]).isEmpty() ? 1 : 0
+// Filter out empty merged files. 
+dada2_sp_merge_ch
+    .filter {
+        !file(it[2]).isEmpty()
     }
-
+    .set {
+        dada2_sp_merge_ch
+    }
+dada2_sp_merge_empty_ch
+    .filter {
+        file(it[2]).isEmpty()
+    }
+    .set {
+        dada2_sp_merge_empty_ch
+    }
 
 // Step 1.g. Make a seqtab
 
