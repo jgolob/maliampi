@@ -216,7 +216,7 @@ no_index_to_ft_ch.mix(bcc_to_ft_ch).set{
 process dada2_ft {
     container "${container__dada2}"
     label 'io_limited'
-    errorStrategy "retry"
+    errorStrategy "ignore"
 
     input:
         set specimen, batch, file(R1), file(R2) from demultiplexed_ch
@@ -264,7 +264,7 @@ dada2_ft_ch.into{
 process dada2_derep {
     container "${container__dada2}"
     label 'io_limited'
-    errorStrategy "retry"
+    errorStrategy "ignore"
 
     input:
         set specimen, batch, file(R1), file(R2) from dada2_ft_for_derep_ch
@@ -471,8 +471,7 @@ dada2_dada_batch_split_ch
 process dada2_merge {
     container "${container__dada2}"
     label 'multithread'
-    errorStrategy "retry"
-    maxRetries 10
+    errorStrategy "ignore"
 
     input:
         set specimen, batch, file(R1dada), file(R2dada), file(R1), file(R2) from dada2_dada_sp_ch
