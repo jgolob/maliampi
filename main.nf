@@ -24,6 +24,7 @@ container__raxml = "golob/raxml:8.2.11_bcw_0.3.0"
 
 // Defaults for parameters
 params.help = false
+params.sv_only = false
 // common
 params.output = '.'
 
@@ -68,7 +69,10 @@ def helpMessage() {
         -w                    Working directory. Defaults to `./work`
         -resume                 Attempt to restart from a prior run, only completely changed steps
 
-      SV-DADA2 options:
+    Flow options:
+        --sv_only             Stop after making sequence variants   
+
+    SV-DADA2 options:
         --trimLeft              How far to trim on the left (default = 0)
         --maxN                  (default = 0)
         --maxEE                 (default = Inf)
@@ -76,10 +80,10 @@ def helpMessage() {
         --truncLenR             (default = 0)
         --truncQ                (default = 2)
 
-      Ref Package required:
+    Ref Package required:
         --repo_fasta            FASTA file containing reference sequences (required)
         --repo_si               CSV file with information about the repo reads (required)
-      Ref Package options (defaults generally fine):
+    Ref Package options (defaults generally fine):
         --repo_min_id           Minimum percent ID to a SV to be recruited (default = 0.8)
         --repo_max_accepts      Maximum number of recruits per SV (default = 10)
         --cmalign_mxsize        Infernal cmalign mxsize (default = 8196)
@@ -87,7 +91,7 @@ def helpMessage() {
         --raxml_parsiomony_seed (default = 12345)
         --taxdmp                Path to taxdmp.zip. If not provided, it will be downloaded
 
-      Placement / Classification Options (defaults generally fine):
+    Placement / Classification Options (defaults generally fine):
         --pp_classifer                  pplacer classifer (default = 'hybrid2')
         --pp_likelihood_cutoff          (default = 0.9)
         --pp_bayes_cutoff               (default = 1.0)
@@ -748,6 +752,8 @@ process output_failed {
 //
 //  END STEP 1: Sequence variants 
 //
+
+if (params.sv_only == false) {
 
 //
 //  START STEP 2: Reference package
@@ -1483,6 +1489,7 @@ process classifyTables {
     """
 }
 
+} // END NOT SV ONLY
 
 //
 //  END STEP 4: Classification
