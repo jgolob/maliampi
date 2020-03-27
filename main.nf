@@ -8,11 +8,10 @@
     3) Place SV on the reference package
     4) Classify the SV using the placements + reference package
 */
-
+nextflow.preview.dsl=2
 
 // container versions!
-container__barcodecop = "golob/barcodecop:0.4.1__bcw_0.3.0"
-container__dada2 = "golob/dada2:1.12.0.ub.1804__bcw.0.3.1"
+
 container__fastcombineseqtab = "golob/dada2-fast-combineseqtab:0.5.0__1.12.0__BCW_0.3.1"
 container__dada2pplacer = "golob/dada2-pplacer:0.8.0__bcw_0.3.1A"
 container__vsearch = "golob/vsearch:2.7.1_bcw_0.2.0"
@@ -52,13 +51,13 @@ def helpMessage() {
         --manifest            CSV file listing samples
                                 At a minimum must have columns:
                                     specimen: A unique identifier 
-                                    read__1: forward read
-                                    read__2: reverse read fq
+                                    R1: forward read
+                                    R2: reverse read fq
 
                                 optional columns:
                                     batch: sequencing / library batch. Should be filename safe
-                                    index__1: forward index file (for checking demultiplexing)
-                                    index__2: reverse index file
+                                    I1: forward index file (for checking demultiplexing)
+                                    I2: reverse index file
         --repo_fasta          Repository of 16S rRNA genes.
         --repo_si             Information about the 16S rRNA genes.
         --email               Email (for NCBI)
@@ -113,358 +112,70 @@ if (params.help || params.manifest == null){
     exit 0
 }
 
-//
-//  START STEP 1: Sequence variants
+// Modules
+include read_manifest from './modules/manifest'
+include preprocess_wf from './modules/preprocess'
+include dada2_wf from './modules/dada2' params (
+    output: params.output,
+    trimLeft: params.trimLeft,
+    maxN: params.maxN,
+    maxEE: params.maxEE,
+    truncLenF: params.truncLenF,
+    truncLenR: params.truncLenR,
+    truncQ: params.truncQ,
+    errM_maxConsist: params.errM_maxConsist,
+    errM_randomize: params.errM_randomize,
+    errM_nbases: params.errM_nbases,
+    chimera_method: params.chimera_method
+)
 
-// Load manifest!
+// STEP 0: Read manifest and verify files.
 
-// For each, figure out if an index is available, and split into with index and without channels
-// Also check that we have at least a specimen and read__1 and read__2 provided
+workflow {
+    main:
 
-Channel.from(file(params.manifest))
-    .splitCsv(header: true, sep: ",")
-    .into {
-        input_w_index_ch;
-        input_no_index_ch;
-        input_invalid_ch
-    }
+    //
+    //  Step 0: Load manifest and preprocess
+    //
 
-input_invalid_ch
-    .filter{ r -> 
-        (r.specimen == null) ||
-        (r.read__1 == null) ||
-        (r.read__2 == null) ||
-        (r.specimen == "") ||
-        (r.read__1 == "") ||
-        (r.read__2 == "")            
-    }.set{
-        input_invalid_ch
-    }
-
-input_w_index_ch
-    .filter{ r-> 
-        (r.specimen != null) &&
-        (r.read__1 != null) &&
-        (r.read__2 != null) &&
-        (r.specimen != "") &&
-        (r.read__1 != "") &&
-        (r.read__2 != "") &&
-        (r.index__1 != null) &&
-        (r.index__2 != null) &&
-        (r.index__1 != "") &&
-        (r.index__2 != "")
-    }.into {
-        input_w_index_invalid_ch;
-        input_w_index_valid_ch
-    }
-// Further filter by if the files are empty or not
-input_w_index_invalid_ch
-    .filter{
-        r -> (file(r.read__1).isEmpty() || file(r.read__2).isEmpty() || file(r.index__1).isEmpty() || file(r.index__2).isEmpty())
-    }
-    .set{ input_w_index_invalid_ch }
-
-input_w_index_valid_ch
-    .filter{
-        r -> (!file(r.read__1).isEmpty() && !file(r.read__2).isEmpty() && !file(r.index__1).isEmpty() && !file(r.index__2).isEmpty())
-    }
-    .set{ input_w_index_valid_ch }
-
-input_no_index_ch
-    .filter{ r-> 
-        (r.specimen != null) &&
-        (r.read__1 != null) &&
-        (r.read__2 != null) &&
-        (r.specimen != "") &&
-        (r.read__1 != "") &&
-        (r.read__2 != "") &&
-        (
-            (r.index__1 == null) ||
-            (r.index__2 == null) ||
-            (r.index__1 == "") ||
-            (r.index__2 == "")
+    // Load manifest!
+    manifest = read_manifest(
+        Channel.from(
+            file(params.manifest)
         )
-    }.into {
-        input_no_index_invalid_ch;
-        input_no_index_valid_ch
-    }
-// same deal here, filter by empty files or not
-input_no_index_invalid_ch
-    .filter{ r -> (file(r.read__1).isEmpty() || file(r.read__2).isEmpty()) }
-    .set { input_no_index_invalid_ch }
-input_no_index_valid_ch
-    .filter{ r -> (!file(r.read__1).isEmpty() && !file(r.read__2).isEmpty()) }
-    .set { input_no_index_valid_ch }
-
-// For those with an index, make a channel for barcodecop
-input_w_index_valid_ch
-    .map{ sample -> [
-        sample.specimen,
-        sample.batch,
-        file(sample.read__1),
-        file(sample.read__2),
-        file(sample.index__1),
-        file(sample.index__2),
-    ]}
-    .set{ to_bcc_ch }
-
-// Use barcodecop to verify demultiplex
-process barcodecop {
-    container "${container__barcodecop}"
-    label 'io_limited'
-    errorStrategy "retry"
-
-    input:
-    set specimen, batch, file(R1), file(R2), file(I1), file(I2) from to_bcc_ch
-    
-    output:
-    set specimen, batch, file("${R1.getSimpleName()}.bcc.fq.gz"), file("${R2.getSimpleName()}.bcc.fq.gz") into bcc_to_ft_ch
-    set specimen, batch, file("${R1.getSimpleName()}.bcc.fq.gz"), file("${R2.getSimpleName()}.bcc.fq.gz") into bcc_empty_ch
-    """
-    set -e
-
-    barcodecop \
-    ${I1} ${I2} \
-    --match-filter \
-    -f ${R1} \
-    -o ${R1.getSimpleName()}.bcc.fq.gz &&
-    barcodecop \
-    ${I1} ${I2} \
-    --match-filter \
-    -f ${R2} \
-    -o ${R2.getSimpleName()}.bcc.fq.gz
-    """
-}
-// Filter by empty files or not
-bcc_to_ft_ch
-    .filter { r -> 
-        !file(r[2]).isEmpty() && !file(r[3]).isEmpty()
-    }
-    .set { 
-        bcc_to_ft_ch
-    }
-bcc_empty_ch
-    .filter { r -> 
-        file(r[2]).isEmpty() || file(r[3]).isEmpty()
-    }
-    .set { 
-        bcc_empty_ch
-    }
-
-// Else, proceed with the file pairs as-is
-
-input_no_index_valid_ch
-    .map { sample -> [
-        sample.specimen,
-        sample.batch,
-        // Actual files
-        file(sample.read__1),
-        file(sample.read__2),
-    ]}
-    .set{ no_index_to_ft_ch }
-
-no_index_to_ft_ch.mix(bcc_to_ft_ch).set{
-    demultiplexed_ch
-}
-
-
-// Step 1.b. next step: filter and trim reads with dada2
-process dada2_ft {
-    container "${container__dada2}"
-    label 'io_limited'
-    errorStrategy "ignore"
-
-    input:
-        set specimen, batch, file(R1), file(R2) from demultiplexed_ch
-    
-    output:
-        set specimen, batch, file("${R1.getSimpleName()}.dada2.ft.fq.gz"), file("${R2.getSimpleName()}.dada2.ft.fq.gz") into dada2_ft_ch
-        set specimen, batch, file("${R1.getSimpleName()}.dada2.ft.fq.gz"), file("${R2.getSimpleName()}.dada2.ft.fq.gz") into dada2_ft_empty_ch
-    """
-    #!/usr/bin/env Rscript
-    library('dada2'); 
-    filterAndTrim(
-        '${R1}', '${R1.getSimpleName()}.dada2.ft.fq.gz',
-        '${R2}', '${R2.getSimpleName()}.dada2.ft.fq.gz',
-        trimLeft = ${params.trimLeft},
-        maxN = ${params.maxN},
-        maxEE = ${params.maxEE},
-        truncLen = c(${params.truncLenF}, ${params.truncLenR}),
-        truncQ = ${params.truncQ},
-        compress = TRUE,
-        verbose = TRUE,
-        multithread = ${task.cpus}
     )
-    """
+    // manifest.valid_paired_indexed contains indexed paired reads
+    // manifest.valid_paired contains pairs verified to exist but without index.
+
+    // Preprocess
+    preprocess_wf(
+        manifest.valid_paired_indexed,
+        manifest.valid_paired
+    )        
+    // preprocess_wf.out.valid is the reads that survived the preprocessing steps.
+    // preprocess_wf.out.empty are the reads that ended up empty with preprocessing
+
+    //
+    // Step 1: DADA2 to make sequence variants.
+    //
+
+    dada2_wf(preprocess_wf.out.valid)
+
 }
-
-// Filter out specimens with no surviving reads after FT
-dada2_ft_ch
-    .filter {
-        r -> ( !file(r[2]).isEmpty() & !file(r[3]).isEmpty() )
-    }
-    .into {
-        dada2_ft_for_derep_ch;
-        dada2_ft_ch_for_err
-    }
-dada2_ft_empty_ch
-    .filter {
-        r -> ( file(r[2]).isEmpty() || file(r[3]).isEmpty() )
-    }
-    .set {
-        dada2_ft_empty_ch
-    }
+return
 
 
-// Step 1.c. dereplicate reads with dada2
 
-process dada2_derep {
-    container "${container__dada2}"
-    label 'io_limited'
-    errorStrategy "ignore"
 
-    input:
-        set specimen, batch, file(R1), file(R2) from dada2_ft_for_derep_ch
-    
-    output:
-        set specimen, file("${R1.getSimpleName()}.dada2.ft.derep.rds"), file("${R2.getSimpleName()}.dada2.ft.derep.rds") into dada2_derep_ch
-        set batch, val('R1'), specimen, file("${R1.getSimpleName()}.dada2.ft.derep.rds") into dada2_derep_R1_ch
-        set batch, val('R2'), specimen, file("${R2.getSimpleName()}.dada2.ft.derep.rds") into dada2_derep_R2_ch
-    
-    """
-    #!/usr/bin/env Rscript
-    library('dada2');
-    derep_1 <- derepFastq('${R1}');
-    saveRDS(derep_1, '${R1.getSimpleName()}.dada2.ft.derep.rds');
-    derep_2 <- derepFastq('${R2}');
-    saveRDS(derep_2, '${R2.getSimpleName()}.dada2.ft.derep.rds');
-    """ 
-}
 
-// Step 1.d. learn errors by batch
-// Group reads into batches and proceed
-// separate into forward and reverse reads
-dada2_ft_batches_F_ch = Channel.create()
-dada2_ft_batches_R_ch = Channel.create()
-dada2_ft_ch_for_err
-    .toSortedList({a, b -> a[0] <=> b[0]})
-    .flatMap()
-    .groupTuple(by: 1)
-    .separate(
-        dada2_ft_batches_F_ch,
-        dada2_ft_batches_R_ch
-    ) {
-        r -> [
-            [r[0], r[1], r[2], 'R1'],
-            [r[0], r[1], r[3], 'R2']
-        ]
-    }
 
-dada2_ft_batches_F_ch
-    .mix(dada2_ft_batches_R_ch)
-    .set { dada2_ft_batches_split_ch }
-
-process dada2_learn_error {
-    container "${container__dada2}"
-    label 'multithread'
-    errorStrategy "retry"
-    maxRetries 10
-    publishDir "${params.output}/sv/errM/${batch}", mode: 'copy'
-
-    input:
-        set val(batch_specimens), val(batch), file(reads), val(read_num) from dada2_ft_batches_split_ch
-
-    output:
-        set batch, read_num, file("${batch}.${read_num}.errM.rds") into dada2_batch_error_rds
-        set batch, read_num, file("${batch}.${read_num}.errM.csv") into dada2_batch_error_csv
-
-    """
-    #!/usr/bin/env Rscript
-    library('dada2');
-    err <- learnErrors(
-        unlist(strsplit(
-            '${reads}',
-            ' ',
-            fixed=TRUE
-        )),
-        multithread=${task.cpus},
-        MAX_CONSIST=${params.errM_maxConsist},
-        randomize=${params.errM_randomize},
-        nbases=${params.errM_nbases},
-        verbose=TRUE
-    );
-    saveRDS(err, "${batch}.${read_num}.errM.rds"); 
-    write.csv(err, "${batch}.${read_num}.errM.csv");
-    """
-}
-
-// Combine the errM and dereplicated reads into a channel to be consumed by dada
-
-dada2_derep_R1_ch.mix(dada2_derep_R2_ch)
-    .toSortedList({a, b -> a[2] <=> b[2]})
-    .flatMap()
-    .groupTuple(by: [0, 1])
-    .combine(dada2_batch_error_rds, by: [0,1])
-    .map{ r-> [
-        r[0], // batch
-        r[1], // read_num
-        r[2],  // specimen names (list)
-        r[3],  // derep files (list)
-        r[4],  // errM file
-        r[3].collect { f -> return file(f).getSimpleName()+".dada.rds" }
-    ]}
-    .set { batch_err_dereps_ch }
-
-// Step 1.e. Apply the error model by batch, using pseudo-pooling to improve yield.
 
 // combine the derep objects into one RDS to ease file staging later
 
-process dada2_derep_batches {
-    container "${container__dada2}"
-    label 'io_limited'
-    errorStrategy "retry"
-    maxRetries 10
 
-    input:
-        set val(batch), val(read_num), val(specimens), file(dereps), val(errM), val(dada_fns) from batch_err_dereps_ch
-    
-    output:
-        set val(batch), val(read_num), val(specimens), file("${batch}_${read_num}_derep.rds"), val(errM), val(dada_fns) into batch_err_derep_ch
-    
-    """
-    #!/usr/bin/env Rscript
-    library('dada2');
-    derep <- lapply(
-        unlist(strsplit('${dereps}', ' ', fixed=TRUE)),
-        readRDS
-    );
-    saveRDS(derep, "${batch}_${read_num}_derep.rds")
-    """
-
-}
 
 // Dada steps should be by batch to allow for pseudo pooling
-process dada2_dada {
-    container "${container__dada2}"
-    label 'multithread'
-    errorStrategy "retry"
-    maxRetries 10
 
-
-    input:
-        set val(batch), val(read_num), val(specimens), file(derep), file(errM), val(dada_fns) from batch_err_derep_ch
-
-    output:
-        set val(batch), val(read_num), val(specimens), file("${batch}_${read_num}_dada.rds"), val(dada_fns) into dada2_dada_batch_ch
-    """
-    #!/usr/bin/env Rscript
-    library('dada2');
-    errM <- readRDS('${errM}');
-    derep <- readRDS('${derep}');
-    dadaResult <- dada(derep, err=errM, multithread=${task.cpus}, verbose=TRUE, pool="pseudo");
-    saveRDS(dadaResult, "${batch}_${read_num}_dada.rds");
-    """
-}
  // split the data2 results out
 
 process dada2_demultiplex_dada {
