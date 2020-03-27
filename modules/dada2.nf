@@ -1,6 +1,7 @@
 container__dada2 = "golob/dada2:1.12.0.ub.1804__bcw.0.3.1"
 container__fastcombineseqtab = "golob/dada2-fast-combineseqtab:0.5.0__1.12.0__BCW_0.3.1"
 container__dada2pplacer = "golob/dada2-pplacer:0.8.0__bcw_0.3.1A"
+container__goodsfilter = "golob/goodsfilter:0.1.0"
 
 workflow dada2_wf {
     take: preprocessed_ch
@@ -172,12 +173,20 @@ workflow dada2_wf {
         dada2_seqtab_combine_all.out.map{ file(it) }
     )
 
-    // STEP 9. Transform output to be pplacer and mothur style
-    dada2_convert_output(
+    //
+    // STEP 9. Filter using Good's coverage
+    goods_filter_seqtab(
         dada2_remove_bimera.out[0].map{ file(it) }
     )
+    //
+    goods_filter_seqtab.out[2].view()
 
-    // STEP 10. Collect all the failures
+    // STEP 10. Transform output to be pplacer and mothur style
+    dada2_convert_output(
+        goods_filter_seqtab.out[0].map{ file(it) }
+    )
+
+    // STEP 11. Collect all the failures
     ft_reads.empty.map{ [it[0], 'Empty after FT']}.mix(
     dada2_merge_filtered.empty.map{ [it[1], 'Empty after merge']})
     .set{ failures }
@@ -468,7 +477,6 @@ process dada2_remove_bimera {
     """
 }
 
-
 process dada2_convert_output {
     container "${container__dada2pplacer}"
     label 'io_mem'
@@ -493,5 +501,35 @@ process dada2_convert_output {
     -w dada2.sv.weights.csv \
     -L dada2.specimen.sv.long.csv \
     -t dada2.sv.shared.txt
+    """
+}
+
+process goods_filter_seqtab {
+    container "${container__goodsfilter}"
+    label 'io_mem'
+    publishDir "${params.output}/sv/", mode: 'copy'
+    errorStrategy "retry"
+
+    input:
+        file(seqtab_csv)
+
+    output:
+        file "${seqtab_csv.getSimpleName()}.goodsfiltered.csv"
+        file "${seqtab_csv.getSimpleName()}.goods_converged.csv"
+        path "curves/*_collector.csv"
+
+
+    """
+    set -e 
+
+
+    goodsfilter \
+    --seqtable ${seqtab_csv} \
+    --seqtable_filtered ${seqtab_csv.getSimpleName()}.goodsfiltered.csv \
+    --converged_file ${seqtab_csv.getSimpleName()}.goods_converged.csv \
+    --iteration_cutoff 0.0001 \
+    --min_prev 1 \
+    --min_reads 10 \
+    --curves_path curves/
     """
 }
