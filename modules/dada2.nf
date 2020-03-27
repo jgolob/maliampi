@@ -178,15 +178,17 @@ workflow dada2_wf {
     goods_filter_seqtab(
         dada2_remove_bimera.out[0].map{ file(it) }
     )
-    //
-    goods_filter_seqtab.out[2].view()
 
+    //
     // STEP 10. Transform output to be pplacer and mothur style
+    //
     dada2_convert_output(
         goods_filter_seqtab.out[0].map{ file(it) }
     )
 
+    //
     // STEP 11. Collect all the failures
+    //
     ft_reads.empty.map{ [it[0], 'Empty after FT']}.mix(
     dada2_merge_filtered.empty.map{ [it[1], 'Empty after merge']})
     .set{ failures }
@@ -527,9 +529,9 @@ process goods_filter_seqtab {
     --seqtable ${seqtab_csv} \
     --seqtable_filtered ${seqtab_csv.getSimpleName()}.goodsfiltered.csv \
     --converged_file ${seqtab_csv.getSimpleName()}.goods_converged.csv \
-    --iteration_cutoff 0.0001 \
-    --min_prev 1 \
-    --min_reads 10 \
+    --iteration_cutoff ${params.goods_convergence} \
+    --min_prev ${params.min_sv_prev} \
+    --min_reads ${params.goods_min_reads} \
     --curves_path curves/
     """
 }

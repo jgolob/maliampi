@@ -38,6 +38,11 @@ params.errM_randomize = 'TRUE'
 params.errM_nbases = '1e8'
 params.chimera_method = 'consensus'
 
+// Good's filtering
+params.goods_convergence = 0.0001
+params.min_sv_prev = 2
+params.goods_min_reads = 10
+
 
 // Function which prints help message text
 def helpMessage() {
@@ -77,6 +82,11 @@ def helpMessage() {
         --truncLenF             (default = 0)
         --truncLenR             (default = 0)
         --truncQ                (default = 2)
+    
+    Good's Coverage Filtering
+        --goods_convergence     Change in Good's converage to consider converged (default = 0.0001)
+        --min_sv_prev           Minimum prevalance for an SV to be kept (default = 2)
+        --goods_min_reads       Minimum reads to conisder before Good's is considered converged
 
     Ref Package required:
         --repo_fasta            FASTA file containing reference sequences (required)
@@ -125,7 +135,10 @@ include dada2_wf from './modules/dada2' params (
     errM_maxConsist: params.errM_maxConsist,
     errM_randomize: params.errM_randomize,
     errM_nbases: params.errM_nbases,
-    chimera_method: params.chimera_method
+    chimera_method: params.chimera_method,
+    goods_convergence: params.goods_convergence,
+    min_sv_prev: params.min_sv_prev,
+    goods_min_reads :params.goods_min_reads
 )
 
 // STEP 0: Read manifest and verify files.
