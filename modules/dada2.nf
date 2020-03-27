@@ -7,16 +7,23 @@ workflow dada2_wf {
 
     main:
     dada2_ft(preprocessed_ch)
+    //
+    // STEP 1: filter trim (by specimen)
+    //
 
-    // filter trim (by specimen)
     ft_reads = dada2_ft.out.branch{
         empty: file(it[2]).isEmpty() || file(it[3]).isEmpty()
         valid: true
     }
-    // dereplicate (by specimen)
+
+    //
+    // STEP 2: dereplicate (by specimen)
+    //
     dada2_derep(ft_reads.valid)
 
-    // learn error by batch
+    //
+    // STEP 3: learn error by batch
+    //
     ft_reads.valid
         .toSortedList({a, b -> a[0] <=> b[0]})
         .flatMap()
@@ -39,8 +46,9 @@ workflow dada2_wf {
         }
     dada2_learn_error(derep_by_batch)
 
-
-    // Group up derep and errM objects by batch
+    //
+    // STEP 4: Group up derep and errM objects by batch
+    //
     dada2_derep.out
         .multiMap {
             it -> forR1: forR2: it
@@ -77,11 +85,13 @@ workflow dada2_wf {
         
     dada2_derep_batches(batch_err_dereps_ch)
 
-    // Step 1.e. Apply the error model by batch, using pseudo-pooling to improve yield.
+    //
+    // STEP 5: Apply the error model by batch, using pseudo-pooling to improve yield.
+    //
     dada2_dada(dada2_derep_batches.out)
-        // split the dada2 results out
-        dada2_demultiplex_dada(dada2_dada.out)
-        // Flatten things back out to one-specimen-per-row
+    // split the dada2 results out
+    dada2_demultiplex_dada(dada2_dada.out)
+    // Flatten things back out to one-specimen-per-row
     dada2_demultiplex_dada.out
         .flatMap{
             br -> 
@@ -121,7 +131,9 @@ workflow dada2_wf {
         }
         .set { dada2_dada_sp_ch }
 
-    // Step 1.f. Merge reads, using the dereplicated seqs and applied model
+    //
+    // STEP 6: Merge reads, using the dereplicated seqs and applied model
+    //
     dada2_merge(dada2_dada_sp_ch)
     // Filter out empty merged files.
     dada2_merge.out.branch{
@@ -129,10 +141,14 @@ workflow dada2_wf {
         valid: true
     }.set { dada2_merge_filtered }
 
-    // Step 1.g. Make a seqtab for each specimen
+    //
+    // STEP 7. Make a seqtab for each specimen
+    //
     dada2_seqtab_sp( dada2_merge_filtered.valid )
 
-    // Step 1.h. Combine seqtabs
+    //
+    // STEP 8. Combine seqtabs
+    //
     // Do this by batch to help with massive data sets
     dada2_seqtab_combine_batch(    
         dada2_seqtab_sp.out
@@ -149,14 +165,31 @@ workflow dada2_wf {
             .toSortedList()
     )
     
-    
-    // Step 1.i. Remove chimera on combined seqtab
+    //
+    // STEP 8. Remove chimera on combined seqtab
+    //
     dada2_remove_bimera(
         dada2_seqtab_combine_all.out.map{ file(it) }
     )
 
-    dada2_remove_bimera.out[0].view()
+    // STEP 9. Transform output to be pplacer and mothur style
+    dada2_convert_output(
+        dada2_remove_bimera.out[0].map{ file(it) }
+    )
 
+    // STEP 10. Collect all the failures
+    ft_reads.empty.map{ [it[0], 'Empty after FT']}.mix(
+    dada2_merge_filtered.empty.map{ [it[1], 'Empty after merge']})
+    .set{ failures }
+
+    emit:
+       sv_fasta         = dada2_convert_output.out[0] 
+       sv_map           = dada2_convert_output.out[1]
+       sv_weights       = dada2_convert_output.out[2]
+       sv_long          = dada2_convert_output.out[3]
+       sv_sharetable    = dada2_convert_output.out[4]
+       sv_table         = dada2_remove_bimera.out[0]
+       failures         = failures
 }
 
 
@@ -416,8 +449,8 @@ process dada2_remove_bimera {
         file(combined_seqtab)
 
     output:
-        file("dada2.combined.seqtabs.nochimera.rds")
         file("dada2.combined.seqtabs.nochimera.csv")
+        file("dada2.combined.seqtabs.nochimera.rds")
 
     script:
     """
@@ -432,5 +465,33 @@ process dada2_remove_bimera {
     saveRDS(seqtab_nochim, 'dada2.combined.seqtabs.nochimera.rds'); 
     write.csv(seqtab_nochim, 'dada2.combined.seqtabs.nochimera.csv', na='');
     print((sum(seqtab) - sum(seqtab_nochim)) / sum(seqtab));
+    """
+}
+
+
+process dada2_convert_output {
+    container "${container__dada2pplacer}"
+    label 'io_mem'
+    publishDir "${params.output}/sv/", mode: 'copy'
+    errorStrategy "retry"
+
+    input:
+        file(final_seqtab_csv)
+
+    output:
+        file "dada2.sv.fasta"
+        file "dada2.sv.map.csv"
+        file "dada2.sv.weights.csv"
+        file "dada2.specimen.sv.long.csv"
+        file "dada2.sv.shared.txt"
+
+    """
+    dada2-seqtab-to-pplacer \
+    -s ${final_seqtab_csv} \
+    -f dada2.sv.fasta \
+    -m dada2.sv.map.csv \
+    -w dada2.sv.weights.csv \
+    -L dada2.specimen.sv.long.csv \
+    -t dada2.sv.shared.txt
     """
 }
