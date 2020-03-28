@@ -41,7 +41,7 @@ params.chimera_method = 'consensus'
 // Good's filtering
 params.goods_convergence = 0.0001
 params.min_sv_prev = 2
-params.goods_min_reads = 10
+params.goods_min_reads = 300
 
 
 // Function which prints help message text
