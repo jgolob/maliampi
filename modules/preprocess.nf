@@ -68,4 +68,31 @@ process barcodecop {
     """
 }
 
+process output_failed {
+    container "${container__barcodecop}"
+    label 'io_limited'
+    publishDir "${params.output}/sv/", mode: 'copy'
+    errorStrategy 'retry'
 
+    input:
+        tuple val(specimens), val(reasons)
+    output:
+        file ("failed_specimens.csv")
+
+    """
+    #!/usr/bin/env python
+    import csv
+    import re
+    specimens = re.sub(r'\\[|\\]', "", "${specimens}").split(',')
+    reasons = re.sub(r'\\[|\\]', "", "${reasons}").split(',')
+
+    with open("failed_specimens.csv", 'wt') as out_h:
+        w = csv.writer(out_h)
+        w.writerow([
+            'specimen',
+            'reason'
+        ])
+        for sp, reason in zip(specimens, reasons):
+            w.writerow([sp.strip(), reason.strip()])
+    """
+}

@@ -10,16 +10,6 @@
 */
 nextflow.preview.dsl=2
 
-// container versions!
-
-
-container__vsearch = "golob/vsearch:2.7.1_bcw_0.2.0"
-container__fastatools = "golob/fastatools:0.7.1__bcw.0.3.1"
-container__pplacer = "golob/pplacer:1.1alpha19rc_BCW_0.3.1A"
-container__seqinfosync = "golob/seqinfo_taxonomy_sync:0.2.1__bcw.0.3.0"
-container__infernal = "golob/infernal:1.1.2_bcw_0.3.1"
-container__raxml = "golob/raxml:8.2.11_bcw_0.3.0"
-
 // Defaults for parameters
 params.help = false
 params.sv_only = false
@@ -41,7 +31,18 @@ params.chimera_method = 'consensus'
 // Good's filtering
 params.goods_convergence = 0.0001
 params.min_sv_prev = 2
-params.goods_min_reads = 300
+params.goods_min_reads = 30
+
+// Refpkg
+params.repo_min_id = 0.8
+params.repo_max_accepts = 10
+params.cmalign_mxsize = 8196
+params.raxml_model = 'GTRGAMMA'
+params.raxml_parsiomony_seed = 12345
+params.taxdmp = false
+
+
+
 
 
 // Function which prints help message text
@@ -123,6 +124,9 @@ if (params.help || params.manifest == null){
 
 // Modules
 include read_manifest from './modules/manifest'
+include output_failed from './modules/preprocess' params (
+    output: params.output
+)
 include preprocess_wf from './modules/preprocess'
 include dada2_wf from './modules/dada2' params (
     output: params.output,
@@ -139,6 +143,19 @@ include dada2_wf from './modules/dada2' params (
     goods_convergence: params.goods_convergence,
     min_sv_prev: params.min_sv_prev,
     goods_min_reads :params.goods_min_reads
+)
+
+include make_refpkg_wf from './modules/refpackage' params (
+    output: params.output,
+    repo_fasta: params.repo_fasta,
+    repo_si: params.repo_si,
+    repo_min_id: params.repo_min_id,
+    repo_max_accepts: params.repo_max_accepts,
+    cmalign_mxsize: params.cmalign_mxsize,
+    raxml_model: params.raxml_model,
+    raxml_parsiomony_seed: params.raxml_parsiomony_seed,
+    taxdmp: params.taxdmp
+
 )
 
 // STEP 0: Read manifest and verify files.
@@ -173,352 +190,41 @@ workflow {
 
     dada2_wf(preprocess_wf.out.valid)
 
+    //
+    // Report specimens that failed at any step of making SVs
+    //
+
+    output_failed(            
+        manifest.other.map { [it.specimen, 'failed at manifest'] }.mix(
+        preprocess_wf.out.empty.map{ [it[0], 'preprocessing'] }).mix(
+        dada2_wf.out.failures)
+        .toList()
+        .transpose()
+        .toList()
+    )
+   
     if (params.sv_only) {
         return;
     }
+
+    // implicit else
+
+    //
+    //  STEP 2: Reference package
+    //
+
+    make_refpkg_wf(
+        dada2_wf.out.sv_fasta
+    )
+
+    
 }
 return
 
-process output_failed {
-    container "${container__dada2pplacer}"
-    label 'io_limited'
-    publishDir "${params.output}/sv/", mode: 'copy'
-    errorStrategy 'retry'
-
-    input:
-        set val(specimens), val(reasons) from invalid_ch
-    output:
-        file "failed_specimens.csv"
-
-    """
-    #!/usr/bin/env python
-    import csv
-    import re
-    specimens = re.sub(r'\\[|\\]', "", "${specimens}").split(',')
-    reasons = re.sub(r'\\[|\\]', "", "${reasons}").split(',')
-
-    with open("failed_specimens.csv", 'wt') as out_h:
-        w = csv.writer(out_h)
-        w.writerow([
-            'specimen',
-            'reason'
-        ])
-        for sp, reason in zip(specimens, reasons):
-            w.writerow([sp.strip(), reason.strip()])
-    """
-}
 
 if (params.sv_only == false) {
 
-//
-//  START STEP 2: Reference package
-//
-params.repo_min_id = 0.8
-params.repo_max_accepts = 10
-params.cmalign_mxsize = 8196
-params.raxml_model = 'GTRGAMMA'
-params.raxml_parsiomony_seed = 12345
-params.taxdmp = false
 
-
-// Step 2.a. Search the repo for matches
-// load the repo
-Channel.value(file(params.repo_fasta))
-    .set{ repo_fasta}
-Channel.value(file(params.repo_si))
-    .set{ repo_si }
-
-process refpkgSearchRepo {
-    container "${container__vsearch}"
-    label = 'multithread'
-
-    input:
-        file sv_fasta_f
-        file repo_fasta
-    
-    output:
-        file "${repo_fasta}.uc" into sv_repo_uc_f
-        file "${repo_fasta}.sv.nohit.fasta" into sv_repo_nohit_f
-        file "${repo_fasta}.repo.recruits.fasta" into repo_recruits_f
-
-    """
-    vsearch \
-    --threads=${task.cpus} \
-    --usearch_global ${sv_fasta_f} \
-    --db ${repo_fasta} \
-    --id=${params.repo_min_id} \
-    --strand both \
-    --uc=${repo_fasta}.uc --uc_allhits \
-    --notmatched=${repo_fasta}.sv.nohit.fasta \
-    --dbmatched=${repo_fasta}.repo.recruits.fasta \
-    --maxaccepts=${params.repo_max_accepts} \
-    | tee -a vsearch.log
-    """
-}
-
-
-// Step 2.xx Filter SeqInfo to recruits
-process filterSeqInfo {
-    container = "${container__fastatools}"
-    label = 'io_limited'
-
-    input:
-        file repo_recruits_f
-        file repo_si
-    
-    output:
-        file 'refpkg.seq_info.csv' into refpkg_si_f
-
-    """
-    #!/usr/bin/env python
-    import fastalite
-    import csv
-
-    with open('${repo_recruits_f}', 'rt') as fasta_in:
-        seq_ids = {sr.id for sr in fastalite.fastalite(fasta_in)}
-    with open('${repo_si}', 'rt') as si_in, open('refpkg.seq_info.csv', 'wt') as si_out:
-        si_reader = csv.DictReader(si_in)
-        si_writer = csv.DictWriter(si_out, si_reader.fieldnames)
-        si_writer.writeheader()
-        for r in si_reader:
-            if r['seqname'] in seq_ids:
-                si_writer.writerow(r)
-    """
-}
-
-// Step 2.xx (get) or build a taxonomy db
-
-if ( (params.taxdmp == false) || file(params.taxdmp).isEmpty() ) {
-    process DlBuildTaxtasticDB {
-        container = "${container__pplacer}"
-        label = 'io_limited'
-        // errorStrategy = 'retry'
-
-        output:
-            file "taxonomy.db" into taxonomy_db_f
-
-        afterScript "rm -rf dl/"
-
-
-        """
-        mkdir -p dl/ && \
-        taxit new_database taxonomy.db -u ftp://ftp.ncbi.nlm.nih.gov/pub/taxonomy/taxdmp.zip -p dl/
-        """
-
-    }
-
-} else {
-    taxdump_zip_f = file(params.taxdmp)
-    process buildTaxtasticDB {
-        container = "${container__pplacer}"
-        label = 'io_limited'
-        // errorStrategy = 'retry'
-
-        input:
-            file taxdump_zip_f
-
-        output:
-            file "taxonomy.db" into taxonomy_db_f
-
-        """
-        taxit new_database taxonomy.db -z ${taxdump_zip_f}
-        """
-    }
-}
-
-
-// Step 2.xx Confirm seq info taxonomy matches taxdb
-
-process confirmSI {
-    container = "${container__seqinfosync}"
-    label = 'io_limited'
-
-    input:
-        file taxonomy_db_f
-        file refpkg_si_f
-    
-    output:
-        file "${refpkg_si_f.baseName}.corr.csv" into refpkg_si_corr_f
-    
-    """
-    seqinfo_taxonomy_sync.py \
-    ${refpkg_si_f} ${refpkg_si_f.baseName}.corr.csv \
-    --db ${taxonomy_db_f} --email ${params.email}
-    """
-
-
-}
-
-// Step 2.xx Align recruited seqs
-
-process alignRepoRecruits {
-    container = "${container__infernal}"
-    label = 'mem_veryhigh'
-
-    input:
-        file repo_recruits_f
-    
-    output:
-        file "recruits.aln.scores" into recruit_aln_scores_f
-        file "recruits.aln.sto" into recruits_aln_sto_f
-    
-    """
-    cmalign \
-    --cpu ${task.cpus} --noprob --dnaout --mxsize ${params.cmalign_mxsize} \
-    --sfile recruits.aln.scores -o recruits.aln.sto \
-    /cmalign/data/SSU_rRNA_bacteria.cm ${repo_recruits_f}
-    """
-}
-
-// Step 2.xx Convert alignment from STO -> FASTA format
-process convertAlnToFasta {
-    container = "${container__fastatools}"
-    label = 'io_limited'
-    errorStrategy "retry"
-
-    input: 
-        file recruits_aln_sto_f
-    
-    output:
-        file "recruits.aln.fasta" into recruits_aln_fasta_f
-    
-    """
-    #!/usr/bin/env python
-    from Bio import AlignIO
-
-    with open('recruits.aln.fasta', 'wt') as out_h:
-        AlignIO.write(
-            AlignIO.read(
-                open('${recruits_aln_sto_f}', 'rt'),
-                'stockholm'
-            ),
-            out_h,
-            'fasta'
-        )
-    """
-}
-// Step 2.xx Make a tree from the alignment.
-process raxmlTree {
-    container = "${container__raxml}"
-    label = 'mem_veryhigh'
-    errorStrategy = 'retry'
-
-    input:
-        file recruits_aln_fasta_f
-    
-    output:
-        file "RAxML_bestTree.refpkg" into refpkg_tree_f
-        file "RAxML_info.refpkg" into refpkg_tree_stats_f
-    
-    """
-    raxml \
-    -n refpkg \
-    -m ${params.raxml_model} \
-    -s ${recruits_aln_fasta_f} \
-    -p ${params.raxml_parsiomony_seed} \
-    -T ${task.cpus} && \
-    ls -l -h 
-    """
-}
-
-// Step 2.xx Remove cruft from tree stats
-
-process raxmlTree_cleanupInfo {
-    container = "${container__raxml}"
-    label = 'io_limited'
-    errorStrategy = 'retry'
-
-    input:
-        file "RAxML_info.unclean.refpkg" from refpkg_tree_stats_f
-    
-    output:
-        file "RAxML_info.refpkg" into refpkg_tree_stats_clean_f
-
-
-"""
-#!/usr/bin/env python
-with open("RAxML_info.refpkg",'wt') as out_h:
-    with open("RAxML_info.unclean.refpkg", 'rt') as in_h:
-        past_cruft = False
-        for l in in_h:
-            if "This is RAxML version" == l[0:21]:
-                past_cruft = True
-            if past_cruft:
-                out_h.write(l)
-"""
-}
-
-// Step 2.xx Make a tax table for the refpkg sequences
-process taxtableForSI {
-    container = "${container__pplacer}"
-    label = 'io_limited'
-    // errorStrategy = 'retry'
-
-    input:
-        file taxonomy_db_f 
-        file refpkg_si_corr_f
-    output:
-        file "refpkg.taxtable.csv" into refpkg_tt_f
-
-    """
-    taxit taxtable ${taxonomy_db_f} \
-    --seq-info ${refpkg_si_corr_f} \
-    --outfile refpkg.taxtable.csv
-    """
-}
-
-// Step 2.xx Obtain the CM used for the alignment
-process obtainCM {
-    container = "${container__infernal}"
-    label = 'io_limited'
-
-    output:
-        file "refpkg.cm" into refpkg_cm
-    
-    """
-    cp /cmalign/data/SSU_rRNA_bacteria.cm refpkg.cm
-    """
-}
-
-// Step 2.xx Combine into a refpkg
-process combineRefpkg {
-    container = "${container__pplacer}"
-    label = 'io_limited'
-
-    afterScript("rm -rf refpkg/*")
-    publishDir "${params.output}/refpkg/", mode: 'copy'
-
-    input:
-        file recruits_aln_fasta_f
-        file recruits_aln_sto_f
-        file refpkg_tree_f 
-        file refpkg_tree_stats_clean_f 
-        file refpkg_tt_f
-        file refpkg_si_corr_f
-        file refpkg_cm
-    
-    output:
-        file "refpkg.tgz" into refpkg_tgz_f
-    
-    """
-    taxit create --locus 16S \
-    --package-name refpkg \
-    --clobber \
-    --aln-fasta ${recruits_aln_fasta_f} \
-    --aln-sto ${recruits_aln_sto_f} \
-    --tree-file ${refpkg_tree_f} \
-    --tree-stats ${refpkg_tree_stats_clean_f} \
-    --taxonomy ${refpkg_tt_f} \
-    --seq-info ${refpkg_si_corr_f} \
-    --profile ${refpkg_cm} && \
-    ls -l refpkg/ && \
-    tar czvf refpkg.tgz  -C refpkg/ .
-    """
-}
-
-//
-//  END STEP 2: Reference package
-//
 
 //
 //  START STEP 3: Placement

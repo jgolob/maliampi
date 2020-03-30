@@ -175,16 +175,19 @@ workflow dada2_wf {
 
     //
     // STEP 9. Filter using Good's coverage
-    goods_filter_seqtab(
-        dada2_remove_bimera.out[0].map{ file(it) }
-    )
+    //goods_filter_seqtab(
+    //    dada2_remove_bimera.out[0].map{ file(it) }
+    //)
 
     //
     // STEP 10. Transform output to be pplacer and mothur style
     //
     dada2_convert_output(
-        goods_filter_seqtab.out[0].map{ file(it) }
+        dada2_remove_bimera.out[0].map{ file(it) }
     )
+    //dada2_convert_output(
+    //    goods_filter_seqtab.out[0].map{ file(it) }
+    //)
 
     //
     // STEP 11. Collect all the failures
