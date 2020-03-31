@@ -1,6 +1,7 @@
 //
 //  Reference package creation
 //
+nextflow.preview.dsl=2
 
 container__vsearch = "golob/vsearch:2.7.1_bcw_0.2.0"
 container__fastatools = "golob/fastatools:0.7.1__bcw.0.3.1"
@@ -8,6 +9,17 @@ container__pplacer = "golob/pplacer:1.1alpha19rc_BCW_0.3.1A"
 container__seqinfosync = "golob/seqinfo_taxonomy_sync:0.2.1__bcw.0.3.0"
 container__infernal = "golob/infernal:1.1.2_bcw_0.3.1"
 container__raxml = "golob/raxml:8.2.11_bcw_0.3.0"
+
+// paramters
+params.help = false
+
+params.taxdmp = false
+
+params.repo_min_id = 0.8
+params.repo_max_accepts = 10
+params.cmalign_mxsize = 8196
+params.raxml_model = 'GTRGAMMA'
+params.raxml_parsiomony_seed = 12345
 
 workflow make_refpkg_wf {
     take:
@@ -388,4 +400,60 @@ process CombineRefpkg {
     ls -l refpkg/ && \
     tar czvf refpkg.tgz  -C refpkg/ .
     """
+}
+
+//
+// Function which prints help message text
+def helpMessage() {
+    log.info"""
+    Make a pplacer-style reference package for reads
+
+    Usage:
+
+    nextflow run jgolob/maliampi/refpackage.nf <ARGUMENTS>
+    
+    Required Arguments:
+        --sv_fasta            Sequence variants (in FASTA format)
+        --repo_fasta          Repository of 16S rRNA genes.
+        --repo_si             Information about the 16S rRNA genes.
+        --email               Email (for NCBI)
+    Options:
+      Common to all:
+        --output              Directory to place outputs (default invocation dir)
+                                Maliampi will create a directory structure under this directory
+        -w                    Working directory. Defaults to `./work`
+        -resume                 Attempt to restart from a prior run, only completely changed steps
+
+    Ref Package options (defaults generally fine):
+        --repo_min_id           Minimum percent ID to a SV to be recruited (default = 0.8)
+        --repo_max_accepts      Maximum number of recruits per SV (default = 10)
+        --cmalign_mxsize        Infernal cmalign mxsize (default = 8196)
+        --raxml_model           RAxML model for tree formation (default = 'GTRGAMMA')
+        --raxml_parsiomony_seed (default = 12345)
+        --taxdmp                Path to taxdmp.zip. If not provided, it will be downloaded
+    """.stripIndent()
+}
+
+
+// standalone workflow for module
+workflow {
+
+    // Show help message if the user specifies the --help flag at runtime
+    if (
+            params.help || 
+            (params.sv_fasta == null ) ||
+            (params.repo_fasta == null) ||
+            (params.repo_si == null) ||
+            (params.email == null)
+        ){
+        // Invoke the function above which prints the help message
+        helpMessage()
+        // Exit out and do not run anything else
+        exit 0
+    }
+    // Implicit else
+    make_refpkg_wf(
+        file(params.sv_fasta)
+    )
+
 }
