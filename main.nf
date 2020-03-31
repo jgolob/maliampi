@@ -86,9 +86,6 @@ def helpMessage() {
         -w                    Working directory. Defaults to `./work`
         -resume                 Attempt to restart from a prior run, only completely changed steps
 
-    Flow options:
-        --sv_only             Stop after making sequence variants   
-
     SV-DADA2 options:
         --trimLeft              How far to trim on the left (default = 0)
         --maxN                  (default = 0)
@@ -96,15 +93,7 @@ def helpMessage() {
         --truncLenF             (default = 0)
         --truncLenR             (default = 0)
         --truncQ                (default = 2)
-    
-    Good's Coverage Filtering
-        --goods_convergence     Change in Good's converage to consider converged (default = 0.0001)
-        --min_sv_prev           Minimum prevalance for an SV to be kept (default = 2)
-        --goods_min_reads       Minimum reads to conisder before Good's is considered converged
 
-    Ref Package required:
-        --repo_fasta            FASTA file containing reference sequences (required)
-        --repo_si               CSV file with information about the repo reads (required)
     Ref Package options (defaults generally fine):
         --repo_min_id           Minimum percent ID to a SV to be recruited (default = 0.8)
         --repo_max_accepts      Maximum number of recruits per SV (default = 10)
@@ -187,12 +176,19 @@ include pplacer_place_classify_wf from './modules/pplacer_place_classify' params
 workflow {
     main:
     // Show help message if the user specifies the --help flag at runtime
-    if (params.help || params.manifest == null){
+    if (
+        params.help || 
+        (params.manifest == null) ||
+        (params.repo_fasta == null) ||
+        (params.repo_si == null) ||
+        (params.email == null)
+    ){
         // Invoke the function above which prints the help message
         helpMessage()
         // Exit out and do not run anything else
         exit 0
-    }
+    } 
+    // Implicit else
 
     //
     //  Step 0: Load manifest and preprocess
@@ -233,12 +229,6 @@ workflow {
         .transpose()
         .toList()
     )
-   
-    if (params.sv_only) {
-        return;
-    }
-
-    // implicit else
 
     //
     //  STEP 2: Reference package
