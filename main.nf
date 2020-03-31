@@ -127,14 +127,6 @@ def helpMessage() {
     """.stripIndent()
 }
 
-// Show help message if the user specifies the --help flag at runtime
-if (params.help || params.manifest == null){
-    // Invoke the function above which prints the help message
-    helpMessage()
-    // Exit out and do not run anything else
-    exit 0
-}
-
 // Modules
 include read_manifest from './modules/manifest'
 include output_failed from './modules/preprocess' params (
@@ -194,6 +186,13 @@ include pplacer_place_classify_wf from './modules/pplacer_place_classify' params
 
 workflow {
     main:
+    // Show help message if the user specifies the --help flag at runtime
+    if (params.help || params.manifest == null){
+        // Invoke the function above which prints the help message
+        helpMessage()
+        // Exit out and do not run anything else
+        exit 0
+    }
 
     //
     //  Step 0: Load manifest and preprocess
@@ -258,14 +257,6 @@ workflow {
         dada2_wf.out.sv_weights,
         dada2_wf.out.sv_map
     )
-
     
 }
-
-//
-//  END STEP 4: Classification
-//
-
-
-// */
 
