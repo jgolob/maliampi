@@ -3,7 +3,7 @@
 //
 nextflow.preview.dsl=2
 
-container__vsearch = "golob/vsearch:2.7.1_bcw_0.2.0"
+container__vsearch = "golob/vsearch:2.14.2"
 container__fastatools = "golob/fastatools:0.7.1__bcw.0.3.1"
 container__pplacer = "golob/pplacer:1.1alpha19rc_BCW_0.3.1A"
 container__seqinfosync = "golob/seqinfo_taxonomy_sync:0.2.1__bcw.0.3.0"
