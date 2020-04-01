@@ -1,11 +1,34 @@
 //
 //  PPlacer Place and Classify
 //
+nextflow.preview.dsl=2
+
+// Paramteters
+// common
+params.output = '.'
+params.help = false
+
+// pplacer place
+params.pplacer_prior_lower = 0.01
+
+// pplacer classify
+params.pp_classifer = 'hybrid2'
+params.pp_likelihood_cutoff = 0.9
+params.pp_bayes_cutoff = 1.0
+params.pp_multiclass_min = 0.2
+params.pp_bootstrap_cutoff = 0.8
+params.pp_bootstrap_extension_cutoff = 0.4
+params.pp_nbc_boot = 100
+params.pp_nbc_target_rank = 'genus'
+params.pp_nbc_word_length = 8
+params.pp_seed = 1
+params.cmalign_mxsize = 8196
 
 // Containers!
 container__infernal = "golob/infernal:1.1.2_bcw_0.3.1"
 container__fastatools = "golob/fastatools:0.7.1__bcw.0.3.1"
 container__pplacer = "golob/pplacer:1.1alpha19rc_BCW_0.3.1A"
+container__dada2pplacer = "golob/dada2-pplacer:0.8.0__bcw_0.3.1A"
 
 
 workflow pplacer_place_classify_wf {
@@ -519,4 +542,171 @@ process ClassifyTables {
     --by-specimen tables/by_specimen.${rank}.csv \
     --tallies-wide tables/tallies_wide.${rank}.csv
     """
+}
+
+process SharetableToMapWeight {
+    container = "${container__fastatools}"
+    label = 'io_limited'
+    publishDir "${params.output}/sv", mode: 'copy'
+
+    input:
+        file (sharetable)
+
+    output:
+        file ("sv_sp_map.csv")
+        file ("sv_weights.csv")
+
+"""
+#!/usr/bin/env python
+import csv
+
+sp_count = {}
+with open('${sharetable}', 'rt') as st_h:
+    st_r = csv.reader(st_h, delimiter='\\t')
+    header = next(st_r)
+    sv_name = header[3:]
+    for r in st_r:
+        sp_count[r[0]] = [int(c) for c in r[3:]]
+weightsL = []
+mapL = []
+for sv_i, sv in enumerate(sv_name):
+    sv_counts = [
+        (sp, c[sv_i]) for sp, c in sp_count.items()
+        if c[sv_i] > 0
+    ]
+    weightsL += [
+        (sv, "{}__{}".format(sv, sp), c)
+        for sp, c in 
+        sv_counts
+    ]
+    mapL += [
+        ("{}__{}".format(sv, sp), sp)
+        for sp, c in 
+        sv_counts
+    ]
+with open("sv_sp_map.csv", "w") as map_h:
+    map_w = csv.writer(map_h)
+    map_w.writerows(mapL)
+with open("sv_weights.csv", "w") as weights_h:
+    weights_w = csv.writer(weights_h)
+    weights_w.writerows(weightsL) 
+"""
+}
+
+process Dada2_convert_output {
+    container "${container__dada2pplacer}"
+    label 'io_mem'
+    publishDir "${params.output}/sv/", mode: 'copy'
+    errorStrategy "retry"
+
+    input:
+        file(final_seqtab_csv)
+
+    output:
+        file "dada2.sv.fasta"
+        file "dada2.sv.map.csv"
+        file "dada2.sv.weights.csv"
+
+    """
+    dada2-seqtab-to-pplacer \
+    -s ${final_seqtab_csv} \
+    -f dada2.sv.fasta \
+    -m dada2.sv.map.csv \
+    -w dada2.sv.weights.csv \
+    """
+}
+
+
+//
+//      Components for running the module independently
+//
+
+// Function which prints help message text
+def helpMessage() {
+    log.info"""
+    Usage:
+
+    nextflow run jgolob/maliampi <ARGUMENTS>
+    
+    Required Arguments:
+        --refpkg              Reference Package in tar.gz format
+                        AND
+    ONE of the following (for sv-counts-per-specimen):
+        --sv_fasta            Fasta file with all the sequence variants to be placed
+        --weights             Headerless CSV file with weights (shared_sv_id, specimen_sv_id, count)
+        --map                 (specimen_sv_id, specimen)
+                        OR
+        --sv_fasta            Fasta file with all the sequence variants to be placed
+        --sharetable          Mothur-style sharetable
+                        OR
+        --seqtable            DADA2 style seqtable
+    Options:
+      Common to all:
+        --output              Directory to place outputs (default invocation dir)
+                                Maliampi will create a directory structure under this directory
+        -w                    Working directory. Defaults to `./work`
+        -resume                 Attempt to restart from a prior run, only completely changed steps
+
+    Placement / Classification Options (defaults generally fine):
+        --pp_classifer                  pplacer classifer (default = 'hybrid2')
+        --pp_likelihood_cutoff          (default = 0.9)
+        --pp_bayes_cutoff               (default = 1.0)
+        --pp_multiclass_min             (default = 0.2)
+        --pp_bootstrap_cutoff           (default = 0.8)
+        --pp_bootstrap_extension_cutoff (default = 0.4)
+        --pp_nbc_boot                   (default = 100)
+        --pp_nbc_target_rank            (default = 'genus')
+        --pp_nbc_word_length            (default = 8)
+        --pp_seed                       (default = 1)
+    """.stripIndent()
+}
+
+workflow {
+    if (
+        params.help ||
+        params.refpkg == null
+    ) {
+        helpMessage()
+        exit 0
+    }
+
+    refpkg_tgz_f = file(params.refpkg)
+
+    if (
+        (params.sv_fasta != null) &&
+        (params.weights != null ) &&
+        (params.map != null)
+    ) {
+        map_f = file(params.map)
+        weights_f = file(params.weights)
+        sv_fasta_f = file(params.sv_fasta)
+    }
+    else if (
+        (params.sv_fasta != null) &&
+        (params.sharetable != null)
+    ) {
+        sv_fasta_f = file(params.sv_fasta)
+        SharetableToMapWeight (
+            file(params.sharetable)
+        )
+        map_f = SharetableToMapWeight.out[0]
+        weights_f = SharetableToMapWeight.out[1]
+        
+    }
+    else if (params.seqtable != null) {
+        Dada2_convert_output(file(params.seqtable))
+        sv_fasta_f = Dada2_convert_output.out[0]
+        map_f = Dada2_convert_output.out[1]
+        weights_f = Dada2_convert_output.out[2]
+    } else {
+        helpMessage()
+        exit 0
+    }
+
+    pplacer_place_classify_wf (
+        sv_fasta_f,
+        refpkg_tgz_f,
+        weights_f,
+        map_f,
+    )
 }

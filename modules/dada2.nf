@@ -1,7 +1,31 @@
+//
+//  ESVs via DADA2
+//
+nextflow.preview.dsl=2
+
 container__dada2 = "golob/dada2:1.12.0.ub.1804__bcw.0.3.1"
 container__fastcombineseqtab = "golob/dada2-fast-combineseqtab:0.5.0__1.12.0__BCW_0.3.1"
 container__dada2pplacer = "golob/dada2-pplacer:0.8.0__bcw_0.3.1A"
 container__goodsfilter = "golob/goodsfilter:0.1.6"
+
+// parameters for individual operation
+// Defaults for parameters
+params.help = false
+
+// common
+params.output = '.'
+
+// dada2-sv
+params.trimLeft = 0
+params.maxN = 0
+params.maxEE = 'Inf'
+params.truncLenF = 0
+params.truncLenR = 0
+params.truncQ = 2
+params.errM_maxConsist = 10
+params.errM_randomize = 'TRUE'
+params.errM_nbases = '1e8'
+params.chimera_method = 'consensus'
 
 workflow dada2_wf {
     take: preprocessed_ch
@@ -537,4 +561,94 @@ process goods_filter_seqtab {
     --min_reads ${params.goods_min_reads} \
     --curves_path curves/
     """
+}
+
+
+//
+// standalone workflow for module
+//
+
+include read_manifest from './manifest'
+include output_failed from './preprocess' params (
+    output: params.output
+)
+include preprocess_wf from './preprocess'
+
+// Function which prints help message text
+def helpMessage() {
+    log.info"""
+    DADA2 workflow to make sequence variants via DADA2 from a manifest of paired-end reads
+
+    Usage:
+
+    nextflow run jgolob/maliampi/dada2.nf <ARGUMENTS>
+    
+    Required Arguments:
+        --manifest            CSV file listing samples
+                                At a minimum must have columns:
+                                    specimen: A unique identifier 
+                                    R1: forward read
+                                    R2: reverse read fq
+
+                                optional columns:
+                                    batch: sequencing / library batch. Should be filename safe
+                                    I1: forward index file (for checking demultiplexing)
+                                    I2: reverse index file
+    Options:
+      Common to all:
+        --output              Directory to place outputs (default invocation dir)
+                                Maliampi will create a directory structure under this directory
+        -w                    Working directory. Defaults to `./work`
+        -resume                 Attempt to restart from a prior run, only completely changed steps
+
+    SV-DADA2 options:
+        --trimLeft              How far to trim on the left (default = 0)
+        --maxN                  (default = 0)
+        --maxEE                 (default = Inf)
+        --truncLenF             (default = 0)
+        --truncLenR             (default = 0)
+        --truncQ                (default = 2)
+
+    """.stripIndent()
+}
+
+workflow {
+    
+    // Load manifest!
+    manifest = read_manifest(
+        Channel.from(
+            file(params.manifest)
+        )
+    )
+    // manifest.valid_paired_indexed contains indexed paired reads
+    // manifest.valid_paired contains pairs verified to exist but without index.
+
+    // Preprocess
+    preprocess_wf(
+        manifest.valid_paired_indexed,
+        manifest.valid_paired
+    )        
+    // preprocess_wf.out.valid is the reads that survived the preprocessing steps.
+    // preprocess_wf.out.empty are the reads that ended up empty with preprocessing
+
+    //
+    // Step 1: DADA2 to make sequence variants.
+    //
+
+    dada2_wf(preprocess_wf.out.valid)
+
+    //
+    // Report specimens that failed at any step of making SVs
+    //
+
+    output_failed(            
+        manifest.other.map { [it.specimen, 'failed at manifest'] }.mix(
+        preprocess_wf.out.empty.map{ [it[0], 'preprocessing'] }).mix(
+        dada2_wf.out.failures)
+        .toList()
+        .transpose()
+        .toList()
+    )
+
+
 }
