@@ -234,7 +234,7 @@ workflow dada2_wf {
 process dada2_ft {
     container "${container__dada2}"
     label 'io_limited'
-    errorStrategy "ignore"
+    errorStrategy "finish"
 
     input:
         tuple val(specimen), val(batch), file(R1), file(R2)
@@ -262,7 +262,7 @@ process dada2_ft {
 process dada2_derep {
     container "${container__dada2}"
     label 'io_limited'
-    errorStrategy "ignore"
+    errorStrategy "finish"
 
     input:
         tuple val(specimen), val(batch), file(R1), file(R2)
@@ -283,8 +283,7 @@ process dada2_derep {
 process dada2_learn_error {
     container "${container__dada2}"
     label 'multithread'
-    errorStrategy "retry"
-    maxRetries 10
+    errorStrategy "finish"
     publishDir "${params.output}/sv/errM/${batch}", mode: 'copy'
 
     input:
@@ -316,8 +315,7 @@ process dada2_learn_error {
 process dada2_derep_batches {
     container "${container__dada2}"
     label 'io_limited'
-    errorStrategy "retry"
-    maxRetries 10
+    errorStrategy "finish"
 
     input:
         tuple val(batch), val(read_num), val(specimens), file(dereps), val(errM), val(dada_fns)
@@ -339,8 +337,7 @@ process dada2_derep_batches {
 process dada2_dada {
     container "${container__dada2}"
     label 'multithread'
-    errorStrategy "retry"
-    maxRetries 10
+    errorStrategy "finish"
 
     input:
         tuple val(batch), val(read_num), val(specimens), file(derep), file(errM), val(dada_fns)
@@ -361,8 +358,7 @@ process dada2_dada {
 process dada2_demultiplex_dada {
     container "${container__dada2}"
     label 'io_limited'
-    errorStrategy "retry"
-    maxRetries 10
+    errorStrategy "finish"
 
     input:
         tuple val(batch), val(read_num), val(specimens), file(dada), val(dada_fns)
@@ -387,7 +383,7 @@ process dada2_demultiplex_dada {
 process dada2_merge {
     container "${container__dada2}"
     label 'multithread'
-    errorStrategy "ignore"
+    errorStrategy "finish"
 
     input:
         tuple val(specimen), val(batch), file(R1dada), file(R2dada), file(R1), file(R2)
@@ -414,8 +410,7 @@ process dada2_merge {
 process dada2_seqtab_sp {
     container "${container__dada2}"
     label 'io_limited'
-    errorStrategy "retry"
-    maxRetries 10
+    errorStrategy "finish"
 
     input:
         tuple val(batch), val(specimen), file(merged)
@@ -436,8 +431,7 @@ process dada2_seqtab_sp {
 process dada2_seqtab_combine_batch {
     container "${container__fastcombineseqtab}"
     label 'io_mem'
-    //errorStrategy "retry"
-    maxRetries 10
+    errorStrategy "finish"
 
     input:
         tuple val(batch), file(sp_seqtabs_rds)
@@ -457,8 +451,7 @@ process dada2_seqtab_combine_batch {
 process dada2_seqtab_combine_all {
     container "${container__fastcombineseqtab}"
     label 'io_mem'
-    //errorStrategy "retry"
-    maxRetries 10
+    errorStrategy "finish"
 
     input:
         file(seqtabs_rds)
@@ -479,8 +472,7 @@ process dada2_seqtab_combine_all {
 process dada2_remove_bimera {
     container "${container__dada2}"
     label 'mem_veryhigh'
-    errorStrategy "retry"
-    maxRetries 10
+    errorStrategy "finish"
     publishDir "${params.output}/sv/", mode: 'copy'
 
     input:
@@ -510,7 +502,7 @@ process dada2_convert_output {
     container "${container__dada2pplacer}"
     label 'io_mem'
     publishDir "${params.output}/sv/", mode: 'copy'
-    errorStrategy "retry"
+    errorStrategy "finish"
 
     input:
         file(final_seqtab_csv)
@@ -537,7 +529,7 @@ process goods_filter_seqtab {
     container "${container__goodsfilter}"
     label 'io_mem'
     publishDir "${params.output}/sv/", mode: 'copy'
-    errorStrategy "retry"
+    errorStrategy "finish"
 
     input:
         file(seqtab_csv)
