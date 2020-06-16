@@ -308,7 +308,7 @@ process PplacerPlacement {
     afterScript "rm -rf refpkg/"
     """
     mkdir -p refpkg/ &&
-    tar xzvf ${refpkg_tgz_f} -C ./refpkg &&
+    tar xzvf ${refpkg_tgz_f} --no-overwrite-dir -C ./refpkg &&
     pplacer -p -j ${task.cpus} \
     --inform-prior --prior-lower ${params.pplacer_prior_lower} --map-identity \
     -c refpkg/ ${sv_refpkg_aln_sto_f} \
@@ -393,7 +393,7 @@ process PplacerPCA {
     
     """
     mkdir -p refpkg/ && mkdir -p pca/
-    tar xzvf ${refpkg_tgz_f} -C refpkg/ &&
+    tar xzvf ${refpkg_tgz_f} --no-overwrite-dir -C refpkg/ &&
     guppy epca ${dedup_jplace_f}:${sv_map_f} -c refpkg/ --out-dir pca/ --prefix epca &&
     guppy lpca ${dedup_jplace_f}:${sv_map_f} -c refpkg/ --out-dir pca/ --prefix lpca
     """
@@ -435,7 +435,7 @@ process PplacerKR {
     
     """
     mkdir -p refpkg/
-    tar xzvf ${refpkg_tgz_f} -C refpkg/
+    tar xzvf ${refpkg_tgz_f} --no-overwrite-dir -C refpkg/
     guppy kr --list-out -c refpkg/ ${dedup_jplace_f}:${sv_map_f} |
     gzip > kr_distance.csv.gz
     """
@@ -457,7 +457,7 @@ process ClassifyDB_Prep {
 
     """
     mkdir -p refpkg/
-    tar xzvf ${refpkg_tgz_f} -C refpkg/
+    tar xzvf ${refpkg_tgz_f} --no-overwrite-dir -C refpkg/
     rppr prep_db -c refpkg/ --sqlite classify.prep.db
     (echo "name,specimen"; cat ${sv_map_f}) |
     csvsql --table seq_info --insert --snifflimit 1000 --db sqlite:///classify.prep.db
@@ -481,7 +481,7 @@ process ClassifySV {
 
     """
     mkdir -p refpkg/
-    tar xzvf ${refpkg_tgz_f} -C refpkg/
+    tar xzvf ${refpkg_tgz_f} --no-overwrite-dir -C refpkg/
     guppy classify --pp \
     --classifier ${params.pp_classifer} \
     -j ${task.cpus} \

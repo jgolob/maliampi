@@ -192,7 +192,8 @@ process FilterSeqInfo {
 process DlBuildTaxtasticDB {
     container = "${container__pplacer}"
     label = 'io_limited'
-    // errorStrategy = 'retry'
+    executor 'local'
+    errorStrategy = 'finish'
 
     output:
         file "taxonomy.db"
@@ -212,7 +213,7 @@ process DlBuildTaxtasticDB {
 process BuildTaxtasticDB {
     container = "${container__pplacer}"
     label = 'io_limited'
-    // errorStrategy = 'retry'
+    errorStrategy = 'finish'
 
     input:
         file taxdump_zip_f

@@ -234,7 +234,8 @@ workflow dada2_wf {
 process dada2_ft {
     container "${container__dada2}"
     label 'io_limited'
-    errorStrategy "finish"
+    //errorStrategy "finish"
+    errorStrategy "ignore"
 
     input:
         tuple val(specimen), val(batch), file(R1), file(R2)
@@ -314,7 +315,7 @@ process dada2_learn_error {
 
 process dada2_derep_batches {
     container "${container__dada2}"
-    label 'io_limited'
+    label 'io_mem'
     errorStrategy "finish"
 
     input:
