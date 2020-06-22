@@ -677,9 +677,9 @@ workflow {
         (params.weights != null ) &&
         (params.map != null)
     ) {
-        map_f = file(params.map)
-        weights_f = file(params.weights)
-        sv_fasta_f = file(params.sv_fasta)
+        map_f =  Channel.from( file(params.map) )
+        weights_f = Channel.from( file(params.weights) )
+        sv_fasta_f = Channel.from( file(params.sv_fasta) )
     }
     else if (
         (params.sv_fasta != null) &&

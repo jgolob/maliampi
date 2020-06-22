@@ -3,6 +3,7 @@ container__barcodecop = "golob/barcodecop:0.4.1__bcw_0.3.0"
 workflow preprocess_wf {
     take: indexed_ch
     take: paired_ch
+    take: unpaired_ch
 
     main:
 
@@ -26,7 +27,7 @@ workflow preprocess_wf {
     }
 
     // Mix together the reads with no index with the reads with verified demultiplex
-     paired_ch
+    paired_ch
         .map { sample -> [
             sample.specimen,
             sample.batch,
@@ -35,8 +36,36 @@ workflow preprocess_wf {
         ]}
         .mix(bcc_results.valid)
         .set{ demultiplexed_ch }
+
+    // For the unpaired reads, figure out if they are miseq or pyro using the 'data_type' column. 
+    // If non-existant, assume it is miseq
+    unpaired_ch
+        .branch {
+            pyro: (it.data_type == '16S_pyro') | (it.data_type == 'pyro')
+            miseq: true
+        }.set { single_end_branch_ch }
+
+    single_end_branch_ch.miseq.map{ sample -> [
+        sample.specimen,
+        sample.batch,
+        file(sample.R1)
+    ]}.set {
+        miseq_se
+    }
+
+    single_end_branch_ch.pyro.map{ sample -> [
+        sample.specimen,
+        sample.batch,
+        file(sample.R1)
+    ]}.set {
+        pyro_ch
+    }    
+
+    // Final outputs
     emit:
-        valid = demultiplexed_ch
+        miseq_pe = demultiplexed_ch
+        miseq_se = miseq_se
+        pyro = pyro_ch
         empty = bcc_results.empty
 }
 

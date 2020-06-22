@@ -206,7 +206,8 @@ workflow {
     // Preprocess
     preprocess_wf(
         manifest.valid_paired_indexed,
-        manifest.valid_paired
+        manifest.valid_paired,
+        manifest.valid_unpaired
     )        
     // preprocess_wf.out.valid is the reads that survived the preprocessing steps.
     // preprocess_wf.out.empty are the reads that ended up empty with preprocessing
@@ -215,7 +216,11 @@ workflow {
     // Step 1: DADA2 to make sequence variants.
     //
 
-    dada2_wf(preprocess_wf.out.valid)
+    dada2_wf(
+        preprocess_wf.out.miseq_pe,
+        preprocess_wf.out.miseq_se,
+        preprocess_wf.out.pyro
+    )
 
     //
     // Report specimens that failed at any step of making SVs

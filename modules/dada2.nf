@@ -20,36 +20,54 @@ params.trimLeft = 0
 params.maxN = 0
 params.maxEE = 'Inf'
 params.truncLenF = 0
+params.truncLenF_se = 310
+params.truncLenF_pyro = 250
 params.truncLenR = 0
 params.truncQ = 2
 params.errM_maxConsist = 10
 params.errM_randomize = 'TRUE'
 params.errM_nbases = '1e8'
 params.chimera_method = 'consensus'
+params.maxLenPyro = 350
 
 workflow dada2_wf {
-    take: preprocessed_ch
+    take: miseq_pe_ch
+    take: miseq_se_ch
+    take: pyro_ch
 
     main:
-    dada2_ft(preprocessed_ch)
+
     //
     // STEP 1: filter trim (by specimen)
     //
-
-    ft_reads = dada2_ft.out.branch{
+    dada2_ft(miseq_pe_ch)
+    // Single end and pyro need to be handled differently at the f/t step
+    dada2_ft_se(miseq_se_ch)
+    dada2_ft_pyro(pyro_ch)
+    
+    ft_reads_pe = dada2_ft.out.branch{
         empty: file(it[2]).isEmpty() || file(it[3]).isEmpty()
         valid: true
     }
 
+    ft_reads_se = dada2_ft_se.out.mix(dada2_ft_pyro.out)
+        .branch{
+            empty: file(it[2]).isEmpty()
+            valid: true
+        }
+    
+
     //
     // STEP 2: dereplicate (by specimen)
     //
-    dada2_derep(ft_reads.valid)
+    dada2_derep(ft_reads_pe.valid)
+    // And single end reads
+    dada2_derep_se(ft_reads_se.valid)
 
     //
     // STEP 3: learn error by batch
     //
-    ft_reads.valid
+    ft_reads_pe.valid
         .toSortedList({a, b -> a[0] <=> b[0]})
         .flatMap()
         .groupTuple(by: 1)
@@ -57,6 +75,17 @@ workflow dada2_wf {
             it -> forR1: forR2: it
         }.set { ft_batches }
 
+    ft_reads_se.valid
+        .toSortedList({a, b -> a[0] <=> b[0]})
+        .flatMap()
+        .groupTuple(by: 1)
+        .set { ft_batches_se }
+    
+    ft_batches_se
+        .map {
+            [it[0], it[1], it[2], 'R1']
+        }.set { derep_by_batch_se }
+    
     ft_batches.forR1
         .map {
             [it[0], it[1], it[2], 'R1']
@@ -69,7 +98,9 @@ workflow dada2_wf {
         .set{
             derep_by_batch
         }
-    dada2_learn_error(derep_by_batch)
+    dada2_learn_error(derep_by_batch.mix(derep_by_batch_se))
+
+
 
     //
     // STEP 4: Group up derep and errM objects by batch
@@ -93,7 +124,14 @@ workflow dada2_wf {
                 it[0],  // specimen
                 it[3],   // derep file
             ]
-        })
+        }).mix(
+            dada2_derep_se.out.map{[
+                it[1], // batch
+                'R1',
+                it[0], // specimen,
+                it[2], //derep
+            ]}
+        )
         .toSortedList({a, b -> a[2] <=> b[2]})
         .flatMap()
         .groupTuple(by: [0, 1])
@@ -116,7 +154,7 @@ workflow dada2_wf {
     dada2_dada(dada2_derep_batches.out)
     // split the dada2 results out
     dada2_demultiplex_dada(dada2_dada.out)
-    // Flatten things back out to one-specimen-per-row
+    // Flatten things back out to one-specimen-per-row for the paired end reads
     dada2_demultiplex_dada.out
         .flatMap{
             br -> 
@@ -143,21 +181,36 @@ workflow dada2_wf {
                 file(spr[2][r1_idx]), // dada_1
                 file(spr[2][r2_idx]), // dada_2
             ]}
-        .join(dada2_derep.out)
-        .map {
-            [
-                it[0],       // specimen
-                it[1],      // batch
-                file(it[2]),  // dada_R1
-                file(it[3]), // dada_R2
-                file(it[5]),  // derep_R1
-                file(it[6])   // derep_R2
-            ]
+        .tap {
+            dada2_demultiplex_dada_for_pe;
+            dada2_demultiplex_dada_for_se
         }
-        .set { dada2_dada_sp_ch }
 
+        dada2_demultiplex_dada_for_pe
+            .join(dada2_derep.out)
+            .map {
+                [
+                    it[0],       // specimen
+                    it[1],      // batch
+                    file(it[2]),  // dada_R1
+                    file(it[3]), // dada_R2
+                    file(it[5]),  // derep_R1
+                    file(it[6])   // derep_R2
+                ]
+            }
+            .set { dada2_dada_sp_ch }
+    
+    dada2_demultiplex_dada_for_se
+        .join(dada2_derep_se.out)
+        .map {[
+            it[1], // batch
+            it[0], // specimen
+            it[2], // dada for this
+        ]}
+        .set { dada2_dada_se_ch }
+        
     //
-    // STEP 6: Merge reads, using the dereplicated seqs and applied model
+    // STEP 6: Merge reads, using the dereplicated seqs and applied model (only paired)
     //
     dada2_merge(dada2_dada_sp_ch)
     // Filter out empty merged files.
@@ -169,7 +222,15 @@ workflow dada2_wf {
     //
     // STEP 7. Make a seqtab for each specimen
     //
-    dada2_seqtab_sp( dada2_merge_filtered.valid )
+    
+
+
+
+    dada2_seqtab_sp( 
+        dada2_merge_filtered.valid.mix(
+            dada2_dada_se_ch  // single end dada files
+        )
+    )
 
     //
     // STEP 8. Combine seqtabs
@@ -216,7 +277,7 @@ workflow dada2_wf {
     //
     // STEP 11. Collect all the failures
     //
-    ft_reads.empty.map{ [it[0], 'Empty after FT']}.mix(
+    ft_reads_pe.empty.map{ [it[0], 'Empty after FT']}.mix(
     dada2_merge_filtered.empty.map{ [it[1], 'Empty after merge']})
     .set{ failures }
 
@@ -228,6 +289,7 @@ workflow dada2_wf {
        sv_sharetable    = dada2_convert_output.out[4]
        sv_table         = dada2_remove_bimera.out[0]
        failures         = failures
+    // */
 }
 
 
@@ -260,6 +322,61 @@ process dada2_ft {
     """
 }
 
+process dada2_ft_se {
+    container "${container__dada2}"
+    label 'io_limited'
+    //errorStrategy "finish"
+    errorStrategy "ignore"
+
+    input:
+        tuple val(specimen), val(batch), file(R1)
+    
+    output:
+        tuple val(specimen), val(batch), file("${R1.getSimpleName()}.dada2.ft.fq.gz")
+    """
+    #!/usr/bin/env Rscript
+    library('dada2'); 
+    filterAndTrim(
+        '${R1}', '${R1.getSimpleName()}.dada2.ft.fq.gz',
+        trimLeft = ${params.trimLeft},
+        maxN = ${params.maxN},
+        maxEE = ${params.maxEE},
+        truncLen = ${params.truncLenF_se},
+        truncQ = ${params.truncQ},
+        compress = TRUE,
+        verbose = TRUE,
+        multithread = ${task.cpus}
+    )
+    """
+}
+
+process dada2_ft_pyro {
+    container "${container__dada2}"
+    label 'io_limited'
+    //errorStrategy "finish"
+    //errorStrategy "ignore"
+
+    input:
+        tuple val(specimen), val(batch), file(R1)
+    
+    output:
+        tuple val(specimen), val(batch), file("${R1.getSimpleName()}.dada2.ft.fq.gz")
+    """
+    #!/usr/bin/env Rscript
+    library('dada2'); 
+    filterAndTrim(
+        '${R1}', '${R1.getSimpleName()}.dada2.ft.fq.gz',
+        truncLen = ${params.truncLenF_pyro},
+        maxLen = ${params.maxLenPyro},
+        HOMOPOLYMER_GAP_PENALTY=-1,
+        BAND_SIZE=32,
+        compress = TRUE,
+        verbose = TRUE,
+        multithread = ${task.cpus}
+    )
+    """
+}
+
 process dada2_derep {
     container "${container__dada2}"
     label 'io_limited'
@@ -278,6 +395,25 @@ process dada2_derep {
     saveRDS(derep_1, '${R1.getSimpleName()}.dada2.ft.derep.rds');
     derep_2 <- derepFastq('${R2}');
     saveRDS(derep_2, '${R2.getSimpleName()}.dada2.ft.derep.rds');
+    """ 
+}
+
+process dada2_derep_se {
+    container "${container__dada2}"
+    label 'io_limited'
+    errorStrategy "finish"
+
+    input:
+        tuple val(specimen), val(batch), file(R1)
+    
+    output:
+        tuple val(specimen), val(batch), file("${R1.getSimpleName()}.dada2.ft.derep.rds")
+    
+    """
+    #!/usr/bin/env Rscript
+    library('dada2');
+    derep_1 <- derepFastq('${R1}');
+    saveRDS(derep_1, '${R1.getSimpleName()}.dada2.ft.derep.rds');
     """ 
 }
 
