@@ -662,7 +662,7 @@ sv_classification = pd.concat([
     for sv in sv
 ], ignore_index=True)
 
-sv_classification.to_csv("sv_taxonomy.csv", index=True)
+sv_classification.to_csv("sv_taxonomy.csv", index=False)
 
 """
 }
