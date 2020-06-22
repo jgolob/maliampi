@@ -164,6 +164,12 @@ workflow pplacer_place_classify_wf {
         classify_rank_ch
     )
 
+    // Step 14. Extract the taxonomy for each SV to a CSV file
+    Extract_Taxonomy (
+        sv_weights_f,
+        ClassifyMCC.out
+    )
+
     emit:
         jplace_dedup = PplacerPlacement.out
         jplace_redup = PplacerReduplicate.out
@@ -614,6 +620,51 @@ process Dada2_convert_output {
     -m dada2.sv.map.csv \
     -w dada2.sv.weights.csv \
     """
+}
+
+process Extract_Taxonomy {
+    container "${container__dada2pplacer}"
+    label 'io_mem'
+    publishDir "${params.output}/classify", mode: 'copy'
+    errorStrategy "ignore"
+
+    input:
+        file (weights_csv)
+        file (taxonomy_db)
+
+    output:
+        file "sv_taxonomy.csv"
+
+"""
+#!/usr/bin/env python
+import csv
+import pandas as pd
+import sqlite3
+
+sv = {
+    r[1] for r in 
+    csv.reader(open(
+        "${weights_csv}",
+        'rt'
+    ))
+}
+
+tax_db_conn = sqlite3.connect("${taxonomy_db}")
+tax_db_cur = tax_db_conn.cursor()
+tax_db_cur.execute("CREATE INDEX IF NOT EXISTS idx_mcc_name_tax  ON multiclass_concat(name, tax_id)")
+
+sv_classification = pd.concat([
+    pd.read_sql("SELECT name, want_rank, taxa.tax_id, taxa.tax_name, taxa.rank, likelihood FROM multiclass_concat JOIN taxa ON multiclass_concat.tax_id = taxa.tax_id WHERE name=(?)",
+        con = tax_db_conn,
+        params=(
+            sv,
+        ))    
+    for sv in sv
+], ignore_index=True)
+
+sv_classification.to_csv("sv_taxonomy.csv", ignore_index=True)
+
+"""
 }
 
 
