@@ -45,17 +45,24 @@ workflow dada2_wf {
     dada2_ft_se(miseq_se_ch)
     dada2_ft_pyro(pyro_ch)
     
-    ft_reads_pe = dada2_ft.out.branch{
+    ft_reads_pe = dada2_ft.out
+    .branch{
         empty: file(it[2]).isEmpty() || file(it[3]).isEmpty()
         valid: true
     }
 
-    ft_reads_se = dada2_ft_se.out.mix(dada2_ft_pyro.out)
-        .branch{
+    ft_reads_se = dada2_ft_se.out
+    .branch{
             empty: file(it[2]).isEmpty()
             valid: true
         }
     
+    ft_reads_pyro = dada2_ft_pyro.out
+        .branch{
+            empty: file(it[2]).isEmpty()
+            valid: true
+        }
+
 
     //
     // STEP 2: dereplicate (by specimen)
@@ -63,6 +70,8 @@ workflow dada2_wf {
     dada2_derep(ft_reads_pe.valid)
     // And single end reads
     dada2_derep_se(ft_reads_se.valid)
+    // And pyro / IT reads
+    dada2_derep_pyro(ft_reads_pyro.valid)
 
     //
     // STEP 3: learn error by batch
@@ -80,12 +89,21 @@ workflow dada2_wf {
         .flatMap()
         .groupTuple(by: 1)
         .set { ft_batches_se }
-    
     ft_batches_se
         .map {
             [it[0], it[1], it[2], 'R1']
         }.set { derep_by_batch_se }
-    
+
+    ft_reads_pyro.valid
+        .toSortedList({a, b -> a[0] <=> b[0]})
+        .flatMap()
+        .groupTuple(by: 1)
+        .set { ft_batches_pyro }
+    ft_batches_pyro
+        .map {
+            [it[0], it[1], it[2], 'R1']
+        }.set { derep_by_batch_pyro }
+
     ft_batches.forR1
         .map {
             [it[0], it[1], it[2], 'R1']
@@ -99,6 +117,8 @@ workflow dada2_wf {
             derep_by_batch
         }
     dada2_learn_error(derep_by_batch.mix(derep_by_batch_se))
+
+    dada2_learn_error_pyro(derep_by_batch_pyro)
 
 
 
@@ -148,12 +168,39 @@ workflow dada2_wf {
         
     dada2_derep_batches(batch_err_dereps_ch)
 
+    // And pyro batching
+    dada2_derep_pyro.out.map{[
+                it[1], // batch
+                'R1',
+                it[0], // specimen,
+                it[2], //derep        
+        ]}
+        .toSortedList({a, b -> a[2] <=> b[2]})
+        .flatMap()
+        .groupTuple(by: [0, 1])
+        .combine(dada2_learn_error_pyro.out, by: [0,1])
+        .map{ r-> [
+            r[0], // batch
+            r[1], // read_num
+            r[2],  // specimen names (list)
+            r[3],  // derep files (list)
+            r[4],  // errM file
+            r[3].collect { f -> return file(f).getSimpleName()+".dada.rds" }
+        ]}
+        .set { batch_err_dereps_pyro_ch }
+    dada2_derep_batches_pyro(batch_err_dereps_pyro_ch)
+
     //
     // STEP 5: Apply the error model by batch, using pseudo-pooling to improve yield.
     //
     dada2_dada(dada2_derep_batches.out)
+    dada2_dada_pyro(dada2_derep_batches_pyro.out)
     // split the dada2 results out
-    dada2_demultiplex_dada(dada2_dada.out)
+    dada2_demultiplex_dada(
+        dada2_dada.out.mix(
+            dada2_dada_pyro.out
+        )
+    )
     // Flatten things back out to one-specimen-per-row for the paired end reads
     dada2_demultiplex_dada.out
         .flatMap{
@@ -201,7 +248,11 @@ workflow dada2_wf {
             .set { dada2_dada_sp_ch }
     
     dada2_demultiplex_dada_for_se
-        .join(dada2_derep_se.out)
+        .join(
+            dada2_derep_se.out.mix(
+                dada2_derep_pyro.out
+            )
+        )
         .map {[
             it[1], // batch
             it[0], // specimen
@@ -354,7 +405,7 @@ process dada2_ft_pyro {
     container "${container__dada2}"
     label 'io_limited'
     //errorStrategy "finish"
-    //errorStrategy "ignore"
+    errorStrategy "ignore"
 
     input:
         tuple val(specimen), val(batch), file(R1)
@@ -368,8 +419,6 @@ process dada2_ft_pyro {
         '${R1}', '${R1.getSimpleName()}.dada2.ft.fq.gz',
         truncLen = ${params.truncLenF_pyro},
         maxLen = ${params.maxLenPyro},
-        HOMOPOLYMER_GAP_PENALTY=-1,
-        BAND_SIZE=32,
         compress = TRUE,
         verbose = TRUE,
         multithread = ${task.cpus}
@@ -399,6 +448,25 @@ process dada2_derep {
 }
 
 process dada2_derep_se {
+    container "${container__dada2}"
+    label 'io_limited'
+    errorStrategy "finish"
+
+    input:
+        tuple val(specimen), val(batch), file(R1)
+    
+    output:
+        tuple val(specimen), val(batch), file("${R1.getSimpleName()}.dada2.ft.derep.rds")
+    
+    """
+    #!/usr/bin/env Rscript
+    library('dada2');
+    derep_1 <- derepFastq('${R1}');
+    saveRDS(derep_1, '${R1.getSimpleName()}.dada2.ft.derep.rds');
+    """ 
+}
+
+process dada2_derep_pyro {
     container "${container__dada2}"
     label 'io_limited'
     errorStrategy "finish"
@@ -449,7 +517,62 @@ process dada2_learn_error {
     """
 }
 
+process dada2_learn_error_pyro {
+    container "${container__dada2}"
+    label 'multithread'
+    errorStrategy "finish"
+    publishDir "${params.output}/sv/errM/${batch}", mode: 'copy'
+
+    input:
+        tuple val(batch_specimens), val(batch), file(reads), val(read_num)
+
+    output:
+        tuple batch, read_num, file("${batch}.${read_num}.errM.rds"), file("${batch}.${read_num}.errM.csv")
+
+    """
+    #!/usr/bin/env Rscript
+    library('dada2');
+    err <- learnErrors(
+        unlist(strsplit(
+            '${reads}',
+            ' ',
+            fixed=TRUE
+        )),
+        multithread=${task.cpus},
+        HOMOPOLYMER_GAP_PENALTY=-1, BAND_SIZE=32,
+        MAX_CONSIST=${params.errM_maxConsist},
+        randomize=${params.errM_randomize},
+        nbases=${params.errM_nbases},
+        verbose=TRUE
+    );
+    saveRDS(err, "${batch}.${read_num}.errM.rds"); 
+    write.csv(err, "${batch}.${read_num}.errM.csv");
+    """
+}
+
 process dada2_derep_batches {
+    container "${container__dada2}"
+    label 'io_mem'
+    errorStrategy "finish"
+
+    input:
+        tuple val(batch), val(read_num), val(specimens), file(dereps), val(errM), val(dada_fns)
+    
+    output:
+        tuple val(batch), val(read_num), val(specimens), file("${batch}_${read_num}_derep.rds"), val(errM), val(dada_fns)
+    
+    """
+    #!/usr/bin/env Rscript
+    library('dada2');
+    derep <- lapply(
+        unlist(strsplit('${dereps}', ' ', fixed=TRUE)),
+        readRDS
+    );
+    saveRDS(derep, "${batch}_${read_num}_derep.rds")
+    """
+}
+
+process dada2_derep_batches_pyro {
     container "${container__dada2}"
     label 'io_mem'
     errorStrategy "finish"
@@ -487,6 +610,26 @@ process dada2_dada {
     errM <- readRDS('${errM}');
     derep <- readRDS('${derep}');
     dadaResult <- dada(derep, err=errM, multithread=${task.cpus}, verbose=TRUE, pool="pseudo");
+    saveRDS(dadaResult, "${batch}_${read_num}_dada.rds");
+    """
+}
+
+process dada2_dada_pyro {
+    container "${container__dada2}"
+    label 'multithread'
+    errorStrategy "finish"
+
+    input:
+        tuple val(batch), val(read_num), val(specimens), file(derep), file(errM), val(dada_fns)
+
+    output:
+        tuple val(batch), val(read_num), val(specimens), file("${batch}_${read_num}_dada.rds"), val(dada_fns)
+    """
+    #!/usr/bin/env Rscript
+    library('dada2');
+    errM <- readRDS('${errM}');
+    derep <- readRDS('${derep}');
+    dadaResult <- dada(derep, err=errM, multithread=${task.cpus}, verbose=TRUE, pool="pseudo",  HOMOPOLYMER_GAP_PENALTY=-1, BAND_SIZE=32);
     saveRDS(dadaResult, "${batch}_${read_num}_dada.rds");
     """
 }
