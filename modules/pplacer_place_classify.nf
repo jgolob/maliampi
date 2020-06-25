@@ -642,7 +642,7 @@ import pandas as pd
 import sqlite3
 
 sv = {
-    r[1] for r in 
+    r[0] for r in 
     csv.reader(open(
         "${weights_csv}",
         'rt'
