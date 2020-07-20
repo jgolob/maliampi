@@ -9,6 +9,7 @@ container__pplacer = "golob/pplacer:1.1alpha19rc_BCW_0.3.1A"
 container__seqinfosync = "golob/seqinfo_taxonomy_sync:0.2.1__bcw.0.3.0"
 container__infernal = "golob/infernal:1.1.2_bcw_0.3.1"
 container__raxml = "golob/raxml:8.2.11_bcw_0.3.0"
+container__dada2pplacer = "golob/dada2-pplacer:0.8.0__bcw_0.3.1A"
 
 // paramters
 params.help = false
@@ -341,7 +342,7 @@ with open("RAxML_info.refpkg",'wt') as out_h:
 process TaxtableForSI {
     container = "${container__pplacer}"
     label = 'io_limited'
-    // errorStrategy = 'retry'
+    errorStrategy = 'finish'
 
     input:
         file taxonomy_db_f 
@@ -403,6 +404,29 @@ process CombineRefpkg {
     """
 }
 
+process Dada2_convert_output {
+    container "${container__dada2pplacer}"
+    label 'io_mem'
+    publishDir "${params.output}/sv/", mode: 'copy'
+    errorStrategy "retry"
+
+    input:
+        file(final_seqtab_csv)
+
+    output:
+        file "dada2.sv.fasta"
+        file "dada2.sv.map.csv"
+        file "dada2.sv.weights.csv"
+
+    """
+    dada2-seqtab-to-pplacer \
+    -s ${final_seqtab_csv} \
+    -f dada2.sv.fasta \
+    -m dada2.sv.map.csv \
+    -w dada2.sv.weights.csv \
+    """
+}
+
 //
 // Function which prints help message text
 def helpMessage() {
@@ -415,6 +439,9 @@ def helpMessage() {
     
     Required Arguments:
         --sv_fasta            Sequence variants (in FASTA format)
+            or
+        --seqtable            DADA2 style sequence table (in CSV format)
+            and
         --repo_fasta          Repository of 16S rRNA genes.
         --repo_si             Information about the 16S rRNA genes.
         --email               Email (for NCBI)
@@ -442,7 +469,6 @@ workflow {
     // Show help message if the user specifies the --help flag at runtime
     if (
             params.help || 
-            (params.sv_fasta == null ) ||
             (params.repo_fasta == null) ||
             (params.repo_si == null) ||
             (params.email == null)
@@ -452,9 +478,29 @@ workflow {
         // Exit out and do not run anything else
         exit 0
     }
-    // Implicit else
-    make_refpkg_wf(
-        file(params.sv_fasta)
-    )
+
+    if (params.sv_fasta != null) {
+        make_refpkg_wf(
+            file(params.sv_fasta)
+        )
+    }
+    else if (
+        params.seqtable != null
+    ) {
+        Dada2_convert_output(file(params.seqtable))
+        sv_fasta_f = Dada2_convert_output.out[0]
+        map_f = Dada2_convert_output.out[1]
+        weights_f = Dada2_convert_output.out[2]
+        make_refpkg_wf(
+            sv_fasta_f
+        )
+    }
+    else {
+        helpMessage()
+        // Exit out and do not run anything else
+        exit 0        
+    }
+
+
 
 }
