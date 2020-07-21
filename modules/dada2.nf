@@ -44,7 +44,7 @@ workflow dada2_wf {
     // Single end and pyro need to be handled differently at the f/t step
     dada2_ft_se(miseq_se_ch)
     dada2_ft_pyro(pyro_ch)
-    
+
     ft_reads_pe = dada2_ft.out
     .branch{
         empty: file(it[2]).isEmpty() || file(it[3]).isEmpty()
@@ -274,9 +274,6 @@ workflow dada2_wf {
     // STEP 7. Make a seqtab for each specimen
     //
     
-
-
-
     dada2_seqtab_sp( 
         dada2_merge_filtered.valid.mix(
             dada2_dada_se_ch  // single end dada files
@@ -898,8 +895,9 @@ workflow {
     // Preprocess
     preprocess_wf(
         manifest.valid_paired_indexed,
-        manifest.valid_paired
-    )        
+        manifest.valid_paired,
+        manifest.valid_unpaired
+    )       
     // preprocess_wf.out.valid is the reads that survived the preprocessing steps.
     // preprocess_wf.out.empty are the reads that ended up empty with preprocessing
 
@@ -907,11 +905,17 @@ workflow {
     // Step 1: DADA2 to make sequence variants.
     //
 
-    dada2_wf(preprocess_wf.out.valid)
+    dada2_wf(
+        preprocess_wf.out.miseq_pe,
+        preprocess_wf.out.miseq_se,
+        preprocess_wf.out.pyro
+    )
+
 
     //
     // Report specimens that failed at any step of making SVs
     //
+
 
     output_failed(            
         manifest.other.map { [it.specimen, 'failed at manifest'] }.mix(
@@ -921,6 +925,6 @@ workflow {
         .transpose()
         .toList()
     )
-
+    // */
 
 }

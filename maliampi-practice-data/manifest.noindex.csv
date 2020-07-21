@@ -1,4 +1,4 @@
-specimen,batch,read__1,read__2
+specimen,batch,R1,R2
 S10_S37,noindex,reads/S10_S37_L001_R1_001.min.fastq.gz,reads/S10_S37_L001_R2_001.min.fastq.gz
 H10_S91,noindex,reads/H10_S91_L001_R1_001.min.fastq.gz,reads/H10_S91_L001_R2_001.min.fastq.gz
 J10_S92,noindex,reads/J10_S92_L001_R1_001.min.fastq.gz,reads/J10_S92_L001_R2_001.min.fastq.gz

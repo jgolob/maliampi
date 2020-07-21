@@ -1,4 +1,4 @@
-specimen,batch,read__1,read__2,index__1,index__2,label
+specimen,batch,R1,R2,I1,I2,label
 m22n729-s521,m22_p4,reads/m22n729-s521_S383_L001_R1_001.fastq.gz,reads/m22n729-s521_S383_L001_R2_001.fastq.gz,reads/m22n729-s521_S383_L001_I1_001.fastq.gz,reads/m22n729-s521_S383_L001_I2_001.fastq.gz,mock comm- 10^6
 m22n729-s520,m22_p4,reads/m22n729-s520_S382_L001_R1_001.fastq.gz,reads/m22n729-s520_S382_L001_R2_001.fastq.gz,reads/m22n729-s520_S382_L001_I1_001.fastq.gz,reads/m22n729-s520_S382_L001_I2_001.fastq.gz,mock comm-50 ul
 m22n729-s522,m22_p4,reads/m22n729-s522_S384_L001_R1_001.fastq.gz,reads/m22n729-s522_S384_L001_R2_001.fastq.gz,reads/m22n729-s522_S384_L001_I1_001.fastq.gz,reads/m22n729-s522_S384_L001_I2_001.fastq.gz,mock comm-plasmid2
