@@ -117,12 +117,12 @@ def helpMessage() {
 }
 
 // Modules
-include read_manifest from './modules/manifest'
-include output_failed from './modules/preprocess' params (
+include { read_manifest } from './modules/manifest'
+include { output_failed } from './modules/preprocess' params (
     output: params.output
 )
-include preprocess_wf from './modules/preprocess'
-include dada2_wf from './modules/dada2' params (
+include { preprocess_wf } from './modules/preprocess'
+include { dada2_wf } from './modules/dada2' params (
     output: params.output,
     trimLeft: params.trimLeft,
     maxN: params.maxN,
@@ -139,7 +139,7 @@ include dada2_wf from './modules/dada2' params (
     goods_min_reads :params.goods_min_reads
 )
 
-include make_refpkg_wf from './modules/refpackage' params (
+include { make_refpkg_wf } from './modules/refpackage' params (
     output: params.output,
     repo_fasta: params.repo_fasta,
     repo_si: params.repo_si,
@@ -153,7 +153,7 @@ include make_refpkg_wf from './modules/refpackage' params (
 
 )
 
-include pplacer_place_classify_wf from './modules/pplacer_place_classify' params (
+include { pplacer_place_classify_wf } from './modules/pplacer_place_classify' params (
     output: params.output,
     cmalign_mxsize: params.cmalign_mxsize,
     // Placer
