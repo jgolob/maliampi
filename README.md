@@ -138,7 +138,7 @@ mkdir -p working/ && mkdir -p output/sv/
 ```
 
 ### 3. (Optional) Look at the manifest file
->Maliampi uses a manifest file to keep track of things. At a minimum this needs to have two columns: one for _specimen_ (a unique identifier) and _read__1_ (to point to the file path of the fastq file containing the forward read). Almost always there will be another column for the reverse read, _read__2_. 
+>Maliampi uses a manifest file to keep track of things. At a minimum this needs to have two columns: one for _specimen_ (a unique identifier) and _R1_ (to point to the file path of the fastq file containing the forward read). Almost always there will be another column for the reverse read, _R2_. 
 
 > Another important column to include is _batch_, corresponding to a given extraction-and-sequencing run. 
 
