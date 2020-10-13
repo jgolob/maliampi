@@ -10,6 +10,7 @@ container__seqinfosync = "golob/seqinfo_taxonomy_sync:0.2.1__bcw.0.3.0"
 container__infernal = "golob/infernal:1.1.2_bcw_0.3.1"
 container__raxml = "golob/raxml:8.2.11_bcw_0.3.0"
 container__dada2pplacer = "golob/dada2-pplacer:0.8.0__bcw_0.3.1A"
+container__taxtastic = "golob/taxtastic:0.9.0"
 
 // paramters
 params.help = false
@@ -191,7 +192,7 @@ process FilterSeqInfo {
 }
 
 process DlBuildTaxtasticDB {
-    container = "${container__pplacer}"
+    container = "${container__taxtastic}"
     label = 'io_limited'
     executor 'local'
     errorStrategy = 'finish'
@@ -212,7 +213,7 @@ process DlBuildTaxtasticDB {
 }
 
 process BuildTaxtasticDB {
-    container = "${container__pplacer}"
+    container = "${container__taxtastic}"
     label = 'io_limited'
     errorStrategy = 'finish'
 
@@ -340,7 +341,7 @@ with open("RAxML_info.refpkg",'wt') as out_h:
 
 
 process TaxtableForSI {
-    container = "${container__pplacer}"
+    container = "${container__taxtastic}"
     label = 'io_limited'
     errorStrategy = 'finish'
 
