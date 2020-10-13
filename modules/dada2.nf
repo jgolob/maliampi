@@ -837,11 +837,11 @@ process goods_filter_seqtab {
 // standalone workflow for module
 //
 
-include read_manifest from './manifest'
-include output_failed from './preprocess' params (
+include { read_manifest } from './manifest'
+include { output_failed } from './preprocess' params (
     output: params.output
 )
-include preprocess_wf from './preprocess'
+include { preprocess_wf } from './preprocess'
 
 // Function which prints help message text
 def helpMessage() {
