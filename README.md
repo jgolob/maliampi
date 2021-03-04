@@ -201,13 +201,13 @@ Required Arguments:
     --manifest            CSV file listing samples
                             At a minimum must have columns:
                                 specimen: A unique identifier 
-                                read__1: forward read
-                                read__2: reverse read fq
+                                R1: forward read
+                                R2: reverse read fq
 
                             optional columns:
                                 batch: sequencing / library batch. Should be filename safe
-                                index__1: forward index file (for checking demultiplexing)
-                                index__2: reverse index file
+                                I1: forward index file (for checking demultiplexing)
+                                I2: reverse index file
     --repo_fasta          Repository of 16S rRNA genes.
     --repo_si             Information about the 16S rRNA genes.
     --email               Email (for NCBI)
