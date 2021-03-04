@@ -73,6 +73,8 @@ Using maliampi requires nextflow to be installed and configured on your computer
 
     - 'io_limited': processes that are not multithreaded and are generally limited by the speed files can be read and written.
 
+    - 'io_limited_local': processes that are I/O limited and should also be executed locally.
+
     - 'io_mem': processes that are limited by the speed of reading and writing files, but also require a lot of memory.
 
     - 'mutlithread': Tasks that have relatively modest cpu and memory requirements, but can benefit from multiple cpus and are not limited by reading and writing files.
@@ -93,6 +95,10 @@ profiles{
                 cpus = 1
                 memory = 4.GB
             }
+            withLabel: 'io_limited_local' {
+                cpus = 1
+                memory = 4.GB
+            }
             withLabel: 'io_mem' {
                 cpus = 1
                 memory = 16.GB
@@ -110,6 +116,36 @@ profiles{
             enabled = true
         }
     } // end standard profile
+    hybrid {  // start hybrid profile combining local and awsbatch
+        process {
+            withLabel: 'io_limited' {
+                cpus = 1
+                memory = 4.GB
+                executor = 'awsbatch'
+            }
+            withLabel: 'io_limited_local' {
+                cpus = 1
+                memory = 4.GB
+                executor = 'local'
+                docker.enabled = true
+            }
+            withLabel: 'io_mem' {
+                cpus = 1
+                memory = 16.GB
+                executor = 'awsbatch'
+            }
+            withLabel: 'multithread' {
+                cpus = 4
+                memory = 16.GB
+                executor = 'awsbatch'
+            }
+            withLabel: 'mem_veryhigh' {
+                cpus = 2
+                memory = 32.GB
+                executor = 'awsbatch'
+            }
+        }
+    } // end hybrid profile
 }
 ```
 
