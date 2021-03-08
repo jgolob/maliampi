@@ -351,13 +351,13 @@ process dada2_ft {
         tuple val(specimen), val(batch), file(R1), file(R2)
     
     output:
-        tuple val(specimen), val(batch), file("${R1.getSimpleName()}.dada2.ft.fq.gz"), file("${R2.getSimpleName()}.dada2.ft.fq.gz")
+        tuple val(specimen), val(batch), file("${R1.getSimpleName()}.R1.dada2.ft.fq.gz"), file("${R2.getSimpleName()}.R2.dada2.ft.fq.gz")
     """
     #!/usr/bin/env Rscript
     library('dada2'); 
     filterAndTrim(
-        '${R1}', '${R1.getSimpleName()}.dada2.ft.fq.gz',
-        '${R2}', '${R2.getSimpleName()}.dada2.ft.fq.gz',
+        '${R1}', '${R1.getSimpleName()}.R1.dada2.ft.fq.gz',
+        '${R2}', '${R2.getSimpleName()}.R2.dada2.ft.fq.gz',
         trimLeft = ${params.trimLeft},
         maxN = ${params.maxN},
         maxEE = ${params.maxEE},
