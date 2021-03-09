@@ -1,4 +1,4 @@
-container__barcodecop = "golob/barcodecop:0.4.1__bcw_0.3.0"
+container__barcodecop = "golob/barcodecop:0.5__bc_1"
 
 workflow preprocess_wf {
     take: indexed_ch
