@@ -663,7 +663,7 @@ process dada2_merge {
     errorStrategy "finish"
 
     input:
-        tuple val(specimen), val(batch), file(R1dada), file(R2dada), file(R1), file(R2)
+        tuple val(specimen), val(batch), file("R1.dada2.fastq.gz"), file("R2.dada2.fastq.gz"), file("R1.fastq.gz"), file("R1.fastq.gz")
 
     output:
         tuple val(batch), val(specimen), file("${specimen}.dada2.merged.rds")
@@ -671,10 +671,10 @@ process dada2_merge {
     """
     #!/usr/bin/env Rscript
     library('dada2');
-    dada_1 <- readRDS('${R1dada}');
-    derep_1 <- readRDS('${R1}');
-    dada_2 <- readRDS('${R2dada}');
-    derep_2 <- readRDS('${R2}');        
+    dada_1 <- readRDS('R1.dada2.fastq.gz');
+    derep_1 <- readRDS('R1.fastq.gz');
+    dada_2 <- readRDS('R2.dada2.fastq.gz');
+    derep_2 <- readRDS('R1.fastq.gz');        
     merger <- mergePairs(
         dada_1, derep_1,
         dada_2, derep_2,
