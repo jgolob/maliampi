@@ -351,13 +351,13 @@ process dada2_ft {
         tuple val(specimen), val(batch), file(R1), file(R2)
     
     output:
-        tuple val(specimen), val(batch), file("${R1.getSimpleName()}.dada2.ft.fq.gz"), file("${R2.getSimpleName()}.dada2.ft.fq.gz")
+        tuple val(specimen), val(batch), file("${R1.getSimpleName()}.R1.dada2.ft.fq.gz"), file("${R2.getSimpleName()}.R2.dada2.ft.fq.gz")
     """
     #!/usr/bin/env Rscript
     library('dada2'); 
     filterAndTrim(
-        '${R1}', '${R1.getSimpleName()}.dada2.ft.fq.gz',
-        '${R2}', '${R2.getSimpleName()}.dada2.ft.fq.gz',
+        '${R1}', '${R1.getSimpleName()}.R1.dada2.ft.fq.gz',
+        '${R2}', '${R2.getSimpleName()}.R2.dada2.ft.fq.gz',
         trimLeft = ${params.trimLeft},
         maxN = ${params.maxN},
         maxEE = ${params.maxEE},
@@ -663,7 +663,7 @@ process dada2_merge {
     errorStrategy "finish"
 
     input:
-        tuple val(specimen), val(batch), file(R1dada), file(R2dada), file(R1), file(R2)
+        tuple val(specimen), val(batch), file("R1.dada2.fastq.gz"), file("R2.dada2.fastq.gz"), file("R1.fastq.gz"), file("R2.fastq.gz")
 
     output:
         tuple val(batch), val(specimen), file("${specimen}.dada2.merged.rds")
@@ -671,10 +671,10 @@ process dada2_merge {
     """
     #!/usr/bin/env Rscript
     library('dada2');
-    dada_1 <- readRDS('${R1dada}');
-    derep_1 <- readRDS('${R1}');
-    dada_2 <- readRDS('${R2dada}');
-    derep_2 <- readRDS('${R2}');        
+    dada_1 <- readRDS('R1.dada2.fastq.gz');
+    derep_1 <- readRDS('R1.fastq.gz');
+    dada_2 <- readRDS('R2.dada2.fastq.gz');
+    derep_2 <- readRDS('R2.fastq.gz');        
     merger <- mergePairs(
         dada_1, derep_1,
         dada_2, derep_2,

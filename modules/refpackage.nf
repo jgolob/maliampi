@@ -193,8 +193,7 @@ process FilterSeqInfo {
 
 process DlBuildTaxtasticDB {
     container = "${container__taxtastic}"
-    label = 'io_limited'
-    executor 'local'
+    label = 'io_limited_local'
     errorStrategy = 'finish'
 
     output:
