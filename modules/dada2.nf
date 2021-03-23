@@ -561,8 +561,10 @@ process dada2_derep_batches {
     """
     #!/usr/bin/env Rscript
     library('dada2');
+    derep_str <- trimws('${dereps}')
+    print(derep_str)
     derep <- lapply(
-        unlist(strsplit('${dereps}', ' ', fixed=TRUE)),
+        unlist(strsplit(derep_str, ' ', fixed=TRUE)),
         readRDS
     );
     saveRDS(derep, "${batch}_${read_num}_derep.rds")
@@ -882,7 +884,11 @@ def helpMessage() {
 }
 
 workflow {
-    
+    if (params.manifest == null) {
+        helpMessage()
+        exit 0
+    }
+
     // Load manifest!
     manifest = read_manifest(
         Channel.from(
