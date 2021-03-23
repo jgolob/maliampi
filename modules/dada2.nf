@@ -20,7 +20,7 @@ params.trimLeft = 0
 params.maxN = 0
 params.maxEE = 'Inf'
 params.truncLenF = 0
-params.truncLenF_se = 310
+params.truncLenF_se = 0
 params.truncLenF_pyro = 250
 params.truncLenR = 0
 params.truncQ = 2
@@ -29,6 +29,8 @@ params.errM_randomize = 'TRUE'
 params.errM_nbases = '1e8'
 params.chimera_method = 'consensus'
 params.maxLenPyro = 350
+params.maxMismatch = 0
+params.minOverlap = 12
 
 workflow dada2_wf {
     take: miseq_pe_ch
@@ -681,6 +683,9 @@ process dada2_merge {
         dada_1, derep_1,
         dada_2, derep_2,
         verbose=TRUE,
+        trimOverhang=TRUE,
+        maxMismatch=${params.maxMismatch},
+        minOverlap=${params.minOverlap}
     );
     saveRDS(merger, "${specimen}.dada2.merged.rds");
     """

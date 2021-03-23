@@ -93,6 +93,9 @@ def helpMessage() {
         --truncLenF             (default = 0)
         --truncLenR             (default = 0)
         --truncQ                (default = 2)
+        --minOverlap            (default = 12)
+        --maxMismatch           (default = 0)
+
 
     Ref Package options (defaults generally fine):
         --repo_min_id           Minimum percent ID to a SV to be recruited (default = 0.8)

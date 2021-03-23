@@ -1,4 +1,5 @@
 container__barcodecop = "golob/barcodecop:0.5__bc_1"
+container__trimgalore = 'quay.io/biocontainers/trim-galore:0.6.6--0'
 
 workflow preprocess_wf {
     take: indexed_ch
@@ -37,6 +38,8 @@ workflow preprocess_wf {
         .mix(bcc_results.valid)
         .set{ demultiplexed_ch }
 
+    // For the paired end reads, run them through trim galore
+    TrimGalore(demultiplexed_ch)
     // For the unpaired reads, figure out if they are miseq or pyro using the 'data_type' column. 
     // If non-existant, assume it is miseq
     unpaired_ch
@@ -52,6 +55,8 @@ workflow preprocess_wf {
     ]}.set {
         miseq_se
     }
+    // And trimgalore
+    TrimGaloreSE(miseq_se)
 
     single_end_branch_ch.pyro.map{ sample -> [
         sample.specimen,
@@ -63,11 +68,43 @@ workflow preprocess_wf {
 
     // Final outputs
     emit:
-        miseq_pe = demultiplexed_ch
-        miseq_se = miseq_se
+        miseq_pe = TrimGalore.out
+        miseq_se = TrimGaloreSE.out
         pyro = pyro_ch
         empty = bcc_results.empty
 }
+
+// Use trim_galore to handle adapters / etc
+process TrimGalore {
+    container "${container__trimgalore}"
+    label 'io_limited'
+    errorStrategy 'ignore'
+
+    input:
+    tuple val(specimen), val(batch), file(R1), file(R2)
+
+    output:
+    tuple val(specimen), val(batch), file("${specimen}.R1.tg.fastq.gz"), file("${specimen}.R2.tg.fastq.gz")
+
+    """
+    set -e
+
+    cp ${R1} R1.fastq.gz
+    cp ${R2} R2.fastq.gz
+
+    trim_galore \
+    --gzip \
+    --cores ${task.cpus} \
+    --paired \
+    R1.fastq.gz R2.fastq.gz
+
+    rm R1.fastq.gz
+    rm R2.fastq.gz
+    mv R1_val_1.fq.gz "${specimen}.R1.tg.fastq.gz"
+    mv R2_val_2.fq.gz "${specimen}.R2.tg.fastq.gz"
+    """
+}
+
 
 // Use barcodecop to verify demultiplex
 process barcodecop {
@@ -96,6 +133,34 @@ process barcodecop {
     -o ${R2.getSimpleName()}.bcc.fq.gz
     """
 }
+
+process TrimGaloreSE {
+    container "${container__trimgalore}"
+    label 'io_limited'
+    errorStrategy 'ignore'
+
+    input:
+    tuple val(specimen), val(batch), file(R1)
+
+    output:
+    tuple val(specimen), val(batch), file("${specimen}.R1.tg.fastq.gz")
+
+    """
+    set -e
+
+    cp ${R1} R1.fastq.gz
+
+    trim_galore \
+    --gzip \
+    --cores ${task.cpus} \
+    R1.fastq.gz
+
+    rm R1.fastq.gz
+    mv R1_trimmed.fq.gz "${specimen}.R1.tg.fastq.gz"
+    """
+}
+
+
 
 process output_failed {
     container "${container__barcodecop}"
