@@ -38,7 +38,6 @@ workflow dada2_wf {
     take: pyro_ch
 
     main:
-
     //
     // STEP 1: filter trim (by specimen)
     //
@@ -46,7 +45,6 @@ workflow dada2_wf {
     // Single end and pyro need to be handled differently at the f/t step
     dada2_ft_se(miseq_se_ch)
     dada2_ft_pyro(pyro_ch)
-
     ft_reads_pe = dada2_ft.out
     .branch{
         empty: file(it[2]).isEmpty() || file(it[3]).isEmpty()
@@ -434,15 +432,15 @@ process dada2_derep {
         tuple val(specimen), val(batch), file(R1), file(R2)
     
     output:
-        tuple val(specimen), val(batch), file("${R1.getSimpleName()}.dada2.ft.derep.rds"), file("${R2.getSimpleName()}.dada2.ft.derep.rds")
+        tuple val(specimen), val(batch), file("${specimen}.R1.dada2.ft.derep.rds"), file("${specimen}.R2.dada2.ft.derep.rds")
     
     """
     #!/usr/bin/env Rscript
     library('dada2');
     derep_1 <- derepFastq('${R1}');
-    saveRDS(derep_1, '${R1.getSimpleName()}.dada2.ft.derep.rds');
+    saveRDS(derep_1, '${specimen}.R1.dada2.ft.derep.rds');
     derep_2 <- derepFastq('${R2}');
-    saveRDS(derep_2, '${R2.getSimpleName()}.dada2.ft.derep.rds');
+    saveRDS(derep_2, '${specimen}.R2.dada2.ft.derep.rds');
     """ 
 }
 
@@ -455,13 +453,13 @@ process dada2_derep_se {
         tuple val(specimen), val(batch), file(R1)
     
     output:
-        tuple val(specimen), val(batch), file("${R1.getSimpleName()}.dada2.ft.derep.rds")
+        tuple val(specimen), val(batch), file("${specimen}.dada2.ft.derep.rds")
     
     """
     #!/usr/bin/env Rscript
     library('dada2');
     derep_1 <- derepFastq('${R1}');
-    saveRDS(derep_1, '${R1.getSimpleName()}.dada2.ft.derep.rds');
+    saveRDS(derep_1, '${specimen}.dada2.ft.derep.rds');
     """ 
 }
 
@@ -474,13 +472,13 @@ process dada2_derep_pyro {
         tuple val(specimen), val(batch), file(R1)
     
     output:
-        tuple val(specimen), val(batch), file("${R1.getSimpleName()}.dada2.ft.derep.rds")
+        tuple val(specimen), val(batch), file("${specimen}.dada2.ft.derep.rds")
     
     """
     #!/usr/bin/env Rscript
     library('dada2');
     derep_1 <- derepFastq('${R1}');
-    saveRDS(derep_1, '${R1.getSimpleName()}.dada2.ft.derep.rds');
+    saveRDS(derep_1, '${specimen}.dada2.ft.derep.rds');
     """ 
 }
 
@@ -667,7 +665,7 @@ process dada2_merge {
     errorStrategy "finish"
 
     input:
-        tuple val(specimen), val(batch), file("R1.dada2.fastq.gz"), file("R2.dada2.fastq.gz"), file("R1.fastq.gz"), file("R2.fastq.gz")
+        tuple val(specimen), val(batch), file("R1.dada2.rds"), file("R2.dada2.rds"), file("R1.derep.rds"), file("R2.derep.rds")
 
     output:
         tuple val(batch), val(specimen), file("${specimen}.dada2.merged.rds")
@@ -675,10 +673,10 @@ process dada2_merge {
     """
     #!/usr/bin/env Rscript
     library('dada2');
-    dada_1 <- readRDS('R1.dada2.fastq.gz');
-    derep_1 <- readRDS('R1.fastq.gz');
-    dada_2 <- readRDS('R2.dada2.fastq.gz');
-    derep_2 <- readRDS('R2.fastq.gz');        
+    dada_1 <- readRDS('R1.dada2.rds');
+    derep_1 <- readRDS('R1.derep.rds');
+    dada_2 <- readRDS('R2.dada2.rds');
+    derep_2 <- readRDS('R2.derep.rds');        
     merger <- mergePairs(
         dada_1, derep_1,
         dada_2, derep_2,
@@ -884,6 +882,8 @@ def helpMessage() {
         --truncLenF             (default = 0)
         --truncLenR             (default = 0)
         --truncQ                (default = 2)
+        --minOverlap            (default = 12)
+        --maxMismatch           (default = 0)
 
     """.stripIndent()
 }
