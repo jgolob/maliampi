@@ -29,6 +29,7 @@ container__infernal = "golob/infernal:1.1.2_bcw_0.3.1"
 container__fastatools = "golob/fastatools:0.7.1__bcw.0.3.1"
 container__pplacer = "golob/pplacer:1.1alpha19rc_BCW_0.3.1A"
 container__dada2pplacer = "golob/dada2-pplacer:0.8.0__bcw_0.3.1A"
+container__epang = "quay.io/biocontainers/epa-ng:0.3.8--h9a82719_1"
 
 
 workflow place_classify_wf {
@@ -52,32 +53,41 @@ workflow place_classify_wf {
     //
 
     //
-    //  Step 2. Combine SV and refpkg alignment
+    //  Step 2. Extract reference alignment, and combine
     //
-
-    // Step 2a. Extract the alignment from the refpkg
-    ExtractRefpkgAln(
+    
+    // Step 2a. Extract bits from the reference
+    ExtractRefpkgForEPAng(
         refpkg_tgz_f
     )
+
     // Step 2b. Combine SV and refpkg alignments
     CombineAln_SV_refpkg(
         AlignSV.out[0],
-        ExtractRefpkgAln.out[0]
+        ExtractRefpkgForEPAng.out.ref_aln_sto
+    )
+
+    // Step 2c. Convert combined alignment to FASTA format
+    ConvertAlnToFasta(
+        CombineAln_SV_refpkg.out
     )
 
     //
-    //  Step 3. Place SV via pplacer
+    //  Step 3. Place SV via epa-ng
     //
-    PplacerPlacement(
-        CombineAln_SV_refpkg.out,
-        refpkg_tgz_f
+
+    EPAngPlacement(
+        ExtractRefpkgForEPAng.out.ref_aln_fasta,
+        ConvertAlnToFasta.out,
+        ExtractRefpkgForEPAng.out.model,
+        ExtractRefpkgForEPAng.out.tree
     )
 
     //
     //  Step 4. Reduplicate placements
     //
     PplacerReduplicate(
-        PplacerPlacement.out,
+        EPAngPlacement.out,
         sv_weights_f
     )
 
@@ -85,14 +95,14 @@ workflow place_classify_wf {
     //  Step 5. ADCL metric
     //
     PplacerADCL(
-        PplacerPlacement.out
+        EPAngPlacement.out
     )
 
     //
     //  Step 6. EDPL metric
     //
     PplacerEDPL(
-        PplacerPlacement.out
+        EPAngPlacement.out
     )
 
     //
@@ -100,7 +110,7 @@ workflow place_classify_wf {
     //
     PplacerPCA(
         refpkg_tgz_f,
-        PplacerPlacement.out,
+        EPAngPlacement.out,
         sv_map_f 
     )
 
@@ -108,7 +118,7 @@ workflow place_classify_wf {
     //  Step 8. Alpha diversity
     //
     PplacerAlphaDiversity(
-        PplacerPlacement.out,
+        EPAngPlacement.out,
         sv_map_f 
     )
 
@@ -117,7 +127,7 @@ workflow place_classify_wf {
     //
     PplacerKR(
         refpkg_tgz_f,
-        PplacerPlacement.out,
+        EPAngPlacement.out,
         sv_map_f        
     )
     //
@@ -138,7 +148,7 @@ workflow place_classify_wf {
     ClassifySV(
         refpkg_tgz_f,
         ClassifyDB_Prep.out,
-        PplacerPlacement.out,
+        EPAngPlacement.out,
         CombineAln_SV_refpkg.out[0]
     )
     // Step 12. Concatenate placements
@@ -171,7 +181,7 @@ workflow place_classify_wf {
     )
 
     emit:
-        jplace_dedup = PplacerPlacement.out
+        jplace_dedup = EPAngPlacement.out
         jplace_redup = PplacerReduplicate.out
 
 }
@@ -297,6 +307,176 @@ process CombineAln_SV_refpkg {
      -o sv_refpkg.aln.sto \
      ${sv_aln_sto_f} ${refpkg_aln_sto_f}
     """
+}
+
+process ConvertAlnToFasta {
+    container = "${container__fastatools}"
+    label = 'io_limited'
+    errorStrategy "retry"
+
+    input: 
+        file combined_aln_sto_f
+    
+    output:
+        file "combined.aln.fasta"
+    
+    """
+    #!/usr/bin/env python
+    from Bio import AlignIO
+
+    with open('combined.aln.fasta', 'wt') as out_h:
+        AlignIO.write(
+            AlignIO.read(
+                open('${combined_aln_sto_f}', 'rt'),
+                'stockholm'
+            ),
+            out_h,
+            'fasta'
+        )
+    """
+}
+
+process ExtractRefpkgForEPAng {
+    container = "${container__fastatools}"
+    label = 'io_limited'
+    
+    input:
+        file refpkg_tgz_f
+
+    output:
+        path 'refpkg_tree.nwk', emit: tree
+        path 'refpkg.aln.fasta', emit: ref_aln_fasta
+        path 'refpkg.aln.sto', emit: ref_aln_sto
+        path 'model.txt', emit: model
+
+"""
+#!/usr/bin/env python
+import tarfile
+import json
+import os
+import re
+
+tar_h = tarfile.open('${refpkg_tgz_f}')
+tar_contents_dict = {os.path.basename(f.name): f for f in tar_h.getmembers()}
+contents = json.loads(
+    tar_h.extractfile(
+        tar_contents_dict['CONTENTS.json']
+    ).read().decode('utf-8')
+)
+
+with open('refpkg_tree.nwk', 'wt') as tree_h:
+    tree_h.writelines(
+        tar_h.extractfile(
+                tar_contents_dict[contents['files'].get('tree')]
+            ).read().decode('utf-8')
+    )
+
+aln_fasta_intgz = contents['files'].get('aln_fasta')
+aln_sto_intgz = contents['files'].get('aln_sto')
+
+if aln_fasta_intgz and aln_sto_intgz:
+    # Both version of the alignment are in the refpkg
+    with open('refpkg.aln.fasta','w') as out_aln_fasta_h:
+        out_aln_fasta_h.write(
+            tar_h.extractfile(
+                tar_contents_dict[aln_fasta_intgz]
+            ).read().decode('utf-8')
+        )
+    with open('refpkg.aln.sto','w') as out_aln_sto_h:
+        out_aln_sto_h.write(
+            tar_h.extractfile(
+                tar_contents_dict[aln_sto_intgz]
+            ).read().decode('utf-8')
+        )
+elif aln_fasta_intgz:
+    # Only fasta exists
+    with open('refpkg.aln.fasta','w') as out_aln_fasta_h:
+        out_aln_fasta_h.write(
+            tar_h.extractfile(
+                tar_contents_dict[aln_fasta_intgz]
+            ).read().decode('utf-8')
+        )
+    # And convert to sto format
+    with open('refpkg.aln.sto','w') as out_aln_sto_h:
+        AlignIO.write(
+            AlignIO.read(
+                tar_h.extractfile(tar_contents_dict[aln_fasta_intgz]),
+                'fasta'),
+            out_aln_sto_h,
+            'stockholm'
+        )
+elif aln_sto_intgz:
+    # Only STO exists
+    with open('refpkg.aln.sto','w') as out_aln_sto_h:
+        out_aln_sto_h.write(
+            tar_h.extractfile(
+                tar_contents_dict[aln_sto_intgz]
+            ).read().decode('utf-8')
+        )
+    with sopen('refpkg.aln.fasta','w') as out_aln_fasta_h:
+        AlignIO.write(
+            AlignIO.read(
+                            tar_h.extractfile(tar_contents_dict[aln_sto_intgz]),
+                            'stockholm'),
+            out_aln_fasta_h,
+            'fasta'
+        )
+# Model
+phylo_model = json.loads(tar_h.extractfile(
+        tar_contents_dict[contents['files'].get('phylo_model')]
+    ).read().decode('utf-8')
+).get('subs_rates')
+
+re_basefreq = re.compile(r'Base frequencies: (?P<A>0\\.\\d+) (?P<C>0\\.\\d+) (?P<G>0\\.\\d+) (?P<T>0\\.\\d+)')
+bf_m = re_basefreq.search(tar_h.extractfile(
+        tar_contents_dict[contents['files'].get('tree_stats')]
+    ).read().decode('utf-8'))
+with open('model.txt', 'wt') as model_h:
+    model_h.writelines( 
+        "GTR{"+
+        "{}/{}/{}/{}/{}/{}".format(
+            phylo_model['ac'],
+            phylo_model['ag'],
+            phylo_model['at'],
+            phylo_model['cg'],
+            phylo_model['ct'],
+            phylo_model['gt'],
+        )
+        +"}"+"+FU{"+
+        "{}/{}/{}/{}".format(
+            bf_m['A'],
+            bf_m['C'],
+            bf_m['G'],
+            bf_m['T'],
+        )
+        +"}"
+    )
+"""
+
+}
+
+process EPAngPlacement {
+    container = "${container__epang}"
+    label = 'mem_veryhigh'
+    publishDir "${params.output}/placement", mode: 'copy'
+    input:
+        file refpkg_aln_fasta
+        file combined_aln_fasta
+        file model
+        file ref_tree
+
+    output:
+        file 'dedup.jplace'
+    """
+    set -e
+
+    epa-ng --split ${refpkg_aln_fasta} ${combined_aln_fasta}
+    model=`cat ${model}`
+    epa-ng -t ${ref_tree} -s reference.fasta -q query.fasta -m \$model -T ${task.cpus}
+    mv epa_result.jplace dedup.jplace
+    """
+
+
 }
 
 process PplacerPlacement {
