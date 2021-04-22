@@ -253,7 +253,8 @@ workflow {
         dada2_wf.out.sv_fasta,
         make_refpkg_wf.out.refpkg_tgz,
         dada2_wf.out.sv_weights,
-        dada2_wf.out.sv_map
+        dada2_wf.out.sv_map,
+        dada2_wf.out.sv_long,
     )
     
 }

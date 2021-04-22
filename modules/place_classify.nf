@@ -30,6 +30,7 @@ container__fastatools = "golob/fastatools:0.7.1__bcw.0.3.1"
 container__pplacer = "golob/pplacer:1.1alpha19rc_BCW_0.3.1A"
 container__dada2pplacer = "golob/dada2-pplacer:0.8.0__bcw_0.3.1A"
 container__epang = "quay.io/biocontainers/epa-ng:0.3.8--h9a82719_1"
+container__gappa = 'quay.io/biocontainers/gappa:0.7.1--h9a82719_1'
 
 
 workflow place_classify_wf {
@@ -38,6 +39,7 @@ workflow place_classify_wf {
         refpkg_tgz_f
         sv_weights_f
         sv_map_f
+        sv_long_f
 
     main:
 
@@ -86,9 +88,14 @@ workflow place_classify_wf {
     //
     //  Step 4. Reduplicate placements
     //
-    PplacerReduplicate(
+
+    MakeSplit(
+        sv_long_f
+    )
+
+    GappaSplit(
         EPAngPlacement.out,
-        sv_weights_f
+        MakeSplit.out
     )
 
     //
@@ -101,17 +108,16 @@ workflow place_classify_wf {
     //
     //  Step 6. EDPL metric
     //
-    PplacerEDPL(
+    EDPL(
         EPAngPlacement.out
     )
 
     //
     //  Step 7. xPCA
     //
-    PplacerPCA(
-        refpkg_tgz_f,
-        EPAngPlacement.out,
-        sv_map_f 
+
+    Gappa_ePCA(
+         GappaSplit.out
     )
 
     //
@@ -125,10 +131,8 @@ workflow place_classify_wf {
     //
     //  Step 9. KR (phylogenetic) distance 
     //
-    PplacerKR(
-        refpkg_tgz_f,
-        EPAngPlacement.out,
-        sv_map_f        
+    Gappa_KRD(
+        GappaSplit.out
     )
     //
     //  END Placement
@@ -138,51 +142,19 @@ workflow place_classify_wf {
     //  CLASSIFY
     //
 
-    // Step 10. Prep the placement DB
-    ClassifyDB_Prep(
-        refpkg_tgz_f,
-        sv_map_f        
+    MakeEPAngTaxonomy(
+        ExtractRefpkgForEPAng.out.leaf_info,
+        ExtractRefpkgForEPAng.out.taxonomy,
     )
 
-    // Step 11. Classify SV
-    ClassifySV(
-        refpkg_tgz_f,
-        ClassifyDB_Prep.out,
+    Gappa_Classify(
         EPAngPlacement.out,
-        CombineAln_SV_refpkg.out[0]
-    )
-    // Step 12. Concatenate placements
-    ClassifyMCC (
-        ClassifySV.out,
-        sv_weights_f
-    )
-
-    // Step 13. Tabular outputs
-
-    Channel.from(
-        'phylum', 'class', 'order', 'family', 'genus', 'species'
-    ).set { classify_ranks }
-
-    classify_ranks.combine(
-        ClassifyMCC.out
-    ).combine(
-        sv_map_f
-    ).set { classify_rank_ch }
-
-    
-    ClassifyTables (
-        classify_rank_ch
-    )
-
-    // Step 14. Extract the taxonomy for each SV to a CSV file
-    Extract_Taxonomy (
-        sv_weights_f,
-        ClassifyMCC.out
+        MakeEPAngTaxonomy.out
     )
 
     emit:
         jplace_dedup = EPAngPlacement.out
-        jplace_redup = PplacerReduplicate.out
+        //jplace_redup = PplacerReduplicate.out
 
 }
 
@@ -203,90 +175,6 @@ process AlignSV {
     --cpu ${task.cpus} --noprob --dnaout --mxsize ${params.cmalign_mxsize} \
     --sfile sv.aln.scores -o sv.aln.sto \
     /cmalign/data/SSU_rRNA_bacteria.cm ${sv_fasta_f}
-    """
-}
-
-
-process ExtractRefpkgAln {
-    container = "${container__fastatools}"
-    label = 'io_limited'
-
-    input:
-        file refpkg_tgz_f
-    
-    output:
-        file "refpkg.aln.sto"
-        file "refpkg.aln.fasta"
-        
-    """
-    #!/usr/bin/env python
-
-    import tarfile
-    import json
-    from Bio import AlignIO
-    import os
-
-    tar_h = tarfile.open('${refpkg_tgz_f}')
-    tar_contents_dict = {os.path.basename(f.name): f for f in tar_h.getmembers()}
-    print(tar_contents_dict)
-    contents = json.loads(
-        tar_h.extractfile(
-            tar_contents_dict['CONTENTS.json']
-        ).read().decode('utf-8')
-    )
-    aln_fasta_intgz = contents['files'].get('aln_fasta')
-    aln_sto_intgz = contents['files'].get('aln_sto')
-
-    if aln_fasta_intgz and aln_sto_intgz:
-        # Both version of the alignment are in the refpkg
-        with open('refpkg.aln.fasta','w') as out_aln_fasta_h:
-            out_aln_fasta_h.write(
-                tar_h.extractfile(
-                    tar_contents_dict[aln_fasta_intgz]
-                ).read().decode('utf-8')
-            )
-        with open('refpkg.aln.sto','w') as out_aln_sto_h:
-            out_aln_sto_h.write(
-                tar_h.extractfile(
-                    tar_contents_dict[aln_sto_intgz]
-                ).read().decode('utf-8')
-            )
-    elif aln_fasta_intgz:
-        # Only fasta exists
-        with open('refpkg.aln.fasta','w') as out_aln_fasta_h:
-            out_aln_fasta_h.write(
-                tar_h.extractfile(
-                    tar_contents_dict[aln_fasta_intgz]
-                ).read().decode('utf-8')
-            )
-        # And convert to sto format
-        with open('refpkg.aln.sto','w') as out_aln_sto_h:
-            AlignIO.write(
-                AlignIO.read(
-                    tar_h.extractfile(tar_contents_dict[aln_fasta_intgz]),
-                    'fasta'),
-                out_aln_sto_h,
-                'stockholm'
-            )
-    elif aln_sto_intgz:
-        # Only STO exists
-        with open('refpkg.aln.sto','w') as out_aln_sto_h:
-            out_aln_sto_h.write(
-                tar_h.extractfile(
-                    tar_contents_dict[aln_sto_intgz]
-                ).read().decode('utf-8')
-            )
-        with sopen('refpkg.aln.fasta','w') as out_aln_fasta_h:
-            AlignIO.write(
-                AlignIO.read(
-                                tar_h.extractfile(tar_contents_dict[aln_sto_intgz]),
-                                'stockholm'),
-                out_aln_fasta_h,
-                'fasta'
-            )
-    else:
-        # NO alignment present
-        raise Exception("Refset does not contain an alignment")
     """
 }
 
@@ -348,6 +236,8 @@ process ExtractRefpkgForEPAng {
         path 'refpkg.aln.fasta', emit: ref_aln_fasta
         path 'refpkg.aln.sto', emit: ref_aln_sto
         path 'model.txt', emit: model
+        path 'leaf_info.csv', emit: leaf_info
+        path 'taxonomy.csv', emit: taxonomy
 
 """
 #!/usr/bin/env python
@@ -451,6 +341,18 @@ with open('model.txt', 'wt') as model_h:
         )
         +"}"
     )
+
+with open('leaf_info.csv', 'wt') as leaf_h:
+    leaf_h.write(tar_h.extractfile(
+        tar_contents_dict[contents['files'].get('seq_info')]
+    ).read().decode('utf-8'))
+
+with open('taxonomy.csv', 'wt') as leaf_h:
+    leaf_h.write(tar_h.extractfile(
+        tar_contents_dict[contents['files'].get('taxonomy')]
+    ).read().decode('utf-8'))
+
+
 """
 
 }
@@ -475,51 +377,213 @@ process EPAngPlacement {
     epa-ng -t ${ref_tree} -s reference.fasta -q query.fasta -m \$model -T ${task.cpus}
     mv epa_result.jplace dedup.jplace
     """
-
-
 }
 
-process PplacerPlacement {
-    container = "${container__pplacer}"
-    label = 'mem_veryhigh'
 
-    publishDir "${params.output}/placement", mode: 'copy'
-
-    input:
-        file sv_refpkg_aln_sto_f
-        file refpkg_tgz_f
-    output:
-        file 'dedup.jplace'
-    
-    afterScript "rm -rf refpkg/"
-    """
-    mkdir -p refpkg/ &&
-    tar xzvf ${refpkg_tgz_f} --no-overwrite-dir -C ./refpkg &&
-    pplacer -p -j ${task.cpus} \
-    --inform-prior --prior-lower ${params.pplacer_prior_lower} --map-identity \
-    -c refpkg/ ${sv_refpkg_aln_sto_f} \
-    -o dedup.jplace
-    """
-}
-
-process PplacerReduplicate {
-    container = "${container__pplacer}"
+process MakeEPAngTaxonomy {
+    container = "${container__fastatools}"
     label = 'io_limited'
+    publishDir "${params.output}/refpkg", mode: 'copy'
 
+    input:
+        path leaf_info_f
+        path taxonomy_f
+
+    output:
+        path 'epang_taxon_file.tsv'
+
+"""
+#!/usr/bin/env python
+import csv
+
+tax_dict = {
+    r['tax_id']: r for r in
+    csv.DictReader(open('${taxonomy_f}', 'rt'))
+}
+tax_names = {
+    tax_id: r['tax_name']
+    for tax_id, r in tax_dict.items()
+}
+RANKS = [
+    'superkingdom',
+    'phylum',
+    'class',
+    'order',
+    'family',
+    'genus',
+    'species',
+]
+with open('epang_taxon_file.tsv', 'wt') as tf_h:
+    tf_w = csv.writer(tf_h, delimiter='\\t')
+    for row in csv.DictReader(open('${leaf_info_f}', 'rt')):
+        tax_id = row.get('tax_id', None)
+        if tax_id is None:
+            continue
+        # Implicit else
+        tax_lineage = tax_dict.get(tax_id, None)
+        if tax_lineage is None:
+            continue
+        lineage_str = ";".join([
+            tax_names.get(tax_lineage.get(rank, ""), "")
+            for rank in RANKS
+        ])
+        tf_w.writerow([row['seqname'], lineage_str])
+
+"""
+
+}
+
+process Gappa_Classify {
+    container = "${container__gappa}"
+    label = 'multithreaded'
+    publishDir "${params.output}/classify", mode: 'copy'
+
+    input:
+        path dedup_jplace
+        path taxon_file
+    
+    output:
+        path 'per_query.tsv'
+
+    """
+    set -e
+
+
+    gappa examine assign \
+    --per-query-results \
+    --verbose \
+    --threads ${task.cpus} \
+    --jplace-path ${dedup_jplace} \
+    --taxon-file ${taxon_file} \
+    
+    """
+
+}
+
+process EDPL {
+    container = "${container__gappa}"
+    label = 'multithreaded'
     publishDir "${params.output}/placement", mode: 'copy'
 
     input:
-        file dedup_jplace_f
-        file sv_weights_f
-    output:
-        file 'redup.jplace.gz'
+        path dedup_jplace
     
+    output:
+        path 'edpl_list.csv'
+
     """
-    guppy redup -m \
-    -o /dev/stdout \
-    -d ${sv_weights_f} \
-    ${dedup_jplace_f} \
-    | gzip > redup.jplace.gz
+    set -e
+
+
+    gappa examine edpl \
+    --jplace-path ${dedup_jplace} \
+    --verbose \
+    --threads ${task.cpus}
+    """
+}
+
+process MakeSplit {
+    container = "${container__fastatools}"
+    label = 'io_limited'
+    publishDir "${params.output}/sv", mode: 'copy'
+
+    input:
+        path sv_long_f
+    output:
+        path 'sv_multiplicity.csv'
+
+"""
+#!/usr/bin/env python
+import csv
+
+with open('${sv_long_f}', 'rt') as in_h, open('sv_multiplicity.csv', 'wt') as out_h:
+    svl = csv.DictReader(in_h)
+    t_svl = csv.writer(
+        out_h,
+    )
+    for r in svl:
+        t_svl.writerow([
+            r['sv'],
+            r['specimen'],
+            r['count']
+        ])
+"""
+}
+
+process GappaSplit {
+    container = "${container__gappa}"
+    label = 'multithreaded'
+    publishDir "${params.output}/placement/", mode: 'copy'
+
+    input:
+        path dedup_jplace
+        path split_csv
+    
+    output:
+        path 'specimen_jplace/*.jplace.gz'
+
+    """
+    set -e
+
+    mkdir specimen_jplace
+
+    gappa edit split \
+    --jplace-path ${dedup_jplace} \
+    --split-file ${split_csv} \
+    --compress \
+    --verbose \
+    --threads ${task.cpus} \
+    --out-dir specimen_jplace
+    """
+}
+
+process Gappa_KRD {
+    container = "${container__gappa}"
+    label = 'multithreaded'
+    publishDir "${params.output}/placement/", mode: 'copy'
+
+    input:
+        path specimen_jplace
+    
+    output:
+        path 'krd/krd_matrix.csv.gz'
+
+    """
+    set -e
+
+    gappa analyze krd \
+    --jplace-path ${specimen_jplace} \
+    --krd-out-dir krd/ \
+    --krd-compress \
+    --verbose \
+    --threads ${task.cpus}
+
+    """
+}
+
+process Gappa_ePCA {
+    container = "${container__gappa}"
+    label = 'multithreaded'
+    publishDir "${params.output}/placement/", mode: 'copy'
+
+    input:
+        path specimen_jplace
+    
+    output:
+        path 'ePCA/projection.csv'
+        path 'ePCA/transformation.csv'
+
+    """
+    set -e
+
+    gappa analyze edgepca \
+    --jplace-path ${specimen_jplace} \
+    --out-dir ePCA/ \
+    --verbose \
+    --threads ${task.cpus}
+
+    ls -l ePCA
+
     """
 }
 
@@ -604,6 +668,7 @@ process PplacerAlphaDiversity {
     gzip > alpha_diversity.csv.gz
     """
 }
+
 
 process PplacerKR {
     container = "${container__pplacer}"
@@ -939,5 +1004,6 @@ workflow {
         refpkg_tgz_f,
         weights_f,
         map_f,
+        sv_long_f,
     )
 }
