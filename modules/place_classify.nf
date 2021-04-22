@@ -31,7 +31,7 @@ container__pplacer = "golob/pplacer:1.1alpha19rc_BCW_0.3.1A"
 container__dada2pplacer = "golob/dada2-pplacer:0.8.0__bcw_0.3.1A"
 
 
-workflow pplacer_place_classify_wf {
+workflow place_classify_wf {
     take:
         sv_fasta_f
         refpkg_tgz_f
@@ -754,7 +754,7 @@ workflow {
         exit 0
     }
 
-    pplacer_place_classify_wf (
+    place_classify_wf (
         sv_fasta_f,
         refpkg_tgz_f,
         weights_f,
