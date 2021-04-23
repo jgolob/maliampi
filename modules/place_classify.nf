@@ -152,9 +152,14 @@ workflow place_classify_wf {
         MakeEPAngTaxonomy.out
     )
 
+    Gappa_Extract_Taxonomy(
+        Gappa_Classify.out,
+        ExtractRefpkgForEPAng.out.taxonomy
+    )
+
     emit:
         jplace_dedup = EPAngPlacement.out
-        //jplace_redup = PplacerReduplicate.out
+        taxonomy = Gappa_Extract_Taxonomy.out[0]
 
 }
 
@@ -463,6 +468,84 @@ process Gappa_Classify {
     
     """
 
+}
+
+process Gappa_Extract_Taxonomy {
+    container "${container__dada2pplacer}"
+    label 'io_mem'
+    publishDir "${params.output}/classify", mode: 'copy'
+    //errorStrategy "ignore"
+
+    input:
+        path gappa_taxonomy
+        path refpkg_taxtable
+
+    output:
+        path "sv_taxonomy.csv"
+        path refpkg_taxtable
+
+"""
+#!/usr/bin/env python
+import csv
+import pandas as pd
+import sqlite3
+
+MIN_AFRACT = 0
+RANKS = [
+    'superkingdom',
+    'phylum',
+    'class',
+    'order',
+    'family',
+    'genus',
+    'species',
+]
+RANK_DEPTH = {
+    i+1: r for (i, r) in enumerate(RANKS)
+}
+refpkg_taxtable = pd.read_csv("${refpkg_taxtable}")
+tax_name_to_id = {
+    row.tax_name: row.tax_id for
+    idx, row in refpkg_taxtable.iterrows()
+}
+epa_tax = pd.read_csv('${gappa_taxonomy}', sep='\t')
+epa_tax['lineage']=epa_tax.taxopath.apply(lambda tp: tp.split(';'))
+epa_tax['rank_depth']=epa_tax.lineage.apply(len)
+sv_tax_list = []
+for sv, sv_c in epa_tax[epa_tax.taxopath != 'DISTANT'].groupby('name'):
+    sv_tax = pd.DataFrame()
+    rank = None
+    tax_name = None
+    lineage = None
+    afract = None    
+    for rank_depth, want_rank in RANK_DEPTH.items():
+        sv_depth = sv_c[sv_c.rank_depth == rank_depth]
+        if len(sv_depth) > 0 and sv_depth.afract.sum() >= MIN_AFRACT:
+            # Something at this depth, and the cumulative fract likelihood is above our threshold
+            rank = want_rank
+            tax_name = " / ".join(sv_depth.lineage.apply(lambda L: L[-1]))
+            ncbi_tax_id = ",".join([str(tax_name_to_id.get(tn, -1)) for tn in sv_depth.lineage.apply(lambda L: L[-1])])
+            lineage = ";".join(sv_depth.lineage.iloc[0][:-1] + [tax_name])
+            afract = sv_depth.afract.sum()
+            
+            
+        sv_tax.loc[rank, 'sv'] = sv
+        sv_tax.loc[rank, 'want_rank'] = want_rank
+        sv_tax.loc[rank, 'rank'] = rank
+        sv_tax.loc[rank, 'rank_depth'] = rank_depth
+        sv_tax.loc[rank, 'tax_name'] = tax_name
+        sv_tax.loc[rank, 'ncbi_tax_id'] = ncbi_tax_id
+        sv_tax.loc[rank, 'lineage'] = lineage
+        sv_tax.loc[rank, 'afract'] = afract
+        sv_tax.loc[rank, 'ambiguous'] = len(sv_depth) != 1
+    sv_tax_list.append(sv_tax)
+
+
+sv_taxonomy = pd.concat(sv_tax_list, ignore_index=True)
+sv_taxonomy['rank_depth'] = sv_taxonomy.rank_depth.astype(int)
+sv_taxonomy.to_csv('sv_taxonomy.csv', index=None)
+
+"""
 }
 
 process EDPL {
