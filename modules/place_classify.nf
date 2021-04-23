@@ -374,7 +374,12 @@ process EPAngPlacement {
 
     epa-ng --split ${refpkg_aln_fasta} ${combined_aln_fasta}
     model=`cat ${model}`
-    epa-ng -t ${ref_tree} -s reference.fasta -q query.fasta -m \$model -T ${task.cpus}
+    
+    epa-ng -t ${ref_tree} \
+    -s reference.fasta -q query.fasta \
+    -m \$model -T ${task.cpus} \
+    --baseball-heur
+
     mv epa_result.jplace dedup.jplace
     """
 }
