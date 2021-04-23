@@ -156,6 +156,19 @@ workflow place_classify_wf {
         Gappa_Classify.out,
         ExtractRefpkgForEPAng.out.taxonomy
     )
+    want_ranks = Channel.from(
+        'species',
+        'genus',
+        'family',
+        'class',
+        'order',
+        'phylum'
+    )
+    Make_Wide_Tax_Table(
+        sv_long_f,
+        Gappa_Extract_Taxonomy.out[0],
+        want_ranks
+    )
 
     emit:
         jplace_dedup = EPAngPlacement.out
@@ -470,6 +483,69 @@ process Gappa_Classify {
 
 }
 
+process Make_Wide_Tax_Table {
+    container "${container__dada2pplacer}"
+    label 'io_mem'
+    publishDir "${params.output}/classify", mode: 'copy'
+    //errorStrategy "ignore"
+
+    input:
+        path sv_long
+        path sv_taxonomy
+        val want_rank
+
+    output:
+        path "taxon_wide_ra.${want_rank}.csv", emit: ra
+        path "taxon_wide_nreads.${want_rank}.csv", emit: nreads
+
+"""
+#!/usr/bin/env python
+import pandas as pd
+
+sv_long = pd.read_csv("${sv_long}").rename({
+    'count': 'nreads'
+}, axis=1)
+# Add in rel abund
+for sp, sp_sv in sv_long.groupby('specimen'):
+    sv_long.loc[sp_sv.index, 'fract'] = sp_sv.nreads / sp_sv.nreads.sum()
+
+sv_taxonomy = pd.read_csv('${sv_taxonomy}')
+sv_long_tax = pd.merge(
+    sv_long,
+    sv_taxonomy[sv_taxonomy.want_rank == '${want_rank}'],
+    on='sv',
+    how='left'
+)
+
+sp_tax = sv_long_tax.groupby(['specimen', 'tax_name']).sum().reset_index()[[
+    'specimen',
+    'tax_name',
+    'nreads',
+    'fract'
+]]
+
+sp_tax_wide_ra = sp_tax.pivot(
+    index='specimen',
+    columns='tax_name',
+    values='fract'
+).fillna(0)
+# Sort by mean RA
+sp_tax_wide_ra = sp_tax_wide_ra[sp_tax_wide_ra.mean().sort_values(ascending=False).index]
+
+sp_tax_wide_ra.to_csv("taxon_wide_ra.${want_rank}.csv")
+
+sp_tax_wide_nreads = sp_tax.pivot(
+    index='specimen',
+    columns='tax_name',
+    values='nreads'
+).fillna(0)
+# Sort by mean RA
+sp_tax_wide_nreads = sp_tax_wide_nreads[sp_tax_wide_ra.mean().sort_values(ascending=False).index].astype(int)
+sp_tax_wide_nreads.to_csv("taxon_wide_nreads.${want_rank}.csv")
+
+"""
+}
+
 process Gappa_Extract_Taxonomy {
     container "${container__dada2pplacer}"
     label 'io_mem'
@@ -486,9 +562,7 @@ process Gappa_Extract_Taxonomy {
 
 """
 #!/usr/bin/env python
-import csv
 import pandas as pd
-import sqlite3
 
 MIN_AFRACT = 0
 RANKS = [
