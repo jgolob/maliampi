@@ -539,8 +539,9 @@ process GappaSplit {
 
 process Gappa_KRD {
     container = "${container__gappa}"
-    label = 'multithreaded'
+    label = 'mem_veryhigh'
     publishDir "${params.output}/placement/", mode: 'copy'
+    errorStrategy 'finish'
 
     input:
         path specimen_jplace
@@ -563,8 +564,9 @@ process Gappa_KRD {
 
 process Gappa_ePCA {
     container = "${container__gappa}"
-    label = 'multithreaded'
+    label = 'mem_veryhigh'
     publishDir "${params.output}/placement/", mode: 'copy'
+    errorStrategy 'finish'
 
     input:
         path specimen_jplace
