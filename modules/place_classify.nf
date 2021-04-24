@@ -703,7 +703,7 @@ process Gappa_KRD {
     container = "${container__gappa}"
     label = 'mem_veryhigh'
     publishDir "${params.output}/placement/", mode: 'copy'
-    errorStrategy 'finish'
+    errorStrategy 'ignore'
 
     input:
         path specimen_jplace
@@ -728,7 +728,7 @@ process Gappa_ePCA {
     container = "${container__gappa}"
     label = 'mem_veryhigh'
     publishDir "${params.output}/placement/", mode: 'copy'
-    errorStrategy 'finish'
+    errorStrategy 'ignore'
 
     input:
         path specimen_jplace
