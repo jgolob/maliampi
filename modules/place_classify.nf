@@ -395,7 +395,8 @@ process EPAngPlacement {
     
     epa-ng -t ${ref_tree} \
     -s reference.fasta -q query.fasta \
-    -m \$model -T ${task.cpus}
+    -m \$model -T ${task.cpus} \
+    --baseball-heur
 
     mv epa_result.jplace dedup.jplace
     """
@@ -459,6 +460,7 @@ process Gappa_Classify {
     container = "${container__gappa}"
     label = 'multithreaded'
     publishDir "${params.output}/classify", mode: 'copy'
+    errorStrategy 'ignore'
 
     input:
         path dedup_jplace
