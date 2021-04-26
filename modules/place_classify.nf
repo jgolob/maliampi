@@ -395,8 +395,7 @@ process EPAngPlacement {
     
     epa-ng -t ${ref_tree} \
     -s reference.fasta -q query.fasta \
-    -m \$model -T ${task.cpus} \
-    --baseball-heur
+    -m \$model -T ${task.cpus}
 
     mv epa_result.jplace dedup.jplace
     """
