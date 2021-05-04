@@ -3,12 +3,12 @@
 //
 nextflow.preview.dsl=2
 
-container__vsearch = "golob/vsearch:2.14.2"
+container__vsearch = "quay.io/biocontainers/vsearch:2.17.0--h95f258a_1"
 container__fastatools = "golob/fastatools:0.7.1__bcw.0.3.1"
 container__pplacer = "golob/pplacer:1.1alpha19rc_BCW_0.3.1A"
 container__seqinfosync = "golob/seqinfo_taxonomy_sync:0.2.1__bcw.0.3.0"
-container__infernal = "golob/infernal:1.1.2_bcw_0.3.1"
-container__raxml = "golob/raxml:8.2.11_bcw_0.3.0"
+container__infernal = "quay.io/biocontainers/infernal:1.1.4--h779adbc_0"
+container__raxml = "quay.io/biocontainers/raxml:8.2.4--h779adbc_4"
 container__dada2pplacer = "golob/dada2-pplacer:0.8.0__bcw_0.3.1A"
 container__taxtastic = "golob/taxtastic:0.9.0"
 
@@ -36,7 +36,12 @@ workflow make_refpkg_wf {
 
 
     //
-    //  Step 2. Search the repo for candidates for the Sequence Variants (SV)
+    // Step 2. Obtain the CM used for the alignment
+    //
+    ObtainCM()
+
+    //
+    //  Step 3. Search the repo for candidates for the Sequence Variants (SV)
     //
 
     RefpkgSearchRepo(
@@ -46,7 +51,7 @@ workflow make_refpkg_wf {
     repo_recruits_f = RefpkgSearchRepo.out[0]
         
     //
-    // Step 3. Filter SeqInfo to recruits
+    // Step 4. Filter SeqInfo to recruits
     //
     FilterSeqInfo(
         repo_recruits_f,
@@ -54,7 +59,7 @@ workflow make_refpkg_wf {
     )
 
     //
-    // Step 4. (get) or build a taxonomy db
+    // Step 5. (get) or build a taxonomy db
     //
 
     if ( (params.taxdmp == false) || file(params.taxdmp).isEmpty() ) {
@@ -69,7 +74,7 @@ workflow make_refpkg_wf {
     }
 
     // 
-    // Step 5. Confirm seq info taxonomy matches taxdb
+    // Step 6. Confirm seq info taxonomy matches taxdb
     //
     ConfirmSI(
         tax_db,
@@ -77,9 +82,9 @@ workflow make_refpkg_wf {
     )
 
     //
-    // Step 6. Align recruited seqs
+    // Step 7. Align recruited seqs
     //
-    AlignRepoRecruits(repo_recruits_f)
+    AlignRepoRecruits(repo_recruits_f, ObtainCM.out)
 
     //
     // Step 7. Convert alignment from STO -> FASTA format
@@ -107,10 +112,6 @@ workflow make_refpkg_wf {
         ConfirmSI.out
     )
 
-    //
-    // Step 11. Obtain the CM used for the alignment
-    //
-    ObtainCM()
 
     //
     // Step 12. Combine into a refpkg
@@ -251,6 +252,7 @@ process AlignRepoRecruits {
 
     input:
         file repo_recruits_f
+        file cm
     
     output:
         file "recruits.aln.sto"
@@ -260,7 +262,7 @@ process AlignRepoRecruits {
     cmalign \
     --cpu ${task.cpus} --noprob --dnaout --mxsize ${params.cmalign_mxsize} \
     --sfile recruits.aln.scores -o recruits.aln.sto \
-    /cmalign/data/SSU_rRNA_bacteria.cm ${repo_recruits_f}
+    ${cm} ${repo_recruits_f}
     """
 }
 
@@ -304,7 +306,7 @@ process RaxmlTree {
         file "RAxML_info.refpkg"
     
     """
-    raxml \
+    raxmlHPC-PTHREADS-AVX2 \
     -n refpkg \
     -m ${params.raxml_model} \
     -s ${recruits_aln_fasta_f} \
@@ -314,7 +316,7 @@ process RaxmlTree {
 }
 
 process RaxmlTree_cleanupInfo {
-    container = "${container__raxml}"
+    container = "${container__fastatools}"
     label = 'io_limited'
     errorStrategy = 'retry'
 
@@ -362,10 +364,10 @@ process ObtainCM {
     label = 'io_limited'
 
     output:
-        file "refpkg.cm"
+        file "SSU_rRNA_bacteria.cm"
     
     """
-    cp /cmalign/data/SSU_rRNA_bacteria.cm refpkg.cm
+    wget http://rfam.xfam.org/family/RF00177/cm -O SSU_rRNA_bacteria.cm 
     """
 }
 

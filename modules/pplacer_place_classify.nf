@@ -25,10 +25,11 @@ params.pp_seed = 1
 params.cmalign_mxsize = 8196
 
 // Containers!
-container__infernal = "golob/infernal:1.1.2_bcw_0.3.1"
+container__infernal = "quay.io/biocontainers/infernal:1.1.4--h779adbc_0"
 container__fastatools = "golob/fastatools:0.7.1__bcw.0.3.1"
 container__pplacer = "golob/pplacer:1.1alpha19rc_BCW_0.3.1A"
 container__dada2pplacer = "golob/dada2-pplacer:0.8.0__bcw_0.3.1A"
+container__easel = 'quay.io/biocontainers/easel:0.47--h516909a_0'
 
 
 workflow pplacer_place_classify_wf {
@@ -40,11 +41,17 @@ workflow pplacer_place_classify_wf {
 
     main:
 
+    // Step 0. Extract the refpkg components
+    ExtractRefpkg(
+        refpkg_tgz_f
+    )
+
     //
     // Step 1. Align the SV
     // 
     AlignSV(
-        sv_fasta_f
+        sv_fasta_f,
+        ExtractRefpkg.out.cm
     )
 
     //
@@ -55,14 +62,9 @@ workflow pplacer_place_classify_wf {
     //  Step 2. Combine SV and refpkg alignment
     //
 
-    // Step 2a. Extract the alignment from the refpkg
-    ExtractRefpkgAln(
-        refpkg_tgz_f
-    )
-    // Step 2b. Combine SV and refpkg alignments
     CombineAln_SV_refpkg(
         AlignSV.out[0],
-        ExtractRefpkgAln.out[0]
+        ExtractRefpkg.out.ref_aln_sto
     )
 
     //
@@ -173,7 +175,7 @@ workflow pplacer_place_classify_wf {
     emit:
         jplace_dedup = PplacerPlacement.out
         jplace_redup = PplacerReduplicate.out
-
+// """
 }
 
 process AlignSV {
@@ -181,107 +183,27 @@ process AlignSV {
     label = 'mem_veryhigh'
 
     input:
-        file sv_fasta_f
+        path sv_fasta_f
+        path cm
     
     output:
-        file "sv.aln.sto"
-        file "sv.aln.scores"
+        path "sv.aln.sto"
+        path "sv.aln.scores"
         
     
     """
     cmalign \
     --cpu ${task.cpus} --noprob --dnaout --mxsize ${params.cmalign_mxsize} \
     --sfile sv.aln.scores -o sv.aln.sto \
-    /cmalign/data/SSU_rRNA_bacteria.cm ${sv_fasta_f}
+    ${cm} ${sv_fasta_f}
     """
 }
 
 
-process ExtractRefpkgAln {
-    container = "${container__fastatools}"
-    label = 'io_limited'
 
-    input:
-        file refpkg_tgz_f
-    
-    output:
-        file "refpkg.aln.sto"
-        file "refpkg.aln.fasta"
-        
-    """
-    #!/usr/bin/env python
-
-    import tarfile
-    import json
-    from Bio import AlignIO
-    import os
-
-    tar_h = tarfile.open('${refpkg_tgz_f}')
-    tar_contents_dict = {os.path.basename(f.name): f for f in tar_h.getmembers()}
-    print(tar_contents_dict)
-    contents = json.loads(
-        tar_h.extractfile(
-            tar_contents_dict['CONTENTS.json']
-        ).read().decode('utf-8')
-    )
-    aln_fasta_intgz = contents['files'].get('aln_fasta')
-    aln_sto_intgz = contents['files'].get('aln_sto')
-
-    if aln_fasta_intgz and aln_sto_intgz:
-        # Both version of the alignment are in the refpkg
-        with open('refpkg.aln.fasta','w') as out_aln_fasta_h:
-            out_aln_fasta_h.write(
-                tar_h.extractfile(
-                    tar_contents_dict[aln_fasta_intgz]
-                ).read().decode('utf-8')
-            )
-        with open('refpkg.aln.sto','w') as out_aln_sto_h:
-            out_aln_sto_h.write(
-                tar_h.extractfile(
-                    tar_contents_dict[aln_sto_intgz]
-                ).read().decode('utf-8')
-            )
-    elif aln_fasta_intgz:
-        # Only fasta exists
-        with open('refpkg.aln.fasta','w') as out_aln_fasta_h:
-            out_aln_fasta_h.write(
-                tar_h.extractfile(
-                    tar_contents_dict[aln_fasta_intgz]
-                ).read().decode('utf-8')
-            )
-        # And convert to sto format
-        with open('refpkg.aln.sto','w') as out_aln_sto_h:
-            AlignIO.write(
-                AlignIO.read(
-                    tar_h.extractfile(tar_contents_dict[aln_fasta_intgz]),
-                    'fasta'),
-                out_aln_sto_h,
-                'stockholm'
-            )
-    elif aln_sto_intgz:
-        # Only STO exists
-        with open('refpkg.aln.sto','w') as out_aln_sto_h:
-            out_aln_sto_h.write(
-                tar_h.extractfile(
-                    tar_contents_dict[aln_sto_intgz]
-                ).read().decode('utf-8')
-            )
-        with sopen('refpkg.aln.fasta','w') as out_aln_fasta_h:
-            AlignIO.write(
-                AlignIO.read(
-                                tar_h.extractfile(tar_contents_dict[aln_sto_intgz]),
-                                'stockholm'),
-                out_aln_fasta_h,
-                'fasta'
-            )
-    else:
-        # NO alignment present
-        raise Exception("Refset does not contain an alignment")
-    """
-}
 
 process CombineAln_SV_refpkg {
-    container = "${container__infernal}"
+    container = "${container__easel}"
     label = 'mem_veryhigh'
 
     input:
@@ -666,6 +588,147 @@ sv_classification.to_csv("sv_taxonomy.csv", index=False)
 
 """
 }
+
+process ExtractRefpkg {
+    container = "${container__fastatools}"
+    label = 'io_limited'
+    
+    input:
+        file refpkg_tgz_f
+
+    output:
+        path 'refpkg_tree.nwk', emit: tree
+        path 'refpkg.aln.fasta', emit: ref_aln_fasta
+        path 'refpkg.aln.sto', emit: ref_aln_sto
+        path 'model.txt', emit: model
+        path 'leaf_info.csv', emit: leaf_info
+        path 'taxonomy.csv', emit: taxonomy
+        path 'refpkg.cm', emit: cm
+
+"""
+#!/usr/bin/env python
+import tarfile
+import json
+import os
+import re
+
+tar_h = tarfile.open('${refpkg_tgz_f}')
+tar_contents_dict = {os.path.basename(f.name): f for f in tar_h.getmembers()}
+contents = json.loads(
+    tar_h.extractfile(
+        tar_contents_dict['CONTENTS.json']
+    ).read().decode('utf-8')
+)
+
+with open('refpkg.cm', 'wb') as cm_h:
+    cm_h.write(
+        tar_h.extractfile(
+            tar_contents_dict[contents['files'].get('profile')]
+        ).read()
+    )
+
+with open('refpkg_tree.nwk', 'wt') as tree_h:
+    tree_h.writelines(
+        tar_h.extractfile(
+                tar_contents_dict[contents['files'].get('tree')]
+            ).read().decode('utf-8')
+    )
+
+aln_fasta_intgz = contents['files'].get('aln_fasta')
+aln_sto_intgz = contents['files'].get('aln_sto')
+
+if aln_fasta_intgz and aln_sto_intgz:
+    # Both version of the alignment are in the refpkg
+    with open('refpkg.aln.fasta','w') as out_aln_fasta_h:
+        out_aln_fasta_h.write(
+            tar_h.extractfile(
+                tar_contents_dict[aln_fasta_intgz]
+            ).read().decode('utf-8')
+        )
+    with open('refpkg.aln.sto','w') as out_aln_sto_h:
+        out_aln_sto_h.write(
+            tar_h.extractfile(
+                tar_contents_dict[aln_sto_intgz]
+            ).read().decode('utf-8')
+        )
+elif aln_fasta_intgz:
+    # Only fasta exists
+    with open('refpkg.aln.fasta','w') as out_aln_fasta_h:
+        out_aln_fasta_h.write(
+            tar_h.extractfile(
+                tar_contents_dict[aln_fasta_intgz]
+            ).read().decode('utf-8')
+        )
+    # And convert to sto format
+    with open('refpkg.aln.sto','w') as out_aln_sto_h:
+        AlignIO.write(
+            AlignIO.read(
+                tar_h.extractfile(tar_contents_dict[aln_fasta_intgz]),
+                'fasta'),
+            out_aln_sto_h,
+            'stockholm'
+        )
+elif aln_sto_intgz:
+    # Only STO exists
+    with open('refpkg.aln.sto','w') as out_aln_sto_h:
+        out_aln_sto_h.write(
+            tar_h.extractfile(
+                tar_contents_dict[aln_sto_intgz]
+            ).read().decode('utf-8')
+        )
+    with sopen('refpkg.aln.fasta','w') as out_aln_fasta_h:
+        AlignIO.write(
+            AlignIO.read(
+                            tar_h.extractfile(tar_contents_dict[aln_sto_intgz]),
+                            'stockholm'),
+            out_aln_fasta_h,
+            'fasta'
+        )
+# Model
+phylo_model = json.loads(tar_h.extractfile(
+        tar_contents_dict[contents['files'].get('phylo_model')]
+    ).read().decode('utf-8')
+).get('subs_rates')
+
+re_basefreq = re.compile(r'Base frequencies: (?P<A>0\\.\\d+) (?P<C>0\\.\\d+) (?P<G>0\\.\\d+) (?P<T>0\\.\\d+)')
+bf_m = re_basefreq.search(tar_h.extractfile(
+        tar_contents_dict[contents['files'].get('tree_stats')]
+    ).read().decode('utf-8'))
+with open('model.txt', 'wt') as model_h:
+    model_h.writelines( 
+        "GTR{"+
+        "{}/{}/{}/{}/{}/{}".format(
+            phylo_model['ac'],
+            phylo_model['ag'],
+            phylo_model['at'],
+            phylo_model['cg'],
+            phylo_model['ct'],
+            phylo_model['gt'],
+        )
+        +"}"+"+FU{"+
+        "{}/{}/{}/{}".format(
+            bf_m['A'],
+            bf_m['C'],
+            bf_m['G'],
+            bf_m['T'],
+        )
+        +"}"
+    )
+
+with open('leaf_info.csv', 'wt') as leaf_h:
+    leaf_h.write(tar_h.extractfile(
+        tar_contents_dict[contents['files'].get('seq_info')]
+    ).read().decode('utf-8'))
+
+with open('taxonomy.csv', 'wt') as leaf_h:
+    leaf_h.write(tar_h.extractfile(
+        tar_contents_dict[contents['files'].get('taxonomy')]
+    ).read().decode('utf-8'))
+
+
+"""
+}
+
 
 
 //
