@@ -10,7 +10,7 @@ container__seqinfosync = "golob/seqinfo_taxonomy_sync:0.2.1__bcw.0.3.0"
 container__infernal = "quay.io/biocontainers/infernal:1.1.4--h779adbc_0"
 container__raxml = "quay.io/biocontainers/raxml:8.2.4--h779adbc_4"
 container__dada2pplacer = "golob/dada2-pplacer:0.8.0__bcw_0.3.1A"
-container__taxtastic = "golob/taxtastic:0.9.0"
+container__taxtastic = "golob/taxtastic:0.9.0A"
 
 // paramters
 params.help = false
