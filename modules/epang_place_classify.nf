@@ -1,7 +1,7 @@
 //
-//  PPlacer Place and Classify
+//  EPA-ng Place and Classify
 //
-nextflow.preview.dsl=2
+nextflow.enable.dsl=2
 
 // Paramteters
 // common
@@ -34,7 +34,7 @@ container__epang = "quay.io/biocontainers/epa-ng:0.3.8--h9a82719_1"
 container__gappa = 'quay.io/biocontainers/gappa:0.7.1--h9a82719_1'
 
 
-workflow place_classify_wf {
+workflow epang_place_classify_wf {
     take:
         sv_fasta_f
         refpkg_tgz_f
@@ -1176,7 +1176,7 @@ workflow {
         exit 0
     }
 
-    place_classify_wf (
+    epang_place_classify_wf (
         sv_fasta_f,
         refpkg_tgz_f,
         weights_f,

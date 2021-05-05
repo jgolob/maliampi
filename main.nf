@@ -156,7 +156,7 @@ include { make_refpkg_wf } from './modules/refpackage' params (
 
 )
 
-include { place_classify_wf } from './modules/place_classify' params (
+include { epang_place_classify_wf } from './modules/epang_place_classify' params (
     output: params.output,
     cmalign_mxsize: params.cmalign_mxsize,
     // Placer
@@ -249,7 +249,7 @@ workflow {
     //
     // STEP 3. Place and Classify
     //
-    place_classify_wf(
+    epang_place_classify_wf(
         dada2_wf.out.sv_fasta,
         make_refpkg_wf.out.refpkg_tgz,
         dada2_wf.out.sv_weights,
