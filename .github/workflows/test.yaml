@@ -23,5 +23,5 @@ jobs:
           df -h
       - name:  Run maliampi (full workflow)
         run: |
-          NXF_VER=20.10.0.5430 nextflow run main.nf -with-docker ubuntu:18.04 -c nextflow.config.sample -profile testing --manifest maliampi-practice-data/manifest.combined.wmissing.csv --repo_fasta  maliampi-practice-data/test.repo.fasta --repo_si maliampi-practice-data/test.repo.seq_info.csv --email j-dev@golob.org --output output  
+          nextflow run main.nf -with-docker ubuntu:18.04 -c nextflow.config.sample -profile testing --manifest maliampi-practice-data/manifest.combined.wmissing.csv --repo_fasta  maliampi-practice-data/test.repo.fasta --repo_si maliampi-practice-data/test.repo.seq_info.csv --email j-dev@golob.org --output output  
   
