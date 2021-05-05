@@ -1209,8 +1209,8 @@ workflow {
         SharetableToMapWeight (
             file(params.sharetable)
         )
-        map_f = SharetableToMapWeight.out[0]
-        weights_f = SharetableToMapWeight.out[1]
+        map_f = SharetableToMapWeight.out.sv_map
+        weights_f = SharetableToMapWeight.out.sv_weights
         sv_long_f = SharetableToMapWeight.out.sp_sv_long
         
     }
