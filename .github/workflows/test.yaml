@@ -28,8 +28,8 @@ jobs:
         run: |
           [[ -s output/sv/dada2.specimen.sv.long.csv ]]
           [[ -s output/sv/dada2.sv.fasta ]]
-          [[ -s output/sv/dada2.map.csv ]]
-          [[ -s output/sv/dada2.weight.csv ]]
+          [[ -s output/sv/dada2.sv.map.csv ]]
+          [[ -s output/sv/dada2.sv.weights.csv ]]
       - name:  Verify output (Refpkg)
         run: |
           [[ -s output/refpkg/refpkg.tgz ]]
@@ -70,8 +70,8 @@ jobs:
         run: |
           [[ -s output/sv/dada2.specimen.sv.long.csv ]]
           [[ -s output/sv/dada2.sv.fasta ]]
-          [[ -s output/sv/dada2.map.csv ]]
-          [[ -s output/sv/dada2.weight.csv ]]
+          [[ -s output/sv/dada2.sv.map.csv ]]
+          [[ -s output/sv/dada2.sv.weights.csv ]]
 
   
   refpkg_workflow:

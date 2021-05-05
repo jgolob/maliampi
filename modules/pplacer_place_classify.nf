@@ -26,7 +26,7 @@ params.cmalign_mxsize = 8196
 
 // Containers!
 container__infernal = "quay.io/biocontainers/infernal:1.1.4--h779adbc_0"
-container__fastatools = "golob/fastatools:0.7.1__bcw.0.3.1"
+container__fastatools = "golob/fastatools:0.8.0A"
 container__pplacer = "golob/pplacer:1.1alpha19rc_BCW_0.3.1A"
 container__dada2pplacer = "golob/dada2-pplacer:0.8.0__bcw_0.3.1A"
 container__easel = 'quay.io/biocontainers/easel:0.47--h516909a_0'
