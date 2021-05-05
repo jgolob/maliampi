@@ -25,10 +25,11 @@ params.pp_seed = 1
 params.cmalign_mxsize = 8196
 
 // Containers!
-container__infernal = "golob/infernal:1.1.2_bcw_0.3.1"
-container__fastatools = "golob/fastatools:0.7.1__bcw.0.3.1"
+container__infernal = "quay.io/biocontainers/infernal:1.1.4--h779adbc_0"
+container__fastatools = "golob/fastatools:0.8.0A"
 container__pplacer = "golob/pplacer:1.1alpha19rc_BCW_0.3.1A"
 container__dada2pplacer = "golob/dada2-pplacer:0.8.0__bcw_0.3.1A"
+container__easel = 'quay.io/biocontainers/easel:0.47--h516909a_0'
 container__epang = "quay.io/biocontainers/epa-ng:0.3.8--h9a82719_1"
 container__gappa = 'quay.io/biocontainers/gappa:0.7.1--h9a82719_1'
 
@@ -44,29 +45,29 @@ workflow place_classify_wf {
     main:
 
     //
-    // Step 1. Align the SV
-    // 
-    AlignSV(
-        sv_fasta_f
-    )
-
-    //
     //  PLACEMENT
     //
 
-    //
-    //  Step 2. Extract reference alignment, and combine
-    //
-    
-    // Step 2a. Extract bits from the reference
-    ExtractRefpkgForEPAng(
+
+    // Step 0. Extract bits from the reference
+    ExtractRefpkg(
         refpkg_tgz_f
     )
 
-    // Step 2b. Combine SV and refpkg alignments
+    //
+    // Step 1. Align the SV
+    // 
+    AlignSV(
+        sv_fasta_f,
+        ExtractRefpkg.out.cm
+    )
+
+    //
+    //  Step 2. Combine SV and refpkg alignments
+    //
     CombineAln_SV_refpkg(
         AlignSV.out[0],
-        ExtractRefpkgForEPAng.out.ref_aln_sto
+        ExtractRefpkg.out.ref_aln_sto
     )
 
     // Step 2c. Convert combined alignment to FASTA format
@@ -79,10 +80,10 @@ workflow place_classify_wf {
     //
 
     EPAngPlacement(
-        ExtractRefpkgForEPAng.out.ref_aln_fasta,
+        ExtractRefpkg.out.ref_aln_fasta,
         ConvertAlnToFasta.out,
-        ExtractRefpkgForEPAng.out.model,
-        ExtractRefpkgForEPAng.out.tree
+        ExtractRefpkg.out.model,
+        ExtractRefpkg.out.tree
     )
 
     //
@@ -143,8 +144,8 @@ workflow place_classify_wf {
     //
 
     MakeEPAngTaxonomy(
-        ExtractRefpkgForEPAng.out.leaf_info,
-        ExtractRefpkgForEPAng.out.taxonomy,
+        ExtractRefpkg.out.leaf_info,
+        ExtractRefpkg.out.taxonomy,
     )
 
     Gappa_Classify(
@@ -154,7 +155,7 @@ workflow place_classify_wf {
 
     Gappa_Extract_Taxonomy(
         Gappa_Classify.out,
-        ExtractRefpkgForEPAng.out.taxonomy
+        ExtractRefpkg.out.taxonomy
     )
     want_ranks = Channel.from(
         'species',
@@ -175,29 +176,32 @@ workflow place_classify_wf {
         taxonomy = Gappa_Extract_Taxonomy.out[0]
 
 }
-
 process AlignSV {
     container = "${container__infernal}"
     label = 'mem_veryhigh'
 
     input:
-        file sv_fasta_f
+        path sv_fasta_f
+        path cm
     
     output:
-        file "sv.aln.sto"
-        file "sv.aln.scores"
+        path "sv.aln.sto"
+        path "sv.aln.scores"
         
     
     """
     cmalign \
     --cpu ${task.cpus} --noprob --dnaout --mxsize ${params.cmalign_mxsize} \
     --sfile sv.aln.scores -o sv.aln.sto \
-    /cmalign/data/SSU_rRNA_bacteria.cm ${sv_fasta_f}
+    ${cm} ${sv_fasta_f}
     """
 }
 
+
+
+
 process CombineAln_SV_refpkg {
-    container = "${container__infernal}"
+    container = "${container__easel}"
     label = 'mem_veryhigh'
 
     input:
@@ -242,7 +246,7 @@ process ConvertAlnToFasta {
     """
 }
 
-process ExtractRefpkgForEPAng {
+process ExtractRefpkg {
     container = "${container__fastatools}"
     label = 'io_limited'
     
@@ -256,6 +260,7 @@ process ExtractRefpkgForEPAng {
         path 'model.txt', emit: model
         path 'leaf_info.csv', emit: leaf_info
         path 'taxonomy.csv', emit: taxonomy
+        path 'refpkg.cm', emit: cm
 
 """
 #!/usr/bin/env python
@@ -271,6 +276,13 @@ contents = json.loads(
         tar_contents_dict['CONTENTS.json']
     ).read().decode('utf-8')
 )
+
+with open('refpkg.cm', 'wb') as cm_h:
+    cm_h.write(
+        tar_h.extractfile(
+            tar_contents_dict[contents['files'].get('profile')]
+        ).read()
+    )
 
 with open('refpkg_tree.nwk', 'wt') as tree_h:
     tree_h.writelines(
@@ -372,8 +384,8 @@ with open('taxonomy.csv', 'wt') as leaf_h:
 
 
 """
-
 }
+
 
 process EPAngPlacement {
     container = "${container__epang}"
