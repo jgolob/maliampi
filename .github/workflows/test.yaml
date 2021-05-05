@@ -44,13 +44,13 @@ jobs:
           df -h
       - name:  Run maliampi-dada2 (dada2 workflow)
         run: |
-          nextflow run modules/dada2.nf -with-docker ubuntu:18.04 -c nextflow.config.sample -profile testing --manifest maliampi-practice-data/autotest_manifest.csv --output output_dada2  
+          nextflow run modules/dada2.nf -with-docker ubuntu:18.04 -c nextflow.config.sample -profile testing --manifest maliampi-practice-data/autotest_manifest.csv --output output
       - name:  Verify output
         run: |
-          [[ -s output_dada2/sv/dada2.specimen.sv.long.csv ]]
-          [[ -s output_dada2/sv/dada2.sv.fasta ]]
-          [[ -s output_dada2/sv/dada2.map.csv ]]
-          [[ -s output_dada2/sv/dada2.weight.csv.gz ]]
+          [[ -s output/sv/dada2.specimen.sv.long.csv ]]
+          [[ -s output/sv/dada2.sv.fasta ]]
+          [[ -s output/sv/dada2.map.csv ]]
+          [[ -s output/sv/dada2.weight.csv ]]
 
   
   refpkg_workflow:
@@ -72,7 +72,10 @@ jobs:
           df -h
       - name:  Run maliampi-refpkg (Reference Package Workflow)
         run: |
-          nextflow run modules/refpackage.nf -with-docker ubuntu:18.04 -c nextflow.config.sample -profile testing --sv_fasta tests/sv/dada2.sv.fasta --repo_fasta  maliampi-practice-data/test.repo.fasta  --repo_si maliampi-practice-data/test.repo.seq_info.csv --taxdmp maliampi-practice-data/taxdmp.zip --email j-dev@golob.org --output output_refpkg
+          nextflow run modules/refpackage.nf -with-docker ubuntu:18.04 -c nextflow.config.sample -profile testing --sv_fasta tests/sv/dada2.sv.fasta --repo_fasta  maliampi-practice-data/test.repo.fasta  --repo_si maliampi-practice-data/test.repo.seq_info.csv --taxdmp maliampi-practice-data/taxdmp.zip --email j-dev@golob.org --output output
+      - name:  Verify output
+        run: |
+          [[ -s output/refpkg/refpkg.tgz ]]
 
   pplacer_place_classify_workflow:
     runs-on: ubuntu-18.04
@@ -93,4 +96,16 @@ jobs:
           df -h
       - name:  Run maliampi-pplacer (placement and classification)
         run: |
-          nextflow run modules/pplacer_place_classify.nf -with-docker ubuntu:18.04 -c nextflow.config.sample -profile testing --sv_fasta tests/sv/dada2.sv.fasta --weights tests/sv/dada2.sv.weights.csv --map tests/sv/dada2.sv.map.csv  --refpkg tests/refpkg/refpkg.tgz --output output_pplacer_pc
+          nextflow run modules/pplacer_place_classify.nf -with-docker ubuntu:18.04 -c nextflow.config.sample -profile testing --sv_fasta tests/sv/dada2.sv.fasta --weights tests/sv/dada2.sv.weights.csv --map tests/sv/dada2.sv.map.csv  --refpkg tests/refpkg/refpkg.tgz --output output
+      - name:  Verify output (placement)
+        run: |
+          [[ -s output/placement/dedup.jplace ]]
+          [[ -s output/placement/redup.jplace.gz ]]
+          [[ -s output/placement/adcl.csv.gz ]]
+          [[ -s output/placement/edpl.csv.gz ]]
+          [[ -s output/placement/alpha_diversity.csv.gz ]]
+          [[ -s output/placement/kr_distance.csv.gz ]]
+      - name:  Verify output (classification)
+        run: |
+          [[ -s output/classify/sv_taxonomy.csv ]]
+         
