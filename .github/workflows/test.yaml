@@ -128,4 +128,55 @@ jobs:
       - name:  Verify output (classification)
         run: |
           [[ -s output/classify/sv_taxonomy.csv ]]
-         
+
+  epang_place_classify_workflow:
+    runs-on: ubuntu-18.04
+    env:
+      NXF_ANSI_LOG: 0
+    steps:
+      - uses: actions/checkout@v1
+      - name: Install Nextflow
+        run: |
+          wget -qO- get.nextflow.io | bash
+          sudo mv nextflow /usr/local/bin/
+      - name: Free disk space
+        run: |
+          sudo swapoff -a
+          sudo rm -f /swapfile
+          sudo apt clean
+          docker rmi $(docker image ls -aq)
+          df -h          
+      - name:  Run maliampi-epang (placement and classification)
+        run: |
+          nextflow run modules/epang_place_classify.nf -with-docker ubuntu:18.04 -c nextflow.config.sample -profile testing --weights tests/sv/dada2.sv.weights.csv --map tests/sv/dada2.sv.map.csv --sv_fasta tests/sv/dada2.sv.fasta  --refpkg tests/refpkg/refpkg.tgz --output output
+      - name:  Run maliampi-epang-sharetable (placement and classification)
+        run: |
+          nextflow run modules/epang_place_classify.nf -with-docker ubuntu:18.04 -c nextflow.config.sample -profile testing --sharetable tests/sv/dada2.sv.shared.txt --sv_fasta tests/sv/dada2.sv.fasta  --refpkg tests/refpkg/refpkg.tgz --output output_seqtable
+      - name:  Run maliampi-epang-seqtable (placement and classification)
+        run: |
+          nextflow run modules/epang_place_classify.nf -with-docker ubuntu:18.04 -c nextflow.config.sample -profile testing --seqtable tests/sv/dada2.combined.seqtabs.nochimera.csv  --refpkg tests/refpkg/refpkg.tgz --output output_seqtable
+      - name:  Verify output (placement and classify / weight and map)
+        run: |
+          [[ -s output/placement/dedup.jplace ]]
+          [[ -s output/placement/adcl.csv.gz ]]
+          [[ -s output/placement/edpl_list.csv ]]
+          [[ -s output/placement/alpha_diversity.csv.gz ]]
+          [[ -s output/placement/krd/krd_matrix.csv.gz ]]
+          [[ -s output/classify_sharetable/sv_taxonomy.csv ]]  
+      - name:  Verify output (placement and classify / sharetable)
+        run: |
+          [[ -s output_sharetable/placement/dedup.jplace ]]
+          [[ -s output_sharetable/placement/adcl.csv.gz ]]
+          [[ -s output_sharetable/placement/edpl_list.csv ]]
+          [[ -s output_sharetable/placement/alpha_diversity.csv.gz ]]
+          [[ -s output_sharetable/placement/krd/krd_matrix.csv.gz ]]
+          [[ -s output_sharetable/classify_sharetable/sv_taxonomy.csv ]]  
+      - name:  Verify output (placement and classify / seqtable)
+        run: |
+          [[ -s output_seqtable/placement/dedup.jplace ]]
+          [[ -s output_seqtable/placement/adcl.csv.gz ]]
+          [[ -s output_seqtable/placement/edpl_list.csv ]]
+          [[ -s output_seqtable/placement/alpha_diversity.csv.gz ]]
+          [[ -s output_seqtable/placement/krd/krd_matrix.csv.gz ]]
+          [[ -s output_seqtable/classify_sharetable/sv_taxonomy.csv ]]  
+        

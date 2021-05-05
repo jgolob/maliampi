@@ -34,6 +34,11 @@ container__epang = "quay.io/biocontainers/epa-ng:0.3.8--h9a82719_1"
 container__gappa = 'quay.io/biocontainers/gappa:0.7.1--h9a82719_1'
 
 
+// includes
+include { Dada2_convert_output } from './dada2' params (
+    output: params.output
+)
+
 workflow epang_place_classify_wf {
     take:
         sv_fasta_f
@@ -972,76 +977,45 @@ process ClassifyTables {
     """
 }
 
-process SharetableToMapWeight {
+process WeightMaptoLong {
     container = "${container__fastatools}"
     label = 'io_limited'
     publishDir "${params.output}/sv", mode: 'copy'
 
     input:
-        file (sharetable)
+        path (weight)
+        path (map)
 
     output:
-        file ("sv_sp_map.csv")
-        file ("sv_weights.csv")
+        path ("sp_sv_long.csv")
 
 """
 #!/usr/bin/env python
 import csv
 
-sp_count = {}
-with open('${sharetable}', 'rt') as st_h:
-    st_r = csv.reader(st_h, delimiter='\\t')
-    header = next(st_r)
-    sv_name = header[3:]
-    for r in st_r:
-        sp_count[r[0]] = [int(c) for c in r[3:]]
-weightsL = []
-mapL = []
-for sv_i, sv in enumerate(sv_name):
-    sv_counts = [
-        (sp, c[sv_i]) for sp, c in sp_count.items()
-        if c[sv_i] > 0
-    ]
-    weightsL += [
-        (sv, "{}__{}".format(sv, sp), c)
-        for sp, c in 
-        sv_counts
-    ]
-    mapL += [
-        ("{}__{}".format(sv, sp), sp)
-        for sp, c in 
-        sv_counts
-    ]
-with open("sv_sp_map.csv", "w") as map_h:
-    map_w = csv.writer(map_h)
-    map_w.writerows(mapL)
-with open("sv_weights.csv", "w") as weights_h:
-    weights_w = csv.writer(weights_h)
-    weights_w.writerows(weightsL) 
-"""
+specimen_comSV = {
+    r[0]: r[1]
+    for r in 
+    csv.reader(
+        open('${map}', 'rt')
+    )
 }
-
-process Dada2_convert_output {
-    container "${container__dada2pplacer}"
-    label 'io_mem'
-    publishDir "${params.output}/sv/", mode: 'copy'
-    errorStrategy "retry"
-
-    input:
-        file(final_seqtab_csv)
-
-    output:
-        file "dada2.sv.fasta"
-        file "dada2.sv.map.csv"
-        file "dada2.sv.weights.csv"
-
-    """
-    dada2-seqtab-to-pplacer \
-    -s ${final_seqtab_csv} \
-    -f dada2.sv.fasta \
-    -m dada2.sv.map.csv \
-    -w dada2.sv.weights.csv \
-    """
+with open('${weight}', 'rt') as w_h, open("sp_sv_long.csv", 'wt') as sv_long_h:
+    w_r = csv.reader(w_h)
+    svl_w = csv.writer(sv_long_h)
+    svl_w.writerow((
+        'specimen',
+        'sv',
+        'count'
+    ))    
+    for row in w_r:
+        svl_w.writerow((
+            specimen_comSV[row[1]],
+            row[0],
+            int(row[2])
+        ))
+    
+"""
 }
 
 process Extract_Taxonomy {
@@ -1093,7 +1067,11 @@ sv_classification.to_csv("sv_taxonomy.csv", index=False)
 //
 //      Components for running the module independently
 //
-
+params.sv_fasta = null
+params.weights = null
+params.map = null
+params.sharetable = null
+params.seqtable = null
 // Function which prints help message text
 def helpMessage() {
     log.info"""
@@ -1153,6 +1131,11 @@ workflow {
         map_f =  Channel.from( file(params.map) )
         weights_f = Channel.from( file(params.weights) )
         sv_fasta_f = Channel.from( file(params.sv_fasta) )
+        WeightMaptoLong(
+            weights_f,
+            map_f,
+        )
+        sv_long_f = WeightMaptoLong.out
     }
     else if (
         (params.sv_fasta != null) &&
@@ -1164,6 +1147,7 @@ workflow {
         )
         map_f = SharetableToMapWeight.out[0]
         weights_f = SharetableToMapWeight.out[1]
+        sv_long_f = SharetableToMapWeight.out.sv_long
         
     }
     else if (params.seqtable != null) {
@@ -1171,6 +1155,7 @@ workflow {
         sv_fasta_f = Dada2_convert_output.out[0]
         map_f = Dada2_convert_output.out[1]
         weights_f = Dada2_convert_output.out[2]
+        sv_long_f = Dada2_convert_output.out.sv_long
     } else {
         helpMessage()
         exit 0
