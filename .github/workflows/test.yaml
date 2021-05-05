@@ -45,6 +45,13 @@ jobs:
       - name:  Run maliampi-dada2 (dada2 workflow)
         run: |
           nextflow run modules/dada2.nf -with-docker ubuntu:18.04 -c nextflow.config.sample -profile testing --manifest maliampi-practice-data/autotest_manifest.csv --output output_dada2  
+      - name:  Verify output
+        run: |
+          [[ -s output_dada2/sv/dada2.specimen.sv.long.csv ]]
+          [[ -s output_dada2/sv/dada2.sv.fasta ]]
+          [[ -s output_dada2/sv/dada2.map.csv ]]
+          [[ -s output_dada2/sv/dada2.weight.csv.gz ]]
+
   
   refpkg_workflow:
     runs-on: ubuntu-18.04
