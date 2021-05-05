@@ -163,14 +163,6 @@ jobs:
           [[ -s output/placement/alpha_diversity.csv.gz ]]
           [[ -s output/placement/krd/krd_matrix.csv.gz ]]
           [[ -s output/classify/sv_taxonomy.csv ]]  
-      - name:  Verify output (placement and classify / sharetable)
-        run: |
-          [[ -s output_sharetable/placement/dedup.jplace ]]
-          [[ -s output_sharetable/placement/adcl.csv.gz ]]
-          [[ -s output_sharetable/placement/edpl_list.csv ]]
-          [[ -s output_sharetable/placement/alpha_diversity.csv.gz ]]
-          [[ -s output_sharetable/placement/krd/krd_matrix.csv.gz ]]
-          [[ -s output_sharetable/classify/sv_taxonomy.csv ]]  
       - name:  Verify output (placement and classify / seqtable)
         run: |
           [[ -s output_seqtable/placement/dedup.jplace ]]
