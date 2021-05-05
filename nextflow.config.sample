@@ -1,0 +1,51 @@
+profiles{
+    // By default, give each process a generous amount of resources
+    standard {
+        process {
+            withLabel: 'io_limited' {
+                cpus = 2
+                memory = 4.GB
+            }
+            withLabel: 'io_net' {
+                cpus = 2
+                memory = 4.GB
+            }            
+            withLabel: 'multithread' {
+                cpus = 4
+                memory = 30.GB
+            }
+            withLabel: 'mem_medium' {
+                cpus = 4
+                memory = 30.GB
+            }
+            withLabel: 'mem_veryhigh' {
+                cpus = 16
+                memory = 120.GB
+            }
+        }
+    }
+    testing {
+        process {
+            withLabel: 'io_limited' {
+                cpus = 1
+                memory = 1.GB
+            }
+            withLabel: 'io_net' {
+                cpus = 1
+                memory = 1.GB
+            }
+            withLabel: 'multithread' {
+                cpus = 1
+                memory = 4.GB
+            }
+            withLabel: 'mem_medium' {
+                cpus = 1
+                memory = 4.GB
+            }
+            withLabel: 'mem_veryhigh' {
+                cpus = 1
+                memory = 6.GB
+            }
+        }
+    }
+}
