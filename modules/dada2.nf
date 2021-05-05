@@ -3,7 +3,7 @@
 //
 nextflow.preview.dsl=2
 
-container__dada2 = "golob/dada2:1.14.1.ub.1804"
+container__dada2 = "quay.io/biocontainers/bioconductor-dada2:1.18.0--r40h399db7b_1"
 container__fastcombineseqtab = "golob/dada2-fast-combineseqtab:0.5.0__1.12.0__BCW_0.3.1"
 container__dada2pplacer = "golob/dada2-pplacer:0.8.0__bcw_0.3.1A"
 container__goodsfilter = "golob/goodsfilter:0.1.6"
