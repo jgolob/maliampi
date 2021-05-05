@@ -24,4 +24,66 @@ jobs:
       - name:  Run maliampi (full workflow)
         run: |
           nextflow run main.nf -with-docker ubuntu:18.04 -c nextflow.config.sample -profile testing --manifest maliampi-practice-data/autotest_manifest.csv --repo_fasta  maliampi-practice-data/test.repo.fasta --repo_si maliampi-practice-data/test.repo.seq_info.csv --taxdmp maliampi-practice-data/taxdmp.zip --email j-dev@golob.org --output output  
+
+  dada2_workflow:
+    runs-on: ubuntu-18.04
+    env:
+      NXF_ANSI_LOG: 0
+    steps:
+      - uses: actions/checkout@v1
+      - name: Install Nextflow
+        run: |
+          wget -qO- get.nextflow.io | bash
+          sudo mv nextflow /usr/local/bin/
+      - name: Free disk space
+        run: |
+          sudo swapoff -a
+          sudo rm -f /swapfile
+          sudo apt clean
+          docker rmi $(docker image ls -aq)
+          df -h
+      - name:  Run maliampi-dada2 (dada2 workflow)
+        run: |
+          nextflow run modules/dada2.nf -with-docker ubuntu:18.04 -c nextflow.config.sample -profile testing --manifest maliampi-practice-data/autotest_manifest.csv --output output_dada2  
   
+  refpkg_workflow:
+    runs-on: ubuntu-18.04
+    env:
+      NXF_ANSI_LOG: 0
+    steps:
+      - uses: actions/checkout@v1
+      - name: Install Nextflow
+        run: |
+          wget -qO- get.nextflow.io | bash
+          sudo mv nextflow /usr/local/bin/
+      - name: Free disk space
+        run: |
+          sudo swapoff -a
+          sudo rm -f /swapfile
+          sudo apt clean
+          docker rmi $(docker image ls -aq)
+          df -h
+      - name:  Run maliampi-refpkg (Reference Package Workflow)
+        run: |
+          nextflow run modules/dada2.nf -with-docker ubuntu:18.04 -c nextflow.config.sample -profile testing --sv_fasta tests/sv/dada2.sv.fasta --repo_fasta  maliampi-practice-data/test.repo.fasta  --repo_si maliampi-practice-data/test.repo.seq_info.csv --taxdmp maliampi-practice-data/taxdmp.zip --email j-dev@golob.org --output output_refpkg
+
+  pplacer_place_classify_workflow:
+    runs-on: ubuntu-18.04
+    env:
+      NXF_ANSI_LOG: 0
+    steps:
+      - uses: actions/checkout@v1
+      - name: Install Nextflow
+        run: |
+          wget -qO- get.nextflow.io | bash
+          sudo mv nextflow /usr/local/bin/
+      - name: Free disk space
+        run: |
+          sudo swapoff -a
+          sudo rm -f /swapfile
+          sudo apt clean
+          docker rmi $(docker image ls -aq)
+          df -h
+      - name:  Run maliampi-pplacer (placement and classification)
+        run: |
+          nextflow run modules/dada2.nf -with-docker ubuntu:18.04 -c nextflow.config.sample -profile testing --sv_fasta tests/sv/dada2.sv.fasta --weights tests/sv/dada2.sv.weights.csv --map tests/sv/dada2.sv.map.csv  --refpkg tests/refpkg/refpkg.tgz --output output_pplacer_pc
