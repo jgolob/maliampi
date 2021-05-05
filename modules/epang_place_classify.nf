@@ -1211,7 +1211,7 @@ workflow {
         )
         map_f = SharetableToMapWeight.out[0]
         weights_f = SharetableToMapWeight.out[1]
-        sv_long_f = SharetableToMapWeight.out.sv_long
+        sv_long_f = SharetableToMapWeight.out.sp_sv_long
         
     }
     else if (params.seqtable != null) {
