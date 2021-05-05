@@ -1,7 +1,7 @@
 //
 //  PPlacer Place and Classify
 //
-nextflow.preview.dsl=2
+nextflow.enable.dsl=2
 
 // Paramteters
 // common

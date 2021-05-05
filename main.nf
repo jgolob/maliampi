@@ -8,7 +8,7 @@
     3) Place SV on the reference package
     4) Classify the SV using the placements + reference package
 */
-nextflow.preview.dsl=2
+nextflow.enable.dsl=2
 
 // Defaults for parameters
 params.help = false
