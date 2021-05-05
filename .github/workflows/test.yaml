@@ -24,6 +24,27 @@ jobs:
       - name:  Run maliampi (full workflow)
         run: |
           nextflow run main.nf -with-docker ubuntu:18.04 -c nextflow.config.sample -profile testing --manifest maliampi-practice-data/autotest_manifest.csv --repo_fasta  maliampi-practice-data/test.repo.fasta --repo_si maliampi-practice-data/test.repo.seq_info.csv --taxdmp maliampi-practice-data/taxdmp.zip --email j-dev@golob.org --output output  
+      - name:  Verify output (DADA2)
+        run: |
+          [[ -s output/sv/dada2.specimen.sv.long.csv ]]
+          [[ -s output/sv/dada2.sv.fasta ]]
+          [[ -s output/sv/dada2.map.csv ]]
+          [[ -s output/sv/dada2.weight.csv ]]
+      - name:  Verify output (Refpkg)
+        run: |
+          [[ -s output/refpkg/refpkg.tgz ]]
+      - name:  Verify output (placement)
+        run: |
+          [[ -s output/placement/dedup.jplace ]]
+          [[ -s output/placement/redup.jplace.gz ]]
+          [[ -s output/placement/adcl.csv.gz ]]
+          [[ -s output/placement/edpl.csv.gz ]]
+          [[ -s output/placement/alpha_diversity.csv.gz ]]
+          [[ -s output/placement/kr_distance.csv.gz ]]
+      - name:  Verify output (classification)
+        run: |
+          [[ -s output/classify/sv_taxonomy.csv ]]
+         
 
   dada2_workflow:
     runs-on: ubuntu-18.04
