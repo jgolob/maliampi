@@ -1,7 +1,7 @@
 //
 //  ESVs via DADA2
 //
-nextflow.preview.dsl=2
+nextflow.enable.dsl=2
 
 container__dada2 = "quay.io/biocontainers/bioconductor-dada2:1.18.0--r40h399db7b_1"
 container__fastcombineseqtab = "golob/dada2-fast-combineseqtab:0.5.0__1.12.0__BCW_0.3.1"
@@ -492,7 +492,7 @@ process dada2_learn_error {
         tuple val(batch_specimens), val(batch), file(reads), val(read_num)
 
     output:
-        tuple batch, read_num, file("${batch}.${read_num}.errM.rds"), file("${batch}.${read_num}.errM.csv")
+        tuple val(batch), val(read_num), file("${batch}.${read_num}.errM.rds"), file("${batch}.${read_num}.errM.csv")
 
     """
     #!/usr/bin/env Rscript
@@ -524,7 +524,7 @@ process dada2_learn_error_pyro {
         tuple val(batch_specimens), val(batch), file(reads), val(read_num)
 
     output:
-        tuple batch, read_num, file("${batch}.${read_num}.errM.rds"), file("${batch}.${read_num}.errM.csv")
+        tuple val(batch), val(read_num), file("${batch}.${read_num}.errM.rds"), file("${batch}.${read_num}.errM.csv")
 
     """
     #!/usr/bin/env Rscript
