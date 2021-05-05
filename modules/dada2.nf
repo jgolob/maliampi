@@ -492,7 +492,7 @@ process dada2_learn_error {
         tuple val(batch_specimens), val(batch), file(reads), val(read_num)
 
     output:
-        tuple batch, read_num, file("${batch}.${read_num}.errM.rds"), file("${batch}.${read_num}.errM.csv")
+        tuple val(batch), val(read_num), file("${batch}.${read_num}.errM.rds"), file("${batch}.${read_num}.errM.csv")
 
     """
     #!/usr/bin/env Rscript
@@ -524,7 +524,7 @@ process dada2_learn_error_pyro {
         tuple val(batch_specimens), val(batch), file(reads), val(read_num)
 
     output:
-        tuple batch, read_num, file("${batch}.${read_num}.errM.rds"), file("${batch}.${read_num}.errM.csv")
+        tuple val(batch), val(read_num), file("${batch}.${read_num}.errM.rds"), file("${batch}.${read_num}.errM.csv")
 
     """
     #!/usr/bin/env Rscript
