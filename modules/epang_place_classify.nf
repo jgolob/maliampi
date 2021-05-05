@@ -1018,6 +1018,70 @@ with open('${weight}', 'rt') as w_h, open("sp_sv_long.csv", 'wt') as sv_long_h:
 """
 }
 
+process SharetableToMapWeight {
+    container = "${container__fastatools}"
+    label = 'io_limited'
+    publishDir "${params.output}/sv", mode: 'copy'
+
+    input:
+        path (sharetable)
+
+    output:
+        path ("sv_sp_map.csv"), emit: sv_map
+        path ("sv_weights.csv"), emit: sv_weights
+        path ("sp_sv_long.csv"), emit: sp_sv_long
+
+"""
+#!/usr/bin/env python
+import csv
+
+sp_count = {}
+with open('${sharetable}', 'rt') as st_h:
+    st_r = csv.reader(st_h, delimiter='\\t')
+    header = next(st_r)
+    sv_name = header[3:]
+    for r in st_r:
+        sp_count[r[0]] = [int(c) for c in r[3:]]
+weightsL = []
+mapL = []
+sv_long = []
+for sv_i, sv in enumerate(sv_name):
+    sv_counts = [
+        (sp, c[sv_i]) for sp, c in sp_count.items()
+        if c[sv_i] > 0
+    ]
+    sv_long += [
+        (sp, sv, c[sv_i]) for sp, c in sp_count.items()
+        if c[sv_i] > 0
+    ]    
+    weightsL += [
+        (sv, "{}__{}".format(sv, sp), c)
+        for sp, c in 
+        sv_counts
+    ]
+    mapL += [
+        ("{}__{}".format(sv, sp), sp)
+        for sp, c in 
+        sv_counts
+    ]
+with open("sv_sp_map.csv", "w") as map_h:
+    map_w = csv.writer(map_h)
+    map_w.writerows(mapL)
+with open("sv_weights.csv", "w") as weights_h:
+    weights_w = csv.writer(weights_h)
+    weights_w.writerows(weightsL)
+with open("sp_sv_long.csv", 'wt') as svl_h:
+    svl_w = csv.writer(svl_h)
+    svl_w.writerow((
+        'specimen',
+        'sv',
+        'count'
+    ))
+    svl_w.writerows(sv_long)
+"""
+}
+
+
 process Extract_Taxonomy {
     container "${container__dada2pplacer}"
     label 'io_mem'
