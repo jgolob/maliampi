@@ -65,7 +65,7 @@ jobs:
           df -h
       - name:  Run maliampi-refpkg (Reference Package Workflow)
         run: |
-          nextflow run modules/refpkg.nf -with-docker ubuntu:18.04 -c nextflow.config.sample -profile testing --sv_fasta tests/sv/dada2.sv.fasta --repo_fasta  maliampi-practice-data/test.repo.fasta  --repo_si maliampi-practice-data/test.repo.seq_info.csv --taxdmp maliampi-practice-data/taxdmp.zip --email j-dev@golob.org --output output_refpkg
+          nextflow run modules/refpackage.nf -with-docker ubuntu:18.04 -c nextflow.config.sample -profile testing --sv_fasta tests/sv/dada2.sv.fasta --repo_fasta  maliampi-practice-data/test.repo.fasta  --repo_si maliampi-practice-data/test.repo.seq_info.csv --taxdmp maliampi-practice-data/taxdmp.zip --email j-dev@golob.org --output output_refpkg
 
   pplacer_place_classify_workflow:
     runs-on: ubuntu-18.04
