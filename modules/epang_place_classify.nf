@@ -1050,12 +1050,16 @@ for sv_i, sv in enumerate(sv_name):
         (sp, c[sv_i]) for sp, c in sp_count.items()
         if c[sv_i] > 0
     ]
+    if len(sv_counts) == 0:
+        continue
+    # Implicit else
+    shared_sv = "{}__{}".format(sv, sorted(sv_counts, key=lambda v: -1*v[1])[0][0])
     sv_long += [
-        (sp, sv, c[sv_i]) for sp, c in sp_count.items()
+        (sp, shared_sv, c[sv_i]) for sp, c in sp_count.items()
         if c[sv_i] > 0
     ]    
     weightsL += [
-        (sv, "{}__{}".format(sv, sp), c)
+        (shared_sv, "{}__{}".format(sv, sp), c)
         for sp, c in 
         sv_counts
     ]
