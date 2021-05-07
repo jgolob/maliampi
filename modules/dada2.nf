@@ -315,10 +315,10 @@ workflow dada2_wf {
     //
     // STEP 10. Transform output to be pplacer and mothur style
     //
-    dada2_convert_output(
+    Dada2_convert_output(
         dada2_remove_bimera.out[0].map{ file(it) }
     )
-    //dada2_convert_output(
+    //Dada2_convert_output(
     //    goods_filter_seqtab.out[0].map{ file(it) }
     //)
 
@@ -330,11 +330,11 @@ workflow dada2_wf {
     .set{ failures }
 
     emit:
-       sv_fasta         = dada2_convert_output.out[0] 
-       sv_map           = dada2_convert_output.out[1]
-       sv_weights       = dada2_convert_output.out[2]
-       sv_long          = dada2_convert_output.out[3]
-       sv_sharetable    = dada2_convert_output.out[4]
+       sv_fasta         = Dada2_convert_output.out[0] 
+       sv_map           = Dada2_convert_output.out[1]
+       sv_weights       = Dada2_convert_output.out[2]
+       sv_long          = Dada2_convert_output.out[3]
+       sv_sharetable    = Dada2_convert_output.out[4]
        sv_table         = dada2_remove_bimera.out[0]
        failures         = failures
     // */
@@ -780,21 +780,21 @@ process dada2_remove_bimera {
     """
 }
 
-process dada2_convert_output {
+process Dada2_convert_output {
     container "${container__dada2pplacer}"
     label 'io_mem'
     publishDir "${params.output}/sv/", mode: 'copy'
     errorStrategy "finish"
 
     input:
-        file(final_seqtab_csv)
+        path (final_seqtab_csv)
 
     output:
-        file "dada2.sv.fasta"
-        file "dada2.sv.map.csv"
-        file "dada2.sv.weights.csv"
-        file "dada2.specimen.sv.long.csv"
-        file "dada2.sv.shared.txt"
+        path "dada2.sv.fasta", emit: sv_fasta
+        path "dada2.sv.map.csv", emit: sv_map
+        path "dada2.sv.weights.csv", emit: sv_weights
+        path "dada2.specimen.sv.long.csv", emit: sv_long
+        path "dada2.sv.shared.txt", emit: sharetable
 
     """
     dada2-seqtab-to-pplacer \

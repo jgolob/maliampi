@@ -8,20 +8,11 @@ container__fastatools = "golob/fastatools:0.8.0A"
 container__pplacer = "golob/pplacer:1.1alpha19rc_BCW_0.3.1A"
 container__seqinfosync = "golob/seqinfo_taxonomy_sync:0.2.1__bcw.0.3.0"
 container__infernal = "quay.io/biocontainers/infernal:1.1.4--h779adbc_0"
-container__raxml = "quay.io/biocontainers/raxml:8.2.4--h779adbc_4"
+container__raxmlng = 'quay.io/biocontainers/raxml-ng:1.0.2--h32fcf60_1'
 container__dada2pplacer = "golob/dada2-pplacer:0.8.0__bcw_0.3.1A"
-container__taxtastic = "golob/taxtastic:0.9.0A"
+container__taxtastic = "golob/taxtastic:0.9.5D"
 
-// paramters
-params.help = false
 
-params.taxdmp = false
-
-params.repo_min_id = 0.8
-params.repo_max_accepts = 10
-params.cmalign_mxsize = 8196
-params.raxml_model = 'GTRGAMMA'
-params.raxml_parsiomony_seed = 12345
 
 workflow make_refpkg_wf {
     take:
@@ -96,16 +87,10 @@ workflow make_refpkg_wf {
     //
     // Step 8. Make a tree from the alignment.
     //
-
-    RaxmlTree(ConvertAlnToFasta.out)
-
+    RaxmlTreeNG(ConvertAlnToFasta.out)
+    
     //
-    // Step 9. Remove cruft from tree stats
-    //
-    RaxmlTree_cleanupInfo(RaxmlTree.out[1])
-
-    //
-    // Step 10. Make a tax table for the refpkg sequences
+    // Step 9. Make a tax table for the refpkg sequences
     //
     TaxtableForSI(
         tax_db,
@@ -114,16 +99,18 @@ workflow make_refpkg_wf {
 
 
     //
-    // Step 12. Combine into a refpkg
+    // Step 10. Combine into a refpkg
     //
+
     CombineRefpkg(
         ConvertAlnToFasta.out,
         AlignRepoRecruits.out[0],
-        RaxmlTree.out[0],
-        RaxmlTree_cleanupInfo.out,
+        RaxmlTreeNG.out.tree,
+        RaxmlTreeNG.out.log,
         TaxtableForSI.out,
         ConfirmSI.out,
         ObtainCM.out,
+        RaxmlTreeNG.out.model
     )
 
     emit:
@@ -293,53 +280,30 @@ process ConvertAlnToFasta {
     """
 }
 
-process RaxmlTree {
-    container = "${container__raxml}"
+process RaxmlTreeNG {
+    container = "${container__raxmlng}"
     label = 'mem_veryhigh'
     errorStrategy = 'retry'
 
     input:
-        file recruits_aln_fasta_f
+        path recruits_aln_fasta_f
     
     output:
-        file "RAxML_bestTree.refpkg"
-        file "RAxML_info.refpkg"
+        path "refpkg.raxml.bestTree", emit: tree
+        path "refpkg.raxml.log", emit: log
+        path "refpkg.raxml.bestModel", emit: model
     
     """
-    raxmlHPC-PTHREADS-AVX2 \
-    -n refpkg \
-    -m ${params.raxml_model} \
-    -s ${recruits_aln_fasta_f} \
-    -p ${params.raxml_parsiomony_seed} \
-    -T ${task.cpus}
+    raxml-ng \
+    --prefix refpkg \
+    --model ${params.raxmlng_model} \
+    --msa ${recruits_aln_fasta_f} \
+    --tree pars{${params.raxmlng_parsimony_trees}},rand{${params.raxmlng_random_trees}} \
+    --bs-cutoff ${params.raxmlng_bootstrap_cutoff} \
+    --seed ${params.raxmlng_seed} \
+    --threads ${task.cpus}
     """
 }
-
-process RaxmlTree_cleanupInfo {
-    container = "${container__fastatools}"
-    label = 'io_limited'
-    errorStrategy = 'retry'
-
-    input:
-        file "RAxML_info.unclean.refpkg"
-    
-    output:
-        file "RAxML_info.refpkg"
-
-
-"""
-#!/usr/bin/env python
-with open("RAxML_info.refpkg",'wt') as out_h:
-    with open("RAxML_info.unclean.refpkg", 'rt') as in_h:
-        past_cruft = False
-        for l in in_h:
-            if "This is RAxML version" == l[0:21]:
-                past_cruft = True
-            if past_cruft:
-                out_h.write(l)
-"""
-}
-
 
 process TaxtableForSI {
     container = "${container__taxtastic}"
@@ -372,38 +336,90 @@ process ObtainCM {
 }
 
 process CombineRefpkg {
-    container = "${container__pplacer}"
+    container = "${container__taxtastic}"
     label = 'io_limited'
 
     afterScript("rm -rf refpkg/*")
     publishDir "${params.output}/refpkg/", mode: 'copy'
 
     input:
-        file recruits_aln_fasta_f
-        file recruits_aln_sto_f
-        file refpkg_tree_f 
-        file refpkg_tree_stats_clean_f 
-        file refpkg_tt_f
-        file refpkg_si_corr_f
-        file refpkg_cm
+        path recruits_aln_fasta_f
+        path recruits_aln_sto_f
+        path refpkg_tree_f 
+        path refpkg_tree_stats_clean_f 
+        path refpkg_tt_f
+        path refpkg_si_corr_f
+        path refpkg_cm
+        path raxmlng_model
     
     output:
-        file "refpkg.tgz"
+        path "refpkg.tar.gz"
     
-    """
-    taxit create --locus 16S \
-    --package-name refpkg \
-    --clobber \
-    --aln-fasta ${recruits_aln_fasta_f} \
-    --aln-sto ${recruits_aln_sto_f} \
-    --tree-file ${refpkg_tree_f} \
-    --tree-stats ${refpkg_tree_stats_clean_f} \
-    --taxonomy ${refpkg_tt_f} \
-    --seq-info ${refpkg_si_corr_f} \
-    --profile ${refpkg_cm} && \
-    ls -l refpkg/ && \
-    tar czvf refpkg.tgz  -C refpkg/ .
-    """
+"""
+taxit create --locus 16S \
+--package-name refpkg \
+--clobber \
+--aln-fasta ${recruits_aln_fasta_f} \
+--aln-sto ${recruits_aln_sto_f} \
+--tree-file ${refpkg_tree_f} \
+--tree-stats ${refpkg_tree_stats_clean_f} \
+--taxonomy ${refpkg_tt_f} \
+--seq-info ${refpkg_si_corr_f} \
+--profile ${refpkg_cm}
+
+cp ${raxmlng_model} refpkg/raxmlng.model.raw
+python << ENDPYTHON
+import json
+import hashlib
+
+model_str = open('refpkg/raxmlng.model.raw', 'rt').read()
+model = model_str.split(',')[0]
+with open('refpkg/raxmlng.model', 'wt') as out_h:
+    out_h.write(model)
+
+modelhash = hashlib.md5(model.encode('utf-8')).hexdigest()
+contents = json.load(
+    open('refpkg/CONTENTS.json', 'rt')
+)
+contents['files']['raxml_ng_model'] = 'raxmlng.model'
+contents['md5']['raxml_ng_model'] = modelhash
+
+json.dump(
+    contents,
+    open('refpkg/CONTENTS.json', 'wt')
+)
+ENDPYTHON
+tar cvf refpkg.tar  -C refpkg/ .
+gzip refpkg.tar
+"""
+}
+
+process AddRAxMLModel {
+    container = "${container__taxtastic}"
+    label = 'io_limited'
+
+    input:
+        path "refpkg.tgz"
+        path raxml_ng_model
+    output:
+        path 'refpkg.tar.gz'
+"""
+#!/usr/bin/env python
+
+import tarfile
+import json
+import os
+
+tar_h = tarfile.open('refpkg.tgz')
+tar_contents_dict = {os.path.basename(f.name): f for f in tar_h.getmembers()}
+contents = json.loads(
+    tar_h.extractfile(
+        tar_contents_dict['CONTENTS.json']
+    ).read().decode('utf-8')
+)
+
+"""
+
 }
 
 process Dada2_convert_output {
@@ -455,14 +471,34 @@ def helpMessage() {
         -resume                 Attempt to restart from a prior run, only completely changed steps
 
     Ref Package options (defaults generally fine):
-        --repo_min_id           Minimum percent ID to a SV to be recruited (default = 0.8)
-        --repo_max_accepts      Maximum number of recruits per SV (default = 10)
-        --cmalign_mxsize        Infernal cmalign mxsize (default = 8196)
-        --raxml_model           RAxML model for tree formation (default = 'GTRGAMMA')
-        --raxml_parsiomony_seed (default = 12345)
-        --taxdmp                Path to taxdmp.zip. If not provided, it will be downloaded
+        --repo_min_id               Minimum percent ID to a SV to be recruited (default = 0.8)
+        --repo_max_accepts          Maximum number of recruits per SV (default = 10)
+        --cmalign_mxsize            Infernal cmalign mxsize (default = 8196)
+        --raxmlng_model             Subsitution model (default 'GTR+G')
+        --raxmlng_parsimony_trees   How many seed parsimony trees (default 10)
+        --raxmlng_random_trees      How many seed random trees (default 10)
+        --raxmlng_bootstrap_cutoff  When to stop boostraps (default = 0.3)
+        --raxmlng_seed              Random seed for RAxML-ng (default = 12345)
+        --taxdmp                    (Optional) taxdmp.zip from the repository
     """.stripIndent()
 }
+
+// paramters
+params.help = false
+
+params.taxdmp = false
+
+params.repo_min_id = 0.8
+params.repo_max_accepts = 10
+params.cmalign_mxsize = 8196
+params.raxml_model = 'GTRGAMMA'
+params.raxml_parsiomony_seed = 12345
+
+params.raxmlng_model = 'GTR+G'
+params.raxmlng_parsimony_trees = 10
+params.raxmlng_random_trees = 10
+params.raxmlng_bootstrap_cutoff = 0.3
+params.raxmlng_seed = 12345
 
 
 // standalone workflow for module
