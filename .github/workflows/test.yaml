@@ -206,7 +206,7 @@ jobs:
           df -h          
       - name:  Run maliampi-epang-sharetable (placement and classification)
         run: |
-          nextflow run modules/epang_place_classify.nf -with-docker ubuntu:18.04 -c nextflow.config.sample -profile testing --sharetable tests/sv/dada2.sv.shared.txt --sv_fasta tests/sv/dada2.sv.fasta  --refpkg tests/refpkg/refpkg.tgz --output output_seqtable
+          nextflow run modules/epang_place_classify.nf -with-docker ubuntu:18.04 -c nextflow.config.sample -profile testing --sharetable tests/sv/dada2.sv.shared.txt --sv_fasta tests/sv/dada2.sv.fasta  --refpkg tests/refpkg/refpkg.tgz --output output_sharetable
       - name:  Verify output (placement and classify / sharetable)
         run: |
           [[ -s output_sharetable/placement/dedup.jplace ]]
