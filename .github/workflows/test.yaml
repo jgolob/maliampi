@@ -116,7 +116,7 @@ jobs:
           df -h
       - name:  Run maliampi-pplacer (placement and classification)
         run: |
-          nextflow run modules/pplacer_place_classify.nf -with-docker ubuntu:18.04 -c nextflow.config.sample -profile testing --sv_fasta tests/sv/dada2.sv.fasta --weights tests/sv/dada2.sv.weights.csv --map tests/sv/dada2.sv.map.csv  --refpkg tests/refpkg/refpkg.tgz --output output
+          nextflow run modules/pplacer_place_classify.nf -with-docker ubuntu:18.04 -c nextflow.config.sample -profile testing --sv_fasta tests/sv/dada2.sv.fasta --weights tests/sv/dada2.sv.weights.csv --map tests/sv/dada2.sv.map.csv  --refpkg tests/refpkg/refpkg.tar.gz --output output
       - name:  Verify output (placement)
         run: |
           [[ -s output/placement/dedup.jplace ]]
@@ -148,7 +148,7 @@ jobs:
           df -h          
       - name:  Run maliampi-epang (placement and classification)
         run: |
-          nextflow run modules/epang_place_classify.nf -with-docker ubuntu:18.04 -c nextflow.config.sample -profile testing --weights tests/sv/dada2.sv.weights.csv --map tests/sv/dada2.sv.map.csv --sv_fasta tests/sv/dada2.sv.fasta  --refpkg tests/refpkg/refpkg.tgz --output output
+          nextflow run modules/epang_place_classify.nf -with-docker ubuntu:18.04 -c nextflow.config.sample -profile testing --weights tests/sv/dada2.sv.weights.csv --map tests/sv/dada2.sv.map.csv --sv_fasta tests/sv/dada2.sv.fasta  --refpkg tests/refpkg/refpkg.tar.gz --output output
       - name:  Verify output (placement and classify / weight and map)
         run: |
           [[ -s output/placement/dedup.jplace ]]
@@ -177,7 +177,7 @@ jobs:
           df -h          
       - name:  Run maliampi-epang-seqtable (placement and classification)
         run: |
-          nextflow run modules/epang_place_classify.nf -with-docker ubuntu:18.04 -c nextflow.config.sample -profile testing --seqtable tests/sv/dada2.combined.seqtabs.nochimera.csv  --refpkg tests/refpkg/refpkg.tgz --output output_seqtable
+          nextflow run modules/epang_place_classify.nf -with-docker ubuntu:18.04 -c nextflow.config.sample -profile testing --seqtable tests/sv/dada2.combined.seqtabs.nochimera.csv  --refpkg tests/refpkg/refpkg.tar.gz --output output_seqtable
       - name:  Verify output (placement and classify / seqtable)
         run: |
           [[ -s output_seqtable/placement/dedup.jplace ]]
@@ -206,7 +206,7 @@ jobs:
           df -h          
       - name:  Run maliampi-epang-sharetable (placement and classification)
         run: |
-          nextflow run modules/epang_place_classify.nf -with-docker ubuntu:18.04 -c nextflow.config.sample -profile testing --sharetable tests/sv/dada2.sv.shared.txt --sv_fasta tests/sv/dada2.sv.fasta  --refpkg tests/refpkg/refpkg.tgz --output output_sharetable
+          nextflow run modules/epang_place_classify.nf -with-docker ubuntu:18.04 -c nextflow.config.sample -profile testing --sharetable tests/sv/dada2.sv.shared.txt --sv_fasta tests/sv/dada2.sv.fasta  --refpkg tests/refpkg/refpkg.tar.gz --output output_sharetable
       - name:  Verify output (placement and classify / sharetable)
         run: |
           [[ -s output_sharetable/placement/dedup.jplace ]]
