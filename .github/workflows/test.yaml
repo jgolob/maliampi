@@ -32,7 +32,7 @@ jobs:
           [[ -s output/sv/dada2.sv.weights.csv ]]
       - name:  Verify output (Refpkg)
         run: |
-          [[ -s output/refpkg/refpkg.tgz ]]
+          [[ -s output/refpkg/refpkg.tar.gz ]]
       - name:  Verify output (placement)
         run: |
           [[ -s output/placement/dedup.jplace ]]
@@ -95,7 +95,7 @@ jobs:
           nextflow run modules/refpackage.nf -with-docker ubuntu:18.04 -c nextflow.config.sample -profile testing --raxmlng_parsimony_trees 1 --raxmlng_random_trees 1 --sv_fasta tests/sv/dada2.sv.fasta --repo_fasta  maliampi-practice-data/test.repo.fasta  --repo_si maliampi-practice-data/test.repo.seq_info.csv --taxdmp maliampi-practice-data/taxdmp.zip --email j-dev@golob.org --output output
       - name:  Verify output
         run: |
-          [[ -s output/refpkg/refpkg.tgz ]]
+          [[ -s output/refpkg/refpkg.tar.gz ]]
 
   pplacer_place_classify_workflow:
     runs-on: ubuntu-18.04
