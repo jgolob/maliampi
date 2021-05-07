@@ -513,12 +513,18 @@ process Make_Wide_Tax_Table {
         val want_rank
 
     output:
-        path "taxon_wide_ra.${want_rank}.csv", emit: ra
-        path "taxon_wide_nreads.${want_rank}.csv", emit: nreads
+        path "tables/taxon_wide_ra.${want_rank}.csv", emit: ra
+        path "tables/taxon_wide_nreads.${want_rank}.csv", emit: nreads
 
 """
 #!/usr/bin/env python
 import pandas as pd
+import os
+
+try:
+    os.makedirs('tables')
+except:
+    pass
 
 sv_long = pd.read_csv("${sv_long}").rename({
     'count': 'nreads'
@@ -550,7 +556,7 @@ sp_tax_wide_ra = sp_tax.pivot(
 # Sort by mean RA
 sp_tax_wide_ra = sp_tax_wide_ra[sp_tax_wide_ra.mean().sort_values(ascending=False).index]
 
-sp_tax_wide_ra.to_csv("taxon_wide_ra.${want_rank}.csv")
+sp_tax_wide_ra.to_csv("tables/taxon_wide_ra.${want_rank}.csv")
 
 sp_tax_wide_nreads = sp_tax.pivot(
     index='specimen',
@@ -559,7 +565,7 @@ sp_tax_wide_nreads = sp_tax.pivot(
 ).fillna(0)
 # Sort by mean RA
 sp_tax_wide_nreads = sp_tax_wide_nreads[sp_tax_wide_ra.mean().sort_values(ascending=False).index].astype(int)
-sp_tax_wide_nreads.to_csv("taxon_wide_nreads.${want_rank}.csv")
+sp_tax_wide_nreads.to_csv("tables/taxon_wide_nreads.${want_rank}.csv")
 
 """
 }
