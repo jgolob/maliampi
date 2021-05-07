@@ -1053,18 +1053,18 @@ for sv_i, sv in enumerate(sv_name):
     if len(sv_counts) == 0:
         continue
     # Implicit else
-    shared_sv = "{}__{}".format(sv, sorted(sv_counts, key=lambda v: -1*v[1])[0][0])
+    shared_sv = "{}:{}".format(sv, sorted(sv_counts, key=lambda v: -1*v[1])[0][0])
     sv_long += [
         (sp, shared_sv, c[sv_i]) for sp, c in sp_count.items()
         if c[sv_i] > 0
     ]    
     weightsL += [
-        (shared_sv, "{}__{}".format(sv, sp), c)
+        (shared_sv, "{}:{}".format(sv, sp), c)
         for sp, c in 
         sv_counts
     ]
     mapL += [
-        ("{}__{}".format(sv, sp), sp)
+        ("{}:{}".format(sv, sp), sp)
         for sp, c in 
         sv_counts
     ]
@@ -1216,6 +1216,8 @@ workflow {
         map_f = SharetableToMapWeight.out.sv_map
         weights_f = SharetableToMapWeight.out.sv_weights
         sv_long_f = SharetableToMapWeight.out.sp_sv_long
+        weights_f.view()
+        map_f.view()
         
     }
     else if (params.seqtable != null) {
