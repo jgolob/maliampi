@@ -24,15 +24,15 @@ sv-49:m48n729-s520	0.01396	0.01431	0.965	0.9888	Bacteria <bacteria>;Firmicutes;B
 sv-49:m48n729-s520	0.9368	0.9598	0.9368	0.9598	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales;Lactobacillaceae;Lactobacillus;Lactobacillus helveticus
 sv-49:m48n729-s520	0.01429	0.01465	0.01429	0.01465	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales;Lactobacillaceae;Lactobacillus;Lactobacillus crispatus
 sv-49:m48n729-s520	0.01096	0.01122	0.01096	0.01122	DISTANT
-sv-168:m22n729-s521	0	0	0.9733	0.992	Bacteria <bacteria>
-sv-168:m22n729-s521	0	0	0.9733	0.992	Bacteria <bacteria>;Firmicutes
-sv-168:m22n729-s521	0	0	0.9733	0.992	Bacteria <bacteria>;Firmicutes;Bacilli
-sv-168:m22n729-s521	0	0	0.9733	0.992	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales
-sv-168:m22n729-s521	0	0	0.9733	0.992	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales;Lactobacillaceae
-sv-168:m22n729-s521	0.01105	0.01126	0.9733	0.992	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales;Lactobacillaceae;Lactobacillus
-sv-168:m22n729-s521	0.951	0.9693	0.951	0.9693	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales;Lactobacillaceae;Lactobacillus;Lactobacillus helveticus
-sv-168:m22n729-s521	0.01118	0.01139	0.01118	0.01139	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales;Lactobacillaceae;Lactobacillus;Lactobacillus crispatus
-sv-168:m22n729-s521	0.007847	0.007998	0.007847	0.007998	DISTANT
+sv-169:m22n729-s521	0	0	0.9733	0.992	Bacteria <bacteria>
+sv-169:m22n729-s521	0	0	0.9733	0.992	Bacteria <bacteria>;Firmicutes
+sv-169:m22n729-s521	0	0	0.9733	0.992	Bacteria <bacteria>;Firmicutes;Bacilli
+sv-169:m22n729-s521	0	0	0.9733	0.992	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales
+sv-169:m22n729-s521	0	0	0.9733	0.992	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales;Lactobacillaceae
+sv-169:m22n729-s521	0.01105	0.01126	0.9733	0.992	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales;Lactobacillaceae;Lactobacillus
+sv-169:m22n729-s521	0.951	0.9693	0.951	0.9693	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales;Lactobacillaceae;Lactobacillus;Lactobacillus helveticus
+sv-169:m22n729-s521	0.01118	0.01139	0.01118	0.01139	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales;Lactobacillaceae;Lactobacillus;Lactobacillus crispatus
+sv-169:m22n729-s521	0.007847	0.007998	0.007847	0.007998	DISTANT
 sv-211:m22n729-s520	0	0	0.9733	0.992	Bacteria <bacteria>
 sv-211:m22n729-s520	0	0	0.9733	0.992	Bacteria <bacteria>;Firmicutes
 sv-211:m22n729-s520	0	0	0.9733	0.992	Bacteria <bacteria>;Firmicutes;Bacilli
@@ -87,14 +87,14 @@ sv-243:m48n729-s521	0.01105	0.01126	0.9733	0.992	Bacteria <bacteria>;Firmicutes;
 sv-243:m48n729-s521	0.951	0.9694	0.951	0.9694	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales;Lactobacillaceae;Lactobacillus;Lactobacillus helveticus
 sv-243:m48n729-s521	0.01118	0.01139	0.01118	0.01139	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales;Lactobacillaceae;Lactobacillus;Lactobacillus crispatus
 sv-243:m48n729-s521	0.007846	0.007997	0.007846	0.007997	DISTANT
-sv-244:m48n729-s521	0	0	0.9656	0.9952	Bacteria <bacteria>
-sv-244:m48n729-s521	0	0	0.9656	0.9952	Bacteria <bacteria>;Firmicutes
-sv-244:m48n729-s521	0	0	0.9656	0.9952	Bacteria <bacteria>;Firmicutes;Bacilli
-sv-244:m48n729-s521	0	0	0.9656	0.9952	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales
-sv-244:m48n729-s521	0	0	0.9656	0.9952	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales;Lactobacillaceae
-sv-244:m48n729-s521	0	0	0.9656	0.9952	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales;Lactobacillaceae;Lactobacillus
-sv-244:m48n729-s521	0.9656	0.9952	0.9656	0.9952	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales;Lactobacillaceae;Lactobacillus;Lactobacillus helveticus
-sv-244:m48n729-s521	0.004697	0.004841	0.004697	0.004841	DISTANT
+sv-245:m48n729-s521	0	0	0.9656	0.9952	Bacteria <bacteria>
+sv-245:m48n729-s521	0	0	0.9656	0.9952	Bacteria <bacteria>;Firmicutes
+sv-245:m48n729-s521	0	0	0.9656	0.9952	Bacteria <bacteria>;Firmicutes;Bacilli
+sv-245:m48n729-s521	0	0	0.9656	0.9952	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales
+sv-245:m48n729-s521	0	0	0.9656	0.9952	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales;Lactobacillaceae
+sv-245:m48n729-s521	0	0	0.9656	0.9952	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales;Lactobacillaceae;Lactobacillus
+sv-245:m48n729-s521	0.9656	0.9952	0.9656	0.9952	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales;Lactobacillaceae;Lactobacillus;Lactobacillus helveticus
+sv-245:m48n729-s521	0.004697	0.004841	0.004697	0.004841	DISTANT
 sv-247:m48n729-s521	0	0	0.965	0.9888	Bacteria <bacteria>
 sv-247:m48n729-s521	0	0	0.965	0.9888	Bacteria <bacteria>;Firmicutes
 sv-247:m48n729-s521	0	0	0.965	0.9888	Bacteria <bacteria>;Firmicutes;Bacilli
@@ -140,15 +140,15 @@ sv-122:m48n729-s522	0.4689	0.476	0.9847	0.9997	Bacteria <bacteria>;Firmicutes;Ba
 sv-122:m48n729-s522	0.3891	0.395	0.3891	0.395	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales;Lactobacillaceae;Lactobacillus;Lactobacillus crispatus
 sv-122:m48n729-s522	0.1267	0.1286	0.1267	0.1286	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales;Lactobacillaceae;Lactobacillus;Lactobacillus helveticus
 sv-122:m48n729-s522	0.0003056	0.0003102	0.0003056	0.0003102	DISTANT
-sv-174:m22n729-s520	0	0	0.9847	0.9997	Bacteria <bacteria>
-sv-174:m22n729-s520	0	0	0.9847	0.9997	Bacteria <bacteria>;Firmicutes
-sv-174:m22n729-s520	0	0	0.9847	0.9997	Bacteria <bacteria>;Firmicutes;Bacilli
-sv-174:m22n729-s520	0	0	0.9847	0.9997	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales
-sv-174:m22n729-s520	0	0	0.9847	0.9997	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales;Lactobacillaceae
-sv-174:m22n729-s520	0.4689	0.476	0.9847	0.9997	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales;Lactobacillaceae;Lactobacillus
-sv-174:m22n729-s520	0.3891	0.395	0.3891	0.395	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales;Lactobacillaceae;Lactobacillus;Lactobacillus crispatus
-sv-174:m22n729-s520	0.1267	0.1286	0.1267	0.1286	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales;Lactobacillaceae;Lactobacillus;Lactobacillus helveticus
-sv-174:m22n729-s520	0.0003051	0.0003097	0.0003051	0.0003097	DISTANT
+sv-173:m22n729-s520	0	0	0.9847	0.9997	Bacteria <bacteria>
+sv-173:m22n729-s520	0	0	0.9847	0.9997	Bacteria <bacteria>;Firmicutes
+sv-173:m22n729-s520	0	0	0.9847	0.9997	Bacteria <bacteria>;Firmicutes;Bacilli
+sv-173:m22n729-s520	0	0	0.9847	0.9997	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales
+sv-173:m22n729-s520	0	0	0.9847	0.9997	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales;Lactobacillaceae
+sv-173:m22n729-s520	0.4689	0.476	0.9847	0.9997	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales;Lactobacillaceae;Lactobacillus
+sv-173:m22n729-s520	0.3891	0.395	0.3891	0.395	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales;Lactobacillaceae;Lactobacillus;Lactobacillus crispatus
+sv-173:m22n729-s520	0.1267	0.1286	0.1267	0.1286	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales;Lactobacillaceae;Lactobacillus;Lactobacillus helveticus
+sv-173:m22n729-s520	0.0003051	0.0003097	0.0003051	0.0003097	DISTANT
 sv-190:m48n729-s520	0	0	0.9696	0.9958	Bacteria <bacteria>
 sv-190:m48n729-s520	0	0	0.9696	0.9958	Bacteria <bacteria>;Firmicutes
 sv-190:m48n729-s520	0	0	0.9696	0.9958	Bacteria <bacteria>;Firmicutes;Bacilli
@@ -293,16 +293,16 @@ sv-158:m23n715-s520	0.09489	0.09579	0.09489	0.09579	Bacteria <bacteria>;Firmicut
 sv-158:m23n715-s520	0.2854	0.2881	0.2854	0.2881	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales;Lactobacillaceae;Lactobacillus;Lactobacillus gasseri
 sv-158:m23n715-s520	0.0008478	0.0008559	0.0008478	0.0008559	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales;Lactobacillaceae;Lactobacillus;Lactobacillus johnsonii
 sv-158:m23n715-s520	0.003952	0.003989	0.003952	0.003989	DISTANT
-sv-222:m48n729-s521	0	0	0.9662	0.9874	Bacteria <bacteria>
-sv-222:m48n729-s521	0	0	0.9662	0.9874	Bacteria <bacteria>;Firmicutes
-sv-222:m48n729-s521	0	0	0.9662	0.9874	Bacteria <bacteria>;Firmicutes;Bacilli
-sv-222:m48n729-s521	0	0	0.9662	0.9874	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales
-sv-222:m48n729-s521	0	0	0.9662	0.9874	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales;Lactobacillaceae
-sv-222:m48n729-s521	0.5933	0.6064	0.9662	0.9874	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales;Lactobacillaceae;Lactobacillus
-sv-222:m48n729-s521	0.09253	0.09456	0.09253	0.09456	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales;Lactobacillaceae;Lactobacillus;Lactobacillus paragasseri
-sv-222:m48n729-s521	0.2794	0.2856	0.2794	0.2856	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales;Lactobacillaceae;Lactobacillus;Lactobacillus gasseri
-sv-222:m48n729-s521	0.0008893	0.0009089	0.0008893	0.0009089	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales;Lactobacillaceae;Lactobacillus;Lactobacillus johnsonii
-sv-222:m48n729-s521	0.01229	0.01256	0.01229	0.01256	DISTANT
+sv-223:m48n729-s521	0	0	0.9662	0.9874	Bacteria <bacteria>
+sv-223:m48n729-s521	0	0	0.9662	0.9874	Bacteria <bacteria>;Firmicutes
+sv-223:m48n729-s521	0	0	0.9662	0.9874	Bacteria <bacteria>;Firmicutes;Bacilli
+sv-223:m48n729-s521	0	0	0.9662	0.9874	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales
+sv-223:m48n729-s521	0	0	0.9662	0.9874	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales;Lactobacillaceae
+sv-223:m48n729-s521	0.5933	0.6064	0.9662	0.9874	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales;Lactobacillaceae;Lactobacillus
+sv-223:m48n729-s521	0.09253	0.09456	0.09253	0.09456	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales;Lactobacillaceae;Lactobacillus;Lactobacillus paragasseri
+sv-223:m48n729-s521	0.2794	0.2856	0.2794	0.2856	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales;Lactobacillaceae;Lactobacillus;Lactobacillus gasseri
+sv-223:m48n729-s521	0.0008893	0.0009089	0.0008893	0.0009089	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales;Lactobacillaceae;Lactobacillus;Lactobacillus johnsonii
+sv-223:m48n729-s521	0.01229	0.01256	0.01229	0.01256	DISTANT
 sv-253:m48n729-s521	0	0	0.9735	0.9907	Bacteria <bacteria>
 sv-253:m48n729-s521	0	0	0.9735	0.9907	Bacteria <bacteria>;Firmicutes
 sv-253:m48n729-s521	0	0	0.9735	0.9907	Bacteria <bacteria>;Firmicutes;Bacilli
@@ -519,12 +519,12 @@ sv-225:m48n729-s521	0	0	0.9957	1	Bacteria <bacteria>;Firmicutes;Bacilli
 sv-225:m48n729-s521	0	0	0.9957	1	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales
 sv-225:m48n729-s521	0	0	0.9957	1	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales;Lactobacillaceae
 sv-225:m48n729-s521	0.9957	1	0.9957	1	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales;Lactobacillaceae;Lactobacillus
-sv-245:m48n729-s521	0	0	0.994	1	Bacteria <bacteria>
-sv-245:m48n729-s521	0	0	0.994	1	Bacteria <bacteria>;Firmicutes
-sv-245:m48n729-s521	0	0	0.994	1	Bacteria <bacteria>;Firmicutes;Bacilli
-sv-245:m48n729-s521	0	0	0.994	1	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales
-sv-245:m48n729-s521	0	0	0.994	1	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales;Lactobacillaceae
-sv-245:m48n729-s521	0.994	1	0.994	1	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales;Lactobacillaceae;Lactobacillus
+sv-244:m48n729-s521	0	0	0.994	1	Bacteria <bacteria>
+sv-244:m48n729-s521	0	0	0.994	1	Bacteria <bacteria>;Firmicutes
+sv-244:m48n729-s521	0	0	0.994	1	Bacteria <bacteria>;Firmicutes;Bacilli
+sv-244:m48n729-s521	0	0	0.994	1	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales
+sv-244:m48n729-s521	0	0	0.994	1	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales;Lactobacillaceae
+sv-244:m48n729-s521	0.994	1	0.994	1	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales;Lactobacillaceae;Lactobacillus
 sv-266:m48n729-s521	0	0	0.994	1	Bacteria <bacteria>
 sv-266:m48n729-s521	0	0	0.994	1	Bacteria <bacteria>;Firmicutes
 sv-266:m48n729-s521	0	0	0.994	1	Bacteria <bacteria>;Firmicutes;Bacilli
@@ -607,12 +607,12 @@ sv-284:m48n729-s521	0	0	0.7528	0.7628	Bacteria <bacteria>;Firmicutes;Bacilli;Lac
 sv-284:m48n729-s521	0.04226	0.04282	0.7528	0.7628	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales;Lactobacillaceae;Lactobacillus
 sv-284:m48n729-s521	0.7106	0.72	0.7106	0.72	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales;Lactobacillaceae;Lactobacillus;Lactobacillus delbrueckii
 sv-284:m48n729-s521	0.2341	0.2372	0.2341	0.2372	DISTANT
-sv-192:m22n729-s521	0	0	0.9989	1	Bacteria <bacteria>
-sv-192:m22n729-s521	0	0	0.9989	1	Bacteria <bacteria>;Firmicutes
-sv-192:m22n729-s521	0	0	0.9989	1	Bacteria <bacteria>;Firmicutes;Bacilli
-sv-192:m22n729-s521	0	0	0.9989	1	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales
-sv-192:m22n729-s521	0	0	0.9989	1	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales;Lactobacillaceae
-sv-192:m22n729-s521	0.9989	1	0.9989	1	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales;Lactobacillaceae;Lactobacillus
+sv-191:m22n729-s521	0	0	0.9989	1	Bacteria <bacteria>
+sv-191:m22n729-s521	0	0	0.9989	1	Bacteria <bacteria>;Firmicutes
+sv-191:m22n729-s521	0	0	0.9989	1	Bacteria <bacteria>;Firmicutes;Bacilli
+sv-191:m22n729-s521	0	0	0.9989	1	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales
+sv-191:m22n729-s521	0	0	0.9989	1	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales;Lactobacillaceae
+sv-191:m22n729-s521	0.9989	1	0.9989	1	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales;Lactobacillaceae;Lactobacillus
 sv-35:m23n715-s520	0	0	0.9803	0.9873	Bacteria <bacteria>
 sv-35:m23n715-s520	0	0	0.9803	0.9873	Bacteria <bacteria>;Firmicutes
 sv-35:m23n715-s520	0	0	0.9803	0.9873	Bacteria <bacteria>;Firmicutes;Bacilli
@@ -658,15 +658,15 @@ sv-118:m48n729-s522	0.9334	0.9419	0.9726	0.9815	Bacteria <bacteria>;Firmicutes;B
 sv-118:m48n729-s522	0.02946	0.02973	0.02946	0.02973	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales;Lactobacillaceae;Lactobacillus;Lactobacillus gasseri
 sv-118:m48n729-s522	0.009755	0.009843	0.009755	0.009843	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales;Lactobacillaceae;Lactobacillus;Lactobacillus paragasseri
 sv-118:m48n729-s522	0.01838	0.01855	0.01838	0.01855	DISTANT
-sv-134:m48n729-s522	0	0	0.9802	0.9871	Bacteria <bacteria>
-sv-134:m48n729-s522	0	0	0.9802	0.9871	Bacteria <bacteria>;Firmicutes
-sv-134:m48n729-s522	0	0	0.9802	0.9871	Bacteria <bacteria>;Firmicutes;Bacilli
-sv-134:m48n729-s522	0	0	0.9802	0.9871	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales
-sv-134:m48n729-s522	0	0	0.9802	0.9871	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales;Lactobacillaceae
-sv-134:m48n729-s522	0.9478	0.9545	0.9802	0.9871	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales;Lactobacillaceae;Lactobacillus
-sv-134:m48n729-s522	0.02434	0.02451	0.02434	0.02451	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales;Lactobacillaceae;Lactobacillus;Lactobacillus gasseri
-sv-134:m48n729-s522	0.00806	0.008117	0.00806	0.008117	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales;Lactobacillaceae;Lactobacillus;Lactobacillus paragasseri
-sv-134:m48n729-s522	0.01277	0.01286	0.01277	0.01286	DISTANT
+sv-133:m48n729-s522	0	0	0.9802	0.9871	Bacteria <bacteria>
+sv-133:m48n729-s522	0	0	0.9802	0.9871	Bacteria <bacteria>;Firmicutes
+sv-133:m48n729-s522	0	0	0.9802	0.9871	Bacteria <bacteria>;Firmicutes;Bacilli
+sv-133:m48n729-s522	0	0	0.9802	0.9871	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales
+sv-133:m48n729-s522	0	0	0.9802	0.9871	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales;Lactobacillaceae
+sv-133:m48n729-s522	0.9478	0.9545	0.9802	0.9871	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales;Lactobacillaceae;Lactobacillus
+sv-133:m48n729-s522	0.02434	0.02451	0.02434	0.02451	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales;Lactobacillaceae;Lactobacillus;Lactobacillus gasseri
+sv-133:m48n729-s522	0.00806	0.008117	0.00806	0.008117	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales;Lactobacillaceae;Lactobacillus;Lactobacillus paragasseri
+sv-133:m48n729-s522	0.01277	0.01286	0.01277	0.01286	DISTANT
 sv-136:m48n729-s522	0	0	0.9802	0.9871	Bacteria <bacteria>
 sv-136:m48n729-s522	0	0	0.9802	0.9871	Bacteria <bacteria>;Firmicutes
 sv-136:m48n729-s522	0	0	0.9802	0.9871	Bacteria <bacteria>;Firmicutes;Bacilli
@@ -694,15 +694,15 @@ sv-184:m48n729-s520	0.9337	0.9422	0.9728	0.9816	Bacteria <bacteria>;Firmicutes;B
 sv-184:m48n729-s520	0.02933	0.0296	0.02933	0.0296	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales;Lactobacillaceae;Lactobacillus;Lactobacillus gasseri
 sv-184:m48n729-s520	0.009712	0.0098	0.009712	0.0098	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales;Lactobacillaceae;Lactobacillus;Lactobacillus paragasseri
 sv-184:m48n729-s520	0.01827	0.01843	0.01827	0.01843	DISTANT
-sv-188:m22n729-s522	0	0	0.9726	0.9815	Bacteria <bacteria>
-sv-188:m22n729-s522	0	0	0.9726	0.9815	Bacteria <bacteria>;Firmicutes
-sv-188:m22n729-s522	0	0	0.9726	0.9815	Bacteria <bacteria>;Firmicutes;Bacilli
-sv-188:m22n729-s522	0	0	0.9726	0.9815	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales
-sv-188:m22n729-s522	0	0	0.9726	0.9815	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales;Lactobacillaceae
-sv-188:m22n729-s522	0.9335	0.942	0.9726	0.9815	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales;Lactobacillaceae;Lactobacillus
-sv-188:m22n729-s522	0.02942	0.02969	0.02942	0.02969	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales;Lactobacillaceae;Lactobacillus;Lactobacillus gasseri
-sv-188:m22n729-s522	0.009742	0.009831	0.009742	0.009831	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales;Lactobacillaceae;Lactobacillus;Lactobacillus paragasseri
-sv-188:m22n729-s522	0.01836	0.01853	0.01836	0.01853	DISTANT
+sv-187:m22n729-s522	0	0	0.9726	0.9815	Bacteria <bacteria>
+sv-187:m22n729-s522	0	0	0.9726	0.9815	Bacteria <bacteria>;Firmicutes
+sv-187:m22n729-s522	0	0	0.9726	0.9815	Bacteria <bacteria>;Firmicutes;Bacilli
+sv-187:m22n729-s522	0	0	0.9726	0.9815	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales
+sv-187:m22n729-s522	0	0	0.9726	0.9815	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales;Lactobacillaceae
+sv-187:m22n729-s522	0.9335	0.942	0.9726	0.9815	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales;Lactobacillaceae;Lactobacillus
+sv-187:m22n729-s522	0.02942	0.02969	0.02942	0.02969	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales;Lactobacillaceae;Lactobacillus;Lactobacillus gasseri
+sv-187:m22n729-s522	0.009742	0.009831	0.009742	0.009831	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales;Lactobacillaceae;Lactobacillus;Lactobacillus paragasseri
+sv-187:m22n729-s522	0.01836	0.01853	0.01836	0.01853	DISTANT
 sv-219:m22n729-s522	0	0	0.9647	0.9757	Bacteria <bacteria>
 sv-219:m22n729-s522	0	0	0.9647	0.9757	Bacteria <bacteria>;Firmicutes
 sv-219:m22n729-s522	0	0	0.9647	0.9757	Bacteria <bacteria>;Firmicutes;Bacilli
@@ -775,15 +775,15 @@ sv-221:m22n729-s520	0.9025	0.9152	0.9565	0.97	Bacteria <bacteria>;Firmicutes;Bac
 sv-221:m22n729-s520	0.04062	0.04119	0.04062	0.04119	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales;Lactobacillaceae;Lactobacillus;Lactobacillus gasseri
 sv-221:m22n729-s520	0.01345	0.01364	0.01345	0.01364	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales;Lactobacillaceae;Lactobacillus;Lactobacillus paragasseri
 sv-221:m22n729-s520	0.02959	0.03001	0.02959	0.03001	DISTANT
-sv-239:m22n729-s520	0	0	0.9648	0.9758	Bacteria <bacteria>
-sv-239:m22n729-s520	0	0	0.9648	0.9758	Bacteria <bacteria>;Firmicutes
-sv-239:m22n729-s520	0	0	0.9648	0.9758	Bacteria <bacteria>;Firmicutes;Bacilli
-sv-239:m22n729-s520	0	0	0.9648	0.9758	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales
-sv-239:m22n729-s520	0	0	0.9648	0.9758	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales;Lactobacillaceae
-sv-239:m22n729-s520	0.9185	0.929	0.9648	0.9758	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales;Lactobacillaceae;Lactobacillus
-sv-239:m22n729-s520	0.03479	0.03519	0.03479	0.03519	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales;Lactobacillaceae;Lactobacillus;Lactobacillus gasseri
-sv-239:m22n729-s520	0.01152	0.01165	0.01152	0.01165	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales;Lactobacillaceae;Lactobacillus;Lactobacillus paragasseri
-sv-239:m22n729-s520	0.02391	0.02418	0.02391	0.02418	DISTANT
+sv-238:m22n729-s520	0	0	0.9648	0.9758	Bacteria <bacteria>
+sv-238:m22n729-s520	0	0	0.9648	0.9758	Bacteria <bacteria>;Firmicutes
+sv-238:m22n729-s520	0	0	0.9648	0.9758	Bacteria <bacteria>;Firmicutes;Bacilli
+sv-238:m22n729-s520	0	0	0.9648	0.9758	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales
+sv-238:m22n729-s520	0	0	0.9648	0.9758	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales;Lactobacillaceae
+sv-238:m22n729-s520	0.9185	0.929	0.9648	0.9758	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales;Lactobacillaceae;Lactobacillus
+sv-238:m22n729-s520	0.03479	0.03519	0.03479	0.03519	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales;Lactobacillaceae;Lactobacillus;Lactobacillus gasseri
+sv-238:m22n729-s520	0.01152	0.01165	0.01152	0.01165	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales;Lactobacillaceae;Lactobacillus;Lactobacillus paragasseri
+sv-238:m22n729-s520	0.02391	0.02418	0.02391	0.02418	DISTANT
 sv-241:m22n729-s520	0	0	0.9648	0.9758	Bacteria <bacteria>
 sv-241:m22n729-s520	0	0	0.9648	0.9758	Bacteria <bacteria>;Firmicutes
 sv-241:m22n729-s520	0	0	0.9648	0.9758	Bacteria <bacteria>;Firmicutes;Bacilli
@@ -896,13 +896,13 @@ sv-163:m22n729-s522	0	0	1	1	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillal
 sv-163:m22n729-s522	0	0	1	1	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales;Aerococcaceae
 sv-163:m22n729-s522	0.206	0.206	1	1	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales;Aerococcaceae;Aerococcus
 sv-163:m22n729-s522	0.794	0.794	0.794	0.794	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales;Aerococcaceae;Aerococcus;Aerococcus urinae
-sv-189:m22n729-s522	0	0	1	1	Bacteria <bacteria>
-sv-189:m22n729-s522	0	0	1	1	Bacteria <bacteria>;Firmicutes
-sv-189:m22n729-s522	0	0	1	1	Bacteria <bacteria>;Firmicutes;Bacilli
-sv-189:m22n729-s522	0	0	1	1	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales
-sv-189:m22n729-s522	0	0	1	1	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales;Aerococcaceae
-sv-189:m22n729-s522	0.2267	0.2267	1	1	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales;Aerococcaceae;Aerococcus
-sv-189:m22n729-s522	0.7733	0.7733	0.7733	0.7733	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales;Aerococcaceae;Aerococcus;Aerococcus urinae
+sv-188:m22n729-s522	0	0	1	1	Bacteria <bacteria>
+sv-188:m22n729-s522	0	0	1	1	Bacteria <bacteria>;Firmicutes
+sv-188:m22n729-s522	0	0	1	1	Bacteria <bacteria>;Firmicutes;Bacilli
+sv-188:m22n729-s522	0	0	1	1	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales
+sv-188:m22n729-s522	0	0	1	1	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales;Aerococcaceae
+sv-188:m22n729-s522	0.2267	0.2267	1	1	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales;Aerococcaceae;Aerococcus
+sv-188:m22n729-s522	0.7733	0.7733	0.7733	0.7733	Bacteria <bacteria>;Firmicutes;Bacilli;Lactobacillales;Aerococcaceae;Aerococcus;Aerococcus urinae
 sv-201:m23n715-s521	0	0	1	1	Bacteria <bacteria>
 sv-201:m23n715-s521	0	0	1	1	Bacteria <bacteria>;Firmicutes
 sv-201:m23n715-s521	0	0	1	1	Bacteria <bacteria>;Firmicutes;Bacilli
@@ -1113,13 +1113,13 @@ sv-143:m48n729-s522	0	0	0.8594	0.8594	Bacteria <bacteria>;Firmicutes;Negativicut
 sv-143:m48n729-s522	0	0	0.8594	0.8594	Bacteria <bacteria>;Firmicutes;Negativicutes;Veillonellales;Veillonellaceae
 sv-143:m48n729-s522	0	0	0.8594	0.8594	Bacteria <bacteria>;Firmicutes;Negativicutes;Veillonellales;Veillonellaceae;Dialister
 sv-143:m48n729-s522	0.8594	0.8594	0.8594	0.8594	Bacteria <bacteria>;Firmicutes;Negativicutes;Veillonellales;Veillonellaceae;Dialister;Dialister micraerophilus
-sv-169:m22n729-s521	0	0	1	1	Bacteria <bacteria>
-sv-169:m22n729-s521	0.3736	0.3736	1	1	Bacteria <bacteria>;Firmicutes
-sv-169:m22n729-s521	0	0	0.6264	0.6264	Bacteria <bacteria>;Firmicutes;Negativicutes
-sv-169:m22n729-s521	0	0	0.6264	0.6264	Bacteria <bacteria>;Firmicutes;Negativicutes;Veillonellales
-sv-169:m22n729-s521	0	0	0.6264	0.6264	Bacteria <bacteria>;Firmicutes;Negativicutes;Veillonellales;Veillonellaceae
-sv-169:m22n729-s521	0	0	0.6264	0.6264	Bacteria <bacteria>;Firmicutes;Negativicutes;Veillonellales;Veillonellaceae;Dialister
-sv-169:m22n729-s521	0.6264	0.6264	0.6264	0.6264	Bacteria <bacteria>;Firmicutes;Negativicutes;Veillonellales;Veillonellaceae;Dialister;Dialister micraerophilus
+sv-168:m22n729-s521	0	0	1	1	Bacteria <bacteria>
+sv-168:m22n729-s521	0.3736	0.3736	1	1	Bacteria <bacteria>;Firmicutes
+sv-168:m22n729-s521	0	0	0.6264	0.6264	Bacteria <bacteria>;Firmicutes;Negativicutes
+sv-168:m22n729-s521	0	0	0.6264	0.6264	Bacteria <bacteria>;Firmicutes;Negativicutes;Veillonellales
+sv-168:m22n729-s521	0	0	0.6264	0.6264	Bacteria <bacteria>;Firmicutes;Negativicutes;Veillonellales;Veillonellaceae
+sv-168:m22n729-s521	0	0	0.6264	0.6264	Bacteria <bacteria>;Firmicutes;Negativicutes;Veillonellales;Veillonellaceae;Dialister
+sv-168:m22n729-s521	0.6264	0.6264	0.6264	0.6264	Bacteria <bacteria>;Firmicutes;Negativicutes;Veillonellales;Veillonellaceae;Dialister;Dialister micraerophilus
 sv-175:m48n729-s522	0	0	1	1	Bacteria <bacteria>
 sv-175:m48n729-s522	0.153	0.153	1	1	Bacteria <bacteria>;Firmicutes
 sv-175:m48n729-s522	0	0	0.847	0.847	Bacteria <bacteria>;Firmicutes;Negativicutes
@@ -1141,20 +1141,20 @@ sv-204:m48n729-s521	0	0	0.6382	0.6382	Bacteria <bacteria>;Firmicutes;Negativicut
 sv-204:m48n729-s521	0	0	0.6382	0.6382	Bacteria <bacteria>;Firmicutes;Negativicutes;Veillonellales;Veillonellaceae
 sv-204:m48n729-s521	0	0	0.6382	0.6382	Bacteria <bacteria>;Firmicutes;Negativicutes;Veillonellales;Veillonellaceae;Dialister
 sv-204:m48n729-s521	0.6382	0.6382	0.6382	0.6382	Bacteria <bacteria>;Firmicutes;Negativicutes;Veillonellales;Veillonellaceae;Dialister;Dialister micraerophilus
-sv-223:m48n729-s521	0	0	1	1	Bacteria <bacteria>
-sv-223:m48n729-s521	0.3737	0.3737	1	1	Bacteria <bacteria>;Firmicutes
-sv-223:m48n729-s521	0	0	0.6263	0.6263	Bacteria <bacteria>;Firmicutes;Negativicutes
-sv-223:m48n729-s521	0	0	0.6263	0.6263	Bacteria <bacteria>;Firmicutes;Negativicutes;Veillonellales
-sv-223:m48n729-s521	0	0	0.6263	0.6263	Bacteria <bacteria>;Firmicutes;Negativicutes;Veillonellales;Veillonellaceae
-sv-223:m48n729-s521	0	0	0.6263	0.6263	Bacteria <bacteria>;Firmicutes;Negativicutes;Veillonellales;Veillonellaceae;Dialister
-sv-223:m48n729-s521	0.6263	0.6263	0.6263	0.6263	Bacteria <bacteria>;Firmicutes;Negativicutes;Veillonellales;Veillonellaceae;Dialister;Dialister micraerophilus
-sv-226:m48n729-s521	0	0	1	1	Bacteria <bacteria>
-sv-226:m48n729-s521	0.3614	0.3614	1	1	Bacteria <bacteria>;Firmicutes
-sv-226:m48n729-s521	0	0	0.6386	0.6386	Bacteria <bacteria>;Firmicutes;Negativicutes
-sv-226:m48n729-s521	0	0	0.6386	0.6386	Bacteria <bacteria>;Firmicutes;Negativicutes;Veillonellales
-sv-226:m48n729-s521	0	0	0.6386	0.6386	Bacteria <bacteria>;Firmicutes;Negativicutes;Veillonellales;Veillonellaceae
-sv-226:m48n729-s521	0	0	0.6386	0.6386	Bacteria <bacteria>;Firmicutes;Negativicutes;Veillonellales;Veillonellaceae;Dialister
-sv-226:m48n729-s521	0.6386	0.6386	0.6386	0.6386	Bacteria <bacteria>;Firmicutes;Negativicutes;Veillonellales;Veillonellaceae;Dialister;Dialister micraerophilus
+sv-222:m48n729-s521	0	0	1	1	Bacteria <bacteria>
+sv-222:m48n729-s521	0.3737	0.3737	1	1	Bacteria <bacteria>;Firmicutes
+sv-222:m48n729-s521	0	0	0.6263	0.6263	Bacteria <bacteria>;Firmicutes;Negativicutes
+sv-222:m48n729-s521	0	0	0.6263	0.6263	Bacteria <bacteria>;Firmicutes;Negativicutes;Veillonellales
+sv-222:m48n729-s521	0	0	0.6263	0.6263	Bacteria <bacteria>;Firmicutes;Negativicutes;Veillonellales;Veillonellaceae
+sv-222:m48n729-s521	0	0	0.6263	0.6263	Bacteria <bacteria>;Firmicutes;Negativicutes;Veillonellales;Veillonellaceae;Dialister
+sv-222:m48n729-s521	0.6263	0.6263	0.6263	0.6263	Bacteria <bacteria>;Firmicutes;Negativicutes;Veillonellales;Veillonellaceae;Dialister;Dialister micraerophilus
+sv-227:m48n729-s521	0	0	1	1	Bacteria <bacteria>
+sv-227:m48n729-s521	0.3614	0.3614	1	1	Bacteria <bacteria>;Firmicutes
+sv-227:m48n729-s521	0	0	0.6386	0.6386	Bacteria <bacteria>;Firmicutes;Negativicutes
+sv-227:m48n729-s521	0	0	0.6386	0.6386	Bacteria <bacteria>;Firmicutes;Negativicutes;Veillonellales
+sv-227:m48n729-s521	0	0	0.6386	0.6386	Bacteria <bacteria>;Firmicutes;Negativicutes;Veillonellales;Veillonellaceae
+sv-227:m48n729-s521	0	0	0.6386	0.6386	Bacteria <bacteria>;Firmicutes;Negativicutes;Veillonellales;Veillonellaceae;Dialister
+sv-227:m48n729-s521	0.6386	0.6386	0.6386	0.6386	Bacteria <bacteria>;Firmicutes;Negativicutes;Veillonellales;Veillonellaceae;Dialister;Dialister micraerophilus
 sv-250:m48n729-s522	0	0	1	1	Bacteria <bacteria>
 sv-250:m48n729-s522	0.1302	0.1302	1	1	Bacteria <bacteria>;Firmicutes
 sv-250:m48n729-s522	0	0	0.8698	0.8698	Bacteria <bacteria>;Firmicutes;Negativicutes
@@ -1183,16 +1183,16 @@ sv-277:m48n729-s521	0	0	0.6353	0.6353	Bacteria <bacteria>;Firmicutes;Negativicut
 sv-277:m48n729-s521	0	0	0.6353	0.6353	Bacteria <bacteria>;Firmicutes;Negativicutes;Veillonellales;Veillonellaceae
 sv-277:m48n729-s521	0	0	0.6353	0.6353	Bacteria <bacteria>;Firmicutes;Negativicutes;Veillonellales;Veillonellaceae;Dialister
 sv-277:m48n729-s521	0.6353	0.6353	0.6353	0.6353	Bacteria <bacteria>;Firmicutes;Negativicutes;Veillonellales;Veillonellaceae;Dialister;Dialister micraerophilus
-sv-210:S10_S37	0	0	0.9232	0.9232	Bacteria <bacteria>
-sv-210:S10_S37	0	0	0.9232	0.9232	Bacteria <bacteria>;Firmicutes
-sv-210:S10_S37	0	0	0.9232	0.9232	Bacteria <bacteria>;Firmicutes;Clostridia
-sv-210:S10_S37	0	0	0.9232	0.9232	Bacteria <bacteria>;Firmicutes;Clostridia;Eubacteriales
-sv-210:S10_S37	0.8526	0.8526	0.9232	0.9232	Bacteria <bacteria>;Firmicutes;Clostridia;Eubacteriales;Lachnospiraceae
-sv-210:S10_S37	0	0	0.05899	0.05899	Bacteria <bacteria>;Firmicutes;Clostridia;Eubacteriales;Lachnospiraceae;Roseburia
-sv-210:S10_S37	0.05899	0.05899	0.05899	0.05899	Bacteria <bacteria>;Firmicutes;Clostridia;Eubacteriales;Lachnospiraceae;Roseburia;Roseburia inulinivorans
-sv-210:S10_S37	0	0	0.01165	0.01165	Bacteria <bacteria>;Firmicutes;Clostridia;Eubacteriales;Lachnospiraceae;Pseudobutyrivibrio
-sv-210:S10_S37	0.01165	0.01165	0.01165	0.01165	Bacteria <bacteria>;Firmicutes;Clostridia;Eubacteriales;Lachnospiraceae;Pseudobutyrivibrio;Pseudobutyrivibrio xylanivorans
-sv-210:S10_S37	0.0768	0.0768	0.0768	0.0768	DISTANT
+sv-208:S10_S37	0	0	0.9232	0.9232	Bacteria <bacteria>
+sv-208:S10_S37	0	0	0.9232	0.9232	Bacteria <bacteria>;Firmicutes
+sv-208:S10_S37	0	0	0.9232	0.9232	Bacteria <bacteria>;Firmicutes;Clostridia
+sv-208:S10_S37	0	0	0.9232	0.9232	Bacteria <bacteria>;Firmicutes;Clostridia;Eubacteriales
+sv-208:S10_S37	0.8526	0.8526	0.9232	0.9232	Bacteria <bacteria>;Firmicutes;Clostridia;Eubacteriales;Lachnospiraceae
+sv-208:S10_S37	0	0	0.05899	0.05899	Bacteria <bacteria>;Firmicutes;Clostridia;Eubacteriales;Lachnospiraceae;Roseburia
+sv-208:S10_S37	0.05899	0.05899	0.05899	0.05899	Bacteria <bacteria>;Firmicutes;Clostridia;Eubacteriales;Lachnospiraceae;Roseburia;Roseburia inulinivorans
+sv-208:S10_S37	0	0	0.01165	0.01165	Bacteria <bacteria>;Firmicutes;Clostridia;Eubacteriales;Lachnospiraceae;Pseudobutyrivibrio
+sv-208:S10_S37	0.01165	0.01165	0.01165	0.01165	Bacteria <bacteria>;Firmicutes;Clostridia;Eubacteriales;Lachnospiraceae;Pseudobutyrivibrio;Pseudobutyrivibrio xylanivorans
+sv-208:S10_S37	0.0768	0.0768	0.0768	0.0768	DISTANT
 sv-12:S10_S37	0	0	1	1	Bacteria <bacteria>
 sv-12:S10_S37	0.3235	0.3235	1	1	Bacteria <bacteria>;Firmicutes
 sv-12:S10_S37	0	0	0.6765	0.6765	Bacteria <bacteria>;Firmicutes;Negativicutes
@@ -1207,19 +1207,19 @@ sv-167:J10_S92	0	0	0.9372	0.9372	Bacteria <bacteria>;Firmicutes;Negativicutes;Ve
 sv-167:J10_S92	0	0	0.9372	0.9372	Bacteria <bacteria>;Firmicutes;Negativicutes;Veillonellales;Veillonellaceae
 sv-167:J10_S92	0	0	0.9372	0.9372	Bacteria <bacteria>;Firmicutes;Negativicutes;Veillonellales;Veillonellaceae;Dialister
 sv-167:J10_S92	0.9372	0.9372	0.9372	0.9372	Bacteria <bacteria>;Firmicutes;Negativicutes;Veillonellales;Veillonellaceae;Dialister;Dialister micraerophilus
-sv-208:S10_S37	0	0	0.7418	0.7586	Bacteria <bacteria>
-sv-208:S10_S37	0.7418	0.7586	0.7418	0.7586	Bacteria <bacteria>;Firmicutes
-sv-208:S10_S37	2.436e-05	2.491e-05	2.459e-05	2.515e-05	Bacteria <bacteria>;Firmicutes;Clostridia
-sv-208:S10_S37	0	0	2.376e-07	2.43e-07	Bacteria <bacteria>;Firmicutes;Clostridia;Eubacteriales
-sv-208:S10_S37	0	0	2.376e-07	2.43e-07	Bacteria <bacteria>;Firmicutes;Clostridia;Eubacteriales;Peptococcaceae
-sv-208:S10_S37	0	0	2.376e-07	2.43e-07	Bacteria <bacteria>;Firmicutes;Clostridia;Eubacteriales;Peptococcaceae;Desulfofarcimen
-sv-208:S10_S37	2.376e-07	2.43e-07	2.376e-07	2.43e-07	Bacteria <bacteria>;Firmicutes;Clostridia;Eubacteriales;Peptococcaceae;Desulfofarcimen;Desulfofarcimen intricatum
-sv-208:S10_S37	0	0	1.663e-07	1.7e-07	Bacteria <bacteria>;Firmicutes;Negativicutes
-sv-208:S10_S37	0	0	1.663e-07	1.7e-07	Bacteria <bacteria>;Firmicutes;Negativicutes;Veillonellales
-sv-208:S10_S37	0	0	1.663e-07	1.7e-07	Bacteria <bacteria>;Firmicutes;Negativicutes;Veillonellales;Veillonellaceae
-sv-208:S10_S37	0	0	1.663e-07	1.7e-07	Bacteria <bacteria>;Firmicutes;Negativicutes;Veillonellales;Veillonellaceae;Dialister
-sv-208:S10_S37	1.663e-07	1.7e-07	1.663e-07	1.7e-07	Bacteria <bacteria>;Firmicutes;Negativicutes;Veillonellales;Veillonellaceae;Dialister;Dialister micraerophilus
-sv-208:S10_S37	0.2361	0.2414	0.2361	0.2414	DISTANT
+sv-210:S10_S37	0	0	0.7418	0.7586	Bacteria <bacteria>
+sv-210:S10_S37	0.7418	0.7586	0.7418	0.7586	Bacteria <bacteria>;Firmicutes
+sv-210:S10_S37	2.436e-05	2.491e-05	2.459e-05	2.515e-05	Bacteria <bacteria>;Firmicutes;Clostridia
+sv-210:S10_S37	0	0	2.376e-07	2.43e-07	Bacteria <bacteria>;Firmicutes;Clostridia;Eubacteriales
+sv-210:S10_S37	0	0	2.376e-07	2.43e-07	Bacteria <bacteria>;Firmicutes;Clostridia;Eubacteriales;Peptococcaceae
+sv-210:S10_S37	0	0	2.376e-07	2.43e-07	Bacteria <bacteria>;Firmicutes;Clostridia;Eubacteriales;Peptococcaceae;Desulfofarcimen
+sv-210:S10_S37	2.376e-07	2.43e-07	2.376e-07	2.43e-07	Bacteria <bacteria>;Firmicutes;Clostridia;Eubacteriales;Peptococcaceae;Desulfofarcimen;Desulfofarcimen intricatum
+sv-210:S10_S37	0	0	1.663e-07	1.7e-07	Bacteria <bacteria>;Firmicutes;Negativicutes
+sv-210:S10_S37	0	0	1.663e-07	1.7e-07	Bacteria <bacteria>;Firmicutes;Negativicutes;Veillonellales
+sv-210:S10_S37	0	0	1.663e-07	1.7e-07	Bacteria <bacteria>;Firmicutes;Negativicutes;Veillonellales;Veillonellaceae
+sv-210:S10_S37	0	0	1.663e-07	1.7e-07	Bacteria <bacteria>;Firmicutes;Negativicutes;Veillonellales;Veillonellaceae;Dialister
+sv-210:S10_S37	1.663e-07	1.7e-07	1.663e-07	1.7e-07	Bacteria <bacteria>;Firmicutes;Negativicutes;Veillonellales;Veillonellaceae;Dialister;Dialister micraerophilus
+sv-210:S10_S37	0.2361	0.2414	0.2361	0.2414	DISTANT
 sv-11:J10_S92	0	0	0.9426	0.9426	Bacteria <bacteria>
 sv-11:J10_S92	0	0	0.9426	0.9426	Bacteria <bacteria>;Firmicutes
 sv-11:J10_S92	0	0	0.9426	0.9426	Bacteria <bacteria>;Firmicutes;Clostridia
@@ -1313,16 +1313,16 @@ sv-160:S10_S37	0.8335	0.8488	0.8335	0.8488	Bacteria <bacteria>;Firmicutes;Clostr
 sv-160:S10_S37	0	0	7.531e-06	7.67e-06	Bacteria <bacteria>;Firmicutes;Clostridia;Eubacteriales;Lachnospiraceae;Anaerobutyricum
 sv-160:S10_S37	7.531e-06	7.67e-06	7.531e-06	7.67e-06	Bacteria <bacteria>;Firmicutes;Clostridia;Eubacteriales;Lachnospiraceae;Anaerobutyricum;Anaerobutyricum hallii
 sv-160:S10_S37	0.1125	0.1146	0.1125	0.1146	DISTANT
-sv-170:m22n729-s522	0	0	0.8231	0.8231	Bacteria <bacteria>
-sv-170:m22n729-s522	0	0	0.8231	0.8231	Bacteria <bacteria>;Firmicutes
-sv-170:m22n729-s522	0	0	0.8231	0.8231	Bacteria <bacteria>;Firmicutes;Clostridia
-sv-170:m22n729-s522	0	0	0.8231	0.8231	Bacteria <bacteria>;Firmicutes;Clostridia;Eubacteriales
-sv-170:m22n729-s522	0.6066	0.6067	0.8231	0.8231	Bacteria <bacteria>;Firmicutes;Clostridia;Eubacteriales;Lachnospiraceae
-sv-170:m22n729-s522	0	0	0.2013	0.2013	Bacteria <bacteria>;Firmicutes;Clostridia;Eubacteriales;Lachnospiraceae;Pseudobutyrivibrio
-sv-170:m22n729-s522	0.2013	0.2013	0.2013	0.2013	Bacteria <bacteria>;Firmicutes;Clostridia;Eubacteriales;Lachnospiraceae;Pseudobutyrivibrio;Pseudobutyrivibrio xylanivorans
-sv-170:m22n729-s522	0	0	0.01517	0.01517	Bacteria <bacteria>;Firmicutes;Clostridia;Eubacteriales;Lachnospiraceae;Roseburia
-sv-170:m22n729-s522	0.01517	0.01517	0.01517	0.01517	Bacteria <bacteria>;Firmicutes;Clostridia;Eubacteriales;Lachnospiraceae;Roseburia;Roseburia inulinivorans
-sv-170:m22n729-s522	0.1768	0.1769	0.1768	0.1769	DISTANT
+sv-171:m22n729-s522	0	0	0.8231	0.8231	Bacteria <bacteria>
+sv-171:m22n729-s522	0	0	0.8231	0.8231	Bacteria <bacteria>;Firmicutes
+sv-171:m22n729-s522	0	0	0.8231	0.8231	Bacteria <bacteria>;Firmicutes;Clostridia
+sv-171:m22n729-s522	0	0	0.8231	0.8231	Bacteria <bacteria>;Firmicutes;Clostridia;Eubacteriales
+sv-171:m22n729-s522	0.6066	0.6067	0.8231	0.8231	Bacteria <bacteria>;Firmicutes;Clostridia;Eubacteriales;Lachnospiraceae
+sv-171:m22n729-s522	0	0	0.2013	0.2013	Bacteria <bacteria>;Firmicutes;Clostridia;Eubacteriales;Lachnospiraceae;Pseudobutyrivibrio
+sv-171:m22n729-s522	0.2013	0.2013	0.2013	0.2013	Bacteria <bacteria>;Firmicutes;Clostridia;Eubacteriales;Lachnospiraceae;Pseudobutyrivibrio;Pseudobutyrivibrio xylanivorans
+sv-171:m22n729-s522	0	0	0.01517	0.01517	Bacteria <bacteria>;Firmicutes;Clostridia;Eubacteriales;Lachnospiraceae;Roseburia
+sv-171:m22n729-s522	0.01517	0.01517	0.01517	0.01517	Bacteria <bacteria>;Firmicutes;Clostridia;Eubacteriales;Lachnospiraceae;Roseburia;Roseburia inulinivorans
+sv-171:m22n729-s522	0.1768	0.1769	0.1768	0.1769	DISTANT
 sv-200:m22n729-s522	0	0	0.8231	0.8232	Bacteria <bacteria>
 sv-200:m22n729-s522	0	0	0.8231	0.8232	Bacteria <bacteria>;Firmicutes
 sv-200:m22n729-s522	0	0	0.8231	0.8232	Bacteria <bacteria>;Firmicutes;Clostridia
@@ -1353,14 +1353,14 @@ sv-265:m48n729-s522	0.1958	0.1958	0.1958	0.1958	Bacteria <bacteria>;Firmicutes;C
 sv-265:m48n729-s522	0	0	0.01706	0.01706	Bacteria <bacteria>;Firmicutes;Clostridia;Eubacteriales;Lachnospiraceae;Roseburia
 sv-265:m48n729-s522	0.01706	0.01706	0.01706	0.01706	Bacteria <bacteria>;Firmicutes;Clostridia;Eubacteriales;Lachnospiraceae;Roseburia;Roseburia inulinivorans
 sv-265:m48n729-s522	0.1873	0.1873	0.1873	0.1873	DISTANT
-sv-269:S10_S37	0	0	0.7886	0.7915	Bacteria <bacteria>
-sv-269:S10_S37	0	0	0.7886	0.7915	Bacteria <bacteria>;Firmicutes
-sv-269:S10_S37	0	0	0.7886	0.7915	Bacteria <bacteria>;Firmicutes;Clostridia
-sv-269:S10_S37	0.01357	0.01362	0.7886	0.7915	Bacteria <bacteria>;Firmicutes;Clostridia;Eubacteriales
-sv-269:S10_S37	0.5197	0.5216	0.775	0.7779	Bacteria <bacteria>;Firmicutes;Clostridia;Eubacteriales;Lachnospiraceae
-sv-269:S10_S37	0	0	0.2553	0.2563	Bacteria <bacteria>;Firmicutes;Clostridia;Eubacteriales;Lachnospiraceae;Anaerobutyricum
-sv-269:S10_S37	0.2553	0.2563	0.2553	0.2563	Bacteria <bacteria>;Firmicutes;Clostridia;Eubacteriales;Lachnospiraceae;Anaerobutyricum;Anaerobutyricum hallii
-sv-269:S10_S37	0.2077	0.2085	0.2077	0.2085	DISTANT
+sv-268:S10_S37	0	0	0.7886	0.7915	Bacteria <bacteria>
+sv-268:S10_S37	0	0	0.7886	0.7915	Bacteria <bacteria>;Firmicutes
+sv-268:S10_S37	0	0	0.7886	0.7915	Bacteria <bacteria>;Firmicutes;Clostridia
+sv-268:S10_S37	0.01357	0.01362	0.7886	0.7915	Bacteria <bacteria>;Firmicutes;Clostridia;Eubacteriales
+sv-268:S10_S37	0.5197	0.5216	0.775	0.7779	Bacteria <bacteria>;Firmicutes;Clostridia;Eubacteriales;Lachnospiraceae
+sv-268:S10_S37	0	0	0.2553	0.2563	Bacteria <bacteria>;Firmicutes;Clostridia;Eubacteriales;Lachnospiraceae;Anaerobutyricum
+sv-268:S10_S37	0.2553	0.2563	0.2553	0.2563	Bacteria <bacteria>;Firmicutes;Clostridia;Eubacteriales;Lachnospiraceae;Anaerobutyricum;Anaerobutyricum hallii
+sv-268:S10_S37	0.2077	0.2085	0.2077	0.2085	DISTANT
 sv-273:m48n729-s522	0	0	0.8229	0.823	Bacteria <bacteria>
 sv-273:m48n729-s522	0	0	0.8229	0.823	Bacteria <bacteria>;Firmicutes
 sv-273:m48n729-s522	0	0	0.8229	0.823	Bacteria <bacteria>;Firmicutes;Clostridia
@@ -1426,13 +1426,13 @@ sv-195:m23n715-s520	0	0	1	1	Bacteria <bacteria>;Firmicutes;Tissierellia;Tissiere
 sv-195:m23n715-s520	0.03369	0.03369	1	1	Bacteria <bacteria>;Firmicutes;Tissierellia;Tissierellales;Peptoniphilaceae
 sv-195:m23n715-s520	0	0	0.9663	0.9663	Bacteria <bacteria>;Firmicutes;Tissierellia;Tissierellales;Peptoniphilaceae;Parvimonas
 sv-195:m23n715-s520	0.9663	0.9663	0.9663	0.9663	Bacteria <bacteria>;Firmicutes;Tissierellia;Tissierellales;Peptoniphilaceae;Parvimonas;Parvimonas micra
-sv-227:m48n729-s521	0	0	1	1	Bacteria <bacteria>
-sv-227:m48n729-s521	0	0	1	1	Bacteria <bacteria>;Firmicutes
-sv-227:m48n729-s521	0	0	1	1	Bacteria <bacteria>;Firmicutes;Tissierellia
-sv-227:m48n729-s521	0	0	1	1	Bacteria <bacteria>;Firmicutes;Tissierellia;Tissierellales
-sv-227:m48n729-s521	0.0002753	0.0002753	1	1	Bacteria <bacteria>;Firmicutes;Tissierellia;Tissierellales;Peptoniphilaceae
-sv-227:m48n729-s521	0	0	0.9997	0.9997	Bacteria <bacteria>;Firmicutes;Tissierellia;Tissierellales;Peptoniphilaceae;Parvimonas
-sv-227:m48n729-s521	0.9997	0.9997	0.9997	0.9997	Bacteria <bacteria>;Firmicutes;Tissierellia;Tissierellales;Peptoniphilaceae;Parvimonas;Parvimonas micra
+sv-226:m48n729-s521	0	0	1	1	Bacteria <bacteria>
+sv-226:m48n729-s521	0	0	1	1	Bacteria <bacteria>;Firmicutes
+sv-226:m48n729-s521	0	0	1	1	Bacteria <bacteria>;Firmicutes;Tissierellia
+sv-226:m48n729-s521	0	0	1	1	Bacteria <bacteria>;Firmicutes;Tissierellia;Tissierellales
+sv-226:m48n729-s521	0.0002753	0.0002753	1	1	Bacteria <bacteria>;Firmicutes;Tissierellia;Tissierellales;Peptoniphilaceae
+sv-226:m48n729-s521	0	0	0.9997	0.9997	Bacteria <bacteria>;Firmicutes;Tissierellia;Tissierellales;Peptoniphilaceae;Parvimonas
+sv-226:m48n729-s521	0.9997	0.9997	0.9997	0.9997	Bacteria <bacteria>;Firmicutes;Tissierellia;Tissierellales;Peptoniphilaceae;Parvimonas;Parvimonas micra
 sv-228:m48n729-s521	0	0	1	1	Bacteria <bacteria>
 sv-228:m48n729-s521	0	0	1	1	Bacteria <bacteria>;Firmicutes
 sv-228:m48n729-s521	0	0	1	1	Bacteria <bacteria>;Firmicutes;Tissierellia
@@ -1520,22 +1520,22 @@ sv-106:m48n729-s520	0.2599	0.2599	0.9941	0.9941	Bacteria <bacteria>;Firmicutes;C
 sv-106:m48n729-s520	0	0	0.7341	0.7341	Bacteria <bacteria>;Firmicutes;Clostridia;Eubacteriales;Oscillospiraceae;Saccharofermentans
 sv-106:m48n729-s520	0.7341	0.7341	0.7341	0.7341	Bacteria <bacteria>;Firmicutes;Clostridia;Eubacteriales;Oscillospiraceae;Saccharofermentans;Saccharofermentans acetigenes
 sv-106:m48n729-s520	0.005929	0.005929	0.005929	0.005929	DISTANT
-sv-133:m48n729-s522	0	0	0.8253	0.8253	Bacteria <bacteria>
-sv-133:m48n729-s522	0	0	0.8253	0.8253	Bacteria <bacteria>;Firmicutes
-sv-133:m48n729-s522	0	0	0.8253	0.8253	Bacteria <bacteria>;Firmicutes;Clostridia
-sv-133:m48n729-s522	0	0	0.8253	0.8253	Bacteria <bacteria>;Firmicutes;Clostridia;Eubacteriales
-sv-133:m48n729-s522	0.04807	0.04807	0.8253	0.8253	Bacteria <bacteria>;Firmicutes;Clostridia;Eubacteriales;Oscillospiraceae
-sv-133:m48n729-s522	0	0	0.7773	0.7773	Bacteria <bacteria>;Firmicutes;Clostridia;Eubacteriales;Oscillospiraceae;Saccharofermentans
-sv-133:m48n729-s522	0.7773	0.7773	0.7773	0.7773	Bacteria <bacteria>;Firmicutes;Clostridia;Eubacteriales;Oscillospiraceae;Saccharofermentans;Saccharofermentans acetigenes
-sv-133:m48n729-s522	0.1747	0.1747	0.1747	0.1747	DISTANT
-sv-142:m22n729-s520	0	0	0.9842	0.9842	Bacteria <bacteria>
-sv-142:m22n729-s520	0	0	0.9842	0.9842	Bacteria <bacteria>;Firmicutes
-sv-142:m22n729-s520	0	0	0.9842	0.9842	Bacteria <bacteria>;Firmicutes;Clostridia
-sv-142:m22n729-s520	0	0	0.9842	0.9842	Bacteria <bacteria>;Firmicutes;Clostridia;Eubacteriales
-sv-142:m22n729-s520	0.2408	0.2408	0.9842	0.9842	Bacteria <bacteria>;Firmicutes;Clostridia;Eubacteriales;Oscillospiraceae
-sv-142:m22n729-s520	0	0	0.7434	0.7434	Bacteria <bacteria>;Firmicutes;Clostridia;Eubacteriales;Oscillospiraceae;Saccharofermentans
-sv-142:m22n729-s520	0.7434	0.7434	0.7434	0.7434	Bacteria <bacteria>;Firmicutes;Clostridia;Eubacteriales;Oscillospiraceae;Saccharofermentans;Saccharofermentans acetigenes
-sv-142:m22n729-s520	0.0158	0.0158	0.0158	0.0158	DISTANT
+sv-134:m48n729-s522	0	0	0.8253	0.8253	Bacteria <bacteria>
+sv-134:m48n729-s522	0	0	0.8253	0.8253	Bacteria <bacteria>;Firmicutes
+sv-134:m48n729-s522	0	0	0.8253	0.8253	Bacteria <bacteria>;Firmicutes;Clostridia
+sv-134:m48n729-s522	0	0	0.8253	0.8253	Bacteria <bacteria>;Firmicutes;Clostridia;Eubacteriales
+sv-134:m48n729-s522	0.04807	0.04807	0.8253	0.8253	Bacteria <bacteria>;Firmicutes;Clostridia;Eubacteriales;Oscillospiraceae
+sv-134:m48n729-s522	0	0	0.7773	0.7773	Bacteria <bacteria>;Firmicutes;Clostridia;Eubacteriales;Oscillospiraceae;Saccharofermentans
+sv-134:m48n729-s522	0.7773	0.7773	0.7773	0.7773	Bacteria <bacteria>;Firmicutes;Clostridia;Eubacteriales;Oscillospiraceae;Saccharofermentans;Saccharofermentans acetigenes
+sv-134:m48n729-s522	0.1747	0.1747	0.1747	0.1747	DISTANT
+sv-141:m22n729-s520	0	0	0.9842	0.9842	Bacteria <bacteria>
+sv-141:m22n729-s520	0	0	0.9842	0.9842	Bacteria <bacteria>;Firmicutes
+sv-141:m22n729-s520	0	0	0.9842	0.9842	Bacteria <bacteria>;Firmicutes;Clostridia
+sv-141:m22n729-s520	0	0	0.9842	0.9842	Bacteria <bacteria>;Firmicutes;Clostridia;Eubacteriales
+sv-141:m22n729-s520	0.2408	0.2408	0.9842	0.9842	Bacteria <bacteria>;Firmicutes;Clostridia;Eubacteriales;Oscillospiraceae
+sv-141:m22n729-s520	0	0	0.7434	0.7434	Bacteria <bacteria>;Firmicutes;Clostridia;Eubacteriales;Oscillospiraceae;Saccharofermentans
+sv-141:m22n729-s520	0.7434	0.7434	0.7434	0.7434	Bacteria <bacteria>;Firmicutes;Clostridia;Eubacteriales;Oscillospiraceae;Saccharofermentans;Saccharofermentans acetigenes
+sv-141:m22n729-s520	0.0158	0.0158	0.0158	0.0158	DISTANT
 sv-148:m22n729-s521	0	0	0.9842	0.9842	Bacteria <bacteria>
 sv-148:m22n729-s521	0	0	0.9842	0.9842	Bacteria <bacteria>;Firmicutes
 sv-148:m22n729-s521	0	0	0.9842	0.9842	Bacteria <bacteria>;Firmicutes;Clostridia
@@ -1560,14 +1560,14 @@ sv-207:m48n729-s520	0.2406	0.2406	0.9841	0.9841	Bacteria <bacteria>;Firmicutes;C
 sv-207:m48n729-s520	0	0	0.7436	0.7436	Bacteria <bacteria>;Firmicutes;Clostridia;Eubacteriales;Oscillospiraceae;Saccharofermentans
 sv-207:m48n729-s520	0.7436	0.7436	0.7436	0.7436	Bacteria <bacteria>;Firmicutes;Clostridia;Eubacteriales;Oscillospiraceae;Saccharofermentans;Saccharofermentans acetigenes
 sv-207:m48n729-s520	0.01585	0.01585	0.01585	0.01585	DISTANT
-sv-233:m22n729-s522	0	0	0.8373	0.8373	Bacteria <bacteria>
-sv-233:m22n729-s522	0	0	0.8373	0.8373	Bacteria <bacteria>;Firmicutes
-sv-233:m22n729-s522	0	0	0.8373	0.8373	Bacteria <bacteria>;Firmicutes;Clostridia
-sv-233:m22n729-s522	0	0	0.8373	0.8373	Bacteria <bacteria>;Firmicutes;Clostridia;Eubacteriales
-sv-233:m22n729-s522	0.0657	0.0657	0.8373	0.8373	Bacteria <bacteria>;Firmicutes;Clostridia;Eubacteriales;Oscillospiraceae
-sv-233:m22n729-s522	0	0	0.7716	0.7716	Bacteria <bacteria>;Firmicutes;Clostridia;Eubacteriales;Oscillospiraceae;Saccharofermentans
-sv-233:m22n729-s522	0.7716	0.7716	0.7716	0.7716	Bacteria <bacteria>;Firmicutes;Clostridia;Eubacteriales;Oscillospiraceae;Saccharofermentans;Saccharofermentans acetigenes
-sv-233:m22n729-s522	0.1627	0.1627	0.1627	0.1627	DISTANT
+sv-232:m22n729-s522	0	0	0.8373	0.8373	Bacteria <bacteria>
+sv-232:m22n729-s522	0	0	0.8373	0.8373	Bacteria <bacteria>;Firmicutes
+sv-232:m22n729-s522	0	0	0.8373	0.8373	Bacteria <bacteria>;Firmicutes;Clostridia
+sv-232:m22n729-s522	0	0	0.8373	0.8373	Bacteria <bacteria>;Firmicutes;Clostridia;Eubacteriales
+sv-232:m22n729-s522	0.0657	0.0657	0.8373	0.8373	Bacteria <bacteria>;Firmicutes;Clostridia;Eubacteriales;Oscillospiraceae
+sv-232:m22n729-s522	0	0	0.7716	0.7716	Bacteria <bacteria>;Firmicutes;Clostridia;Eubacteriales;Oscillospiraceae;Saccharofermentans
+sv-232:m22n729-s522	0.7716	0.7716	0.7716	0.7716	Bacteria <bacteria>;Firmicutes;Clostridia;Eubacteriales;Oscillospiraceae;Saccharofermentans;Saccharofermentans acetigenes
+sv-232:m22n729-s522	0.1627	0.1627	0.1627	0.1627	DISTANT
 sv-236:m48n729-s522	0	0	0.8254	0.8254	Bacteria <bacteria>
 sv-236:m48n729-s522	0	0	0.8254	0.8254	Bacteria <bacteria>;Firmicutes
 sv-236:m48n729-s522	0	0	0.8254	0.8254	Bacteria <bacteria>;Firmicutes;Clostridia
@@ -1576,14 +1576,14 @@ sv-236:m48n729-s522	0.04807	0.04807	0.8254	0.8254	Bacteria <bacteria>;Firmicutes
 sv-236:m48n729-s522	0	0	0.7773	0.7773	Bacteria <bacteria>;Firmicutes;Clostridia;Eubacteriales;Oscillospiraceae;Saccharofermentans
 sv-236:m48n729-s522	0.7773	0.7773	0.7773	0.7773	Bacteria <bacteria>;Firmicutes;Clostridia;Eubacteriales;Oscillospiraceae;Saccharofermentans;Saccharofermentans acetigenes
 sv-236:m48n729-s522	0.1746	0.1746	0.1746	0.1746	DISTANT
-sv-238:m22n729-s520	0	0	0.984	0.984	Bacteria <bacteria>
-sv-238:m22n729-s520	0	0	0.984	0.984	Bacteria <bacteria>;Firmicutes
-sv-238:m22n729-s520	0	0	0.984	0.984	Bacteria <bacteria>;Firmicutes;Clostridia
-sv-238:m22n729-s520	0	0	0.984	0.984	Bacteria <bacteria>;Firmicutes;Clostridia;Eubacteriales
-sv-238:m22n729-s520	0.2402	0.2402	0.984	0.984	Bacteria <bacteria>;Firmicutes;Clostridia;Eubacteriales;Oscillospiraceae
-sv-238:m22n729-s520	0	0	0.7438	0.7438	Bacteria <bacteria>;Firmicutes;Clostridia;Eubacteriales;Oscillospiraceae;Saccharofermentans
-sv-238:m22n729-s520	0.7438	0.7438	0.7438	0.7438	Bacteria <bacteria>;Firmicutes;Clostridia;Eubacteriales;Oscillospiraceae;Saccharofermentans;Saccharofermentans acetigenes
-sv-238:m22n729-s520	0.01598	0.01598	0.01598	0.01598	DISTANT
+sv-239:m22n729-s520	0	0	0.984	0.984	Bacteria <bacteria>
+sv-239:m22n729-s520	0	0	0.984	0.984	Bacteria <bacteria>;Firmicutes
+sv-239:m22n729-s520	0	0	0.984	0.984	Bacteria <bacteria>;Firmicutes;Clostridia
+sv-239:m22n729-s520	0	0	0.984	0.984	Bacteria <bacteria>;Firmicutes;Clostridia;Eubacteriales
+sv-239:m22n729-s520	0.2402	0.2402	0.984	0.984	Bacteria <bacteria>;Firmicutes;Clostridia;Eubacteriales;Oscillospiraceae
+sv-239:m22n729-s520	0	0	0.7438	0.7438	Bacteria <bacteria>;Firmicutes;Clostridia;Eubacteriales;Oscillospiraceae;Saccharofermentans
+sv-239:m22n729-s520	0.7438	0.7438	0.7438	0.7438	Bacteria <bacteria>;Firmicutes;Clostridia;Eubacteriales;Oscillospiraceae;Saccharofermentans;Saccharofermentans acetigenes
+sv-239:m22n729-s520	0.01598	0.01598	0.01598	0.01598	DISTANT
 sv-248:m22n729-s520	0	0	0.974	0.974	Bacteria <bacteria>
 sv-248:m22n729-s520	0	0	0.974	0.974	Bacteria <bacteria>;Firmicutes
 sv-248:m22n729-s520	0	0	0.974	0.974	Bacteria <bacteria>;Firmicutes;Clostridia
@@ -1695,13 +1695,13 @@ sv-140:m22n729-s520	0	0	0.6521	0.6521	Bacteria <bacteria>;Actinobacteria <actino
 sv-140:m22n729-s520	0	0	0.6521	0.6521	Bacteria <bacteria>;Actinobacteria <actinobacteria>;Coriobacteriia;Coriobacteriales;Atopobiaceae
 sv-140:m22n729-s520	0	0	0.6521	0.6521	Bacteria <bacteria>;Actinobacteria <actinobacteria>;Coriobacteriia;Coriobacteriales;Atopobiaceae;Atopobium
 sv-140:m22n729-s520	0.6521	0.6521	0.6521	0.6521	Bacteria <bacteria>;Actinobacteria <actinobacteria>;Coriobacteriia;Coriobacteriales;Atopobiaceae;Atopobium;Atopobium minutum
-sv-141:m22n729-s520	0	0	1	1	Bacteria <bacteria>
-sv-141:m22n729-s520	0	0	1	1	Bacteria <bacteria>;Actinobacteria <actinobacteria>
-sv-141:m22n729-s520	0.3481	0.3481	1	1	Bacteria <bacteria>;Actinobacteria <actinobacteria>;Coriobacteriia
-sv-141:m22n729-s520	0	0	0.6519	0.6519	Bacteria <bacteria>;Actinobacteria <actinobacteria>;Coriobacteriia;Coriobacteriales
-sv-141:m22n729-s520	0	0	0.6519	0.6519	Bacteria <bacteria>;Actinobacteria <actinobacteria>;Coriobacteriia;Coriobacteriales;Atopobiaceae
-sv-141:m22n729-s520	0	0	0.6519	0.6519	Bacteria <bacteria>;Actinobacteria <actinobacteria>;Coriobacteriia;Coriobacteriales;Atopobiaceae;Atopobium
-sv-141:m22n729-s520	0.6519	0.6519	0.6519	0.6519	Bacteria <bacteria>;Actinobacteria <actinobacteria>;Coriobacteriia;Coriobacteriales;Atopobiaceae;Atopobium;Atopobium minutum
+sv-142:m22n729-s520	0	0	1	1	Bacteria <bacteria>
+sv-142:m22n729-s520	0	0	1	1	Bacteria <bacteria>;Actinobacteria <actinobacteria>
+sv-142:m22n729-s520	0.3481	0.3481	1	1	Bacteria <bacteria>;Actinobacteria <actinobacteria>;Coriobacteriia
+sv-142:m22n729-s520	0	0	0.6519	0.6519	Bacteria <bacteria>;Actinobacteria <actinobacteria>;Coriobacteriia;Coriobacteriales
+sv-142:m22n729-s520	0	0	0.6519	0.6519	Bacteria <bacteria>;Actinobacteria <actinobacteria>;Coriobacteriia;Coriobacteriales;Atopobiaceae
+sv-142:m22n729-s520	0	0	0.6519	0.6519	Bacteria <bacteria>;Actinobacteria <actinobacteria>;Coriobacteriia;Coriobacteriales;Atopobiaceae;Atopobium
+sv-142:m22n729-s520	0.6519	0.6519	0.6519	0.6519	Bacteria <bacteria>;Actinobacteria <actinobacteria>;Coriobacteriia;Coriobacteriales;Atopobiaceae;Atopobium;Atopobium minutum
 sv-146:m22n729-s522	0	0	1	1	Bacteria <bacteria>
 sv-146:m22n729-s522	0	0	1	1	Bacteria <bacteria>;Actinobacteria <actinobacteria>
 sv-146:m22n729-s522	0.7006	0.7006	1	1	Bacteria <bacteria>;Actinobacteria <actinobacteria>;Coriobacteriia
@@ -1730,20 +1730,20 @@ sv-165:m48n729-s521	0	0	0.6576	0.6576	Bacteria <bacteria>;Actinobacteria <actino
 sv-165:m48n729-s521	0	0	0.6576	0.6576	Bacteria <bacteria>;Actinobacteria <actinobacteria>;Coriobacteriia;Coriobacteriales;Atopobiaceae
 sv-165:m48n729-s521	0	0	0.6576	0.6576	Bacteria <bacteria>;Actinobacteria <actinobacteria>;Coriobacteriia;Coriobacteriales;Atopobiaceae;Atopobium
 sv-165:m48n729-s521	0.6576	0.6576	0.6576	0.6576	Bacteria <bacteria>;Actinobacteria <actinobacteria>;Coriobacteriia;Coriobacteriales;Atopobiaceae;Atopobium;Atopobium minutum
-sv-171:m22n729-s522	0	0	1	1	Bacteria <bacteria>
-sv-171:m22n729-s522	0	0	1	1	Bacteria <bacteria>;Actinobacteria <actinobacteria>
-sv-171:m22n729-s522	0.3376	0.3376	1	1	Bacteria <bacteria>;Actinobacteria <actinobacteria>;Coriobacteriia
-sv-171:m22n729-s522	0	0	0.6624	0.6624	Bacteria <bacteria>;Actinobacteria <actinobacteria>;Coriobacteriia;Coriobacteriales
-sv-171:m22n729-s522	0	0	0.6624	0.6624	Bacteria <bacteria>;Actinobacteria <actinobacteria>;Coriobacteriia;Coriobacteriales;Atopobiaceae
-sv-171:m22n729-s522	0	0	0.6624	0.6624	Bacteria <bacteria>;Actinobacteria <actinobacteria>;Coriobacteriia;Coriobacteriales;Atopobiaceae;Atopobium
-sv-171:m22n729-s522	0.6624	0.6624	0.6624	0.6624	Bacteria <bacteria>;Actinobacteria <actinobacteria>;Coriobacteriia;Coriobacteriales;Atopobiaceae;Atopobium;Atopobium minutum
-sv-173:m22n729-s520	0	0	1	1	Bacteria <bacteria>
-sv-173:m22n729-s520	0	0	1	1	Bacteria <bacteria>;Actinobacteria <actinobacteria>
-sv-173:m22n729-s520	0.3425	0.3425	1	1	Bacteria <bacteria>;Actinobacteria <actinobacteria>;Coriobacteriia
-sv-173:m22n729-s520	0	0	0.6575	0.6575	Bacteria <bacteria>;Actinobacteria <actinobacteria>;Coriobacteriia;Coriobacteriales
-sv-173:m22n729-s520	0	0	0.6575	0.6575	Bacteria <bacteria>;Actinobacteria <actinobacteria>;Coriobacteriia;Coriobacteriales;Atopobiaceae
-sv-173:m22n729-s520	0	0	0.6575	0.6575	Bacteria <bacteria>;Actinobacteria <actinobacteria>;Coriobacteriia;Coriobacteriales;Atopobiaceae;Atopobium
-sv-173:m22n729-s520	0.6575	0.6575	0.6575	0.6575	Bacteria <bacteria>;Actinobacteria <actinobacteria>;Coriobacteriia;Coriobacteriales;Atopobiaceae;Atopobium;Atopobium minutum
+sv-170:m22n729-s522	0	0	1	1	Bacteria <bacteria>
+sv-170:m22n729-s522	0	0	1	1	Bacteria <bacteria>;Actinobacteria <actinobacteria>
+sv-170:m22n729-s522	0.3376	0.3376	1	1	Bacteria <bacteria>;Actinobacteria <actinobacteria>;Coriobacteriia
+sv-170:m22n729-s522	0	0	0.6624	0.6624	Bacteria <bacteria>;Actinobacteria <actinobacteria>;Coriobacteriia;Coriobacteriales
+sv-170:m22n729-s522	0	0	0.6624	0.6624	Bacteria <bacteria>;Actinobacteria <actinobacteria>;Coriobacteriia;Coriobacteriales;Atopobiaceae
+sv-170:m22n729-s522	0	0	0.6624	0.6624	Bacteria <bacteria>;Actinobacteria <actinobacteria>;Coriobacteriia;Coriobacteriales;Atopobiaceae;Atopobium
+sv-170:m22n729-s522	0.6624	0.6624	0.6624	0.6624	Bacteria <bacteria>;Actinobacteria <actinobacteria>;Coriobacteriia;Coriobacteriales;Atopobiaceae;Atopobium;Atopobium minutum
+sv-174:m22n729-s520	0	0	1	1	Bacteria <bacteria>
+sv-174:m22n729-s520	0	0	1	1	Bacteria <bacteria>;Actinobacteria <actinobacteria>
+sv-174:m22n729-s520	0.3425	0.3425	1	1	Bacteria <bacteria>;Actinobacteria <actinobacteria>;Coriobacteriia
+sv-174:m22n729-s520	0	0	0.6575	0.6575	Bacteria <bacteria>;Actinobacteria <actinobacteria>;Coriobacteriia;Coriobacteriales
+sv-174:m22n729-s520	0	0	0.6575	0.6575	Bacteria <bacteria>;Actinobacteria <actinobacteria>;Coriobacteriia;Coriobacteriales;Atopobiaceae
+sv-174:m22n729-s520	0	0	0.6575	0.6575	Bacteria <bacteria>;Actinobacteria <actinobacteria>;Coriobacteriia;Coriobacteriales;Atopobiaceae;Atopobium
+sv-174:m22n729-s520	0.6575	0.6575	0.6575	0.6575	Bacteria <bacteria>;Actinobacteria <actinobacteria>;Coriobacteriia;Coriobacteriales;Atopobiaceae;Atopobium;Atopobium minutum
 sv-176:J10_S92	0	0	1	1	Bacteria <bacteria>
 sv-176:J10_S92	0	0	1	1	Bacteria <bacteria>;Actinobacteria <actinobacteria>
 sv-176:J10_S92	0.5	0.5	1	1	Bacteria <bacteria>;Actinobacteria <actinobacteria>;Coriobacteriia
@@ -1758,13 +1758,13 @@ sv-179:m22n729-s522	0	0	0.6625	0.6625	Bacteria <bacteria>;Actinobacteria <actino
 sv-179:m22n729-s522	0	0	0.6625	0.6625	Bacteria <bacteria>;Actinobacteria <actinobacteria>;Coriobacteriia;Coriobacteriales;Atopobiaceae
 sv-179:m22n729-s522	0	0	0.6625	0.6625	Bacteria <bacteria>;Actinobacteria <actinobacteria>;Coriobacteriia;Coriobacteriales;Atopobiaceae;Atopobium
 sv-179:m22n729-s522	0.6625	0.6625	0.6625	0.6625	Bacteria <bacteria>;Actinobacteria <actinobacteria>;Coriobacteriia;Coriobacteriales;Atopobiaceae;Atopobium;Atopobium minutum
-sv-187:m22n729-s522	0	0	1	1	Bacteria <bacteria>
-sv-187:m22n729-s522	0	0	1	1	Bacteria <bacteria>;Actinobacteria <actinobacteria>
-sv-187:m22n729-s522	0.3424	0.3424	1	1	Bacteria <bacteria>;Actinobacteria <actinobacteria>;Coriobacteriia
-sv-187:m22n729-s522	0	0	0.6576	0.6576	Bacteria <bacteria>;Actinobacteria <actinobacteria>;Coriobacteriia;Coriobacteriales
-sv-187:m22n729-s522	0	0	0.6576	0.6576	Bacteria <bacteria>;Actinobacteria <actinobacteria>;Coriobacteriia;Coriobacteriales;Atopobiaceae
-sv-187:m22n729-s522	0	0	0.6576	0.6576	Bacteria <bacteria>;Actinobacteria <actinobacteria>;Coriobacteriia;Coriobacteriales;Atopobiaceae;Atopobium
-sv-187:m22n729-s522	0.6576	0.6576	0.6576	0.6576	Bacteria <bacteria>;Actinobacteria <actinobacteria>;Coriobacteriia;Coriobacteriales;Atopobiaceae;Atopobium;Atopobium minutum
+sv-189:m22n729-s522	0	0	1	1	Bacteria <bacteria>
+sv-189:m22n729-s522	0	0	1	1	Bacteria <bacteria>;Actinobacteria <actinobacteria>
+sv-189:m22n729-s522	0.3424	0.3424	1	1	Bacteria <bacteria>;Actinobacteria <actinobacteria>;Coriobacteriia
+sv-189:m22n729-s522	0	0	0.6576	0.6576	Bacteria <bacteria>;Actinobacteria <actinobacteria>;Coriobacteriia;Coriobacteriales
+sv-189:m22n729-s522	0	0	0.6576	0.6576	Bacteria <bacteria>;Actinobacteria <actinobacteria>;Coriobacteriia;Coriobacteriales;Atopobiaceae
+sv-189:m22n729-s522	0	0	0.6576	0.6576	Bacteria <bacteria>;Actinobacteria <actinobacteria>;Coriobacteriia;Coriobacteriales;Atopobiaceae;Atopobium
+sv-189:m22n729-s522	0.6576	0.6576	0.6576	0.6576	Bacteria <bacteria>;Actinobacteria <actinobacteria>;Coriobacteriia;Coriobacteriales;Atopobiaceae;Atopobium;Atopobium minutum
 sv-205:m48n729-s522	0	0	1	1	Bacteria <bacteria>
 sv-205:m48n729-s522	0	0	1	1	Bacteria <bacteria>;Actinobacteria <actinobacteria>
 sv-205:m48n729-s522	0.3377	0.3377	1	1	Bacteria <bacteria>;Actinobacteria <actinobacteria>;Coriobacteriia
@@ -1786,13 +1786,13 @@ sv-224:m22n729-s522	0	0	0.6576	0.6576	Bacteria <bacteria>;Actinobacteria <actino
 sv-224:m22n729-s522	0	0	0.6576	0.6576	Bacteria <bacteria>;Actinobacteria <actinobacteria>;Coriobacteriia;Coriobacteriales;Atopobiaceae
 sv-224:m22n729-s522	0	0	0.6576	0.6576	Bacteria <bacteria>;Actinobacteria <actinobacteria>;Coriobacteriia;Coriobacteriales;Atopobiaceae;Atopobium
 sv-224:m22n729-s522	0.6576	0.6576	0.6576	0.6576	Bacteria <bacteria>;Actinobacteria <actinobacteria>;Coriobacteriia;Coriobacteriales;Atopobiaceae;Atopobium;Atopobium minutum
-sv-232:m22n729-s522	0	0	1	1	Bacteria <bacteria>
-sv-232:m22n729-s522	0	0	1	1	Bacteria <bacteria>;Actinobacteria <actinobacteria>
-sv-232:m22n729-s522	0.3425	0.3425	1	1	Bacteria <bacteria>;Actinobacteria <actinobacteria>;Coriobacteriia
-sv-232:m22n729-s522	0	0	0.6575	0.6575	Bacteria <bacteria>;Actinobacteria <actinobacteria>;Coriobacteriia;Coriobacteriales
-sv-232:m22n729-s522	0	0	0.6575	0.6575	Bacteria <bacteria>;Actinobacteria <actinobacteria>;Coriobacteriia;Coriobacteriales;Atopobiaceae
-sv-232:m22n729-s522	0	0	0.6575	0.6575	Bacteria <bacteria>;Actinobacteria <actinobacteria>;Coriobacteriia;Coriobacteriales;Atopobiaceae;Atopobium
-sv-232:m22n729-s522	0.6575	0.6575	0.6575	0.6575	Bacteria <bacteria>;Actinobacteria <actinobacteria>;Coriobacteriia;Coriobacteriales;Atopobiaceae;Atopobium;Atopobium minutum
+sv-233:m22n729-s522	0	0	1	1	Bacteria <bacteria>
+sv-233:m22n729-s522	0	0	1	1	Bacteria <bacteria>;Actinobacteria <actinobacteria>
+sv-233:m22n729-s522	0.3425	0.3425	1	1	Bacteria <bacteria>;Actinobacteria <actinobacteria>;Coriobacteriia
+sv-233:m22n729-s522	0	0	0.6575	0.6575	Bacteria <bacteria>;Actinobacteria <actinobacteria>;Coriobacteriia;Coriobacteriales
+sv-233:m22n729-s522	0	0	0.6575	0.6575	Bacteria <bacteria>;Actinobacteria <actinobacteria>;Coriobacteriia;Coriobacteriales;Atopobiaceae
+sv-233:m22n729-s522	0	0	0.6575	0.6575	Bacteria <bacteria>;Actinobacteria <actinobacteria>;Coriobacteriia;Coriobacteriales;Atopobiaceae;Atopobium
+sv-233:m22n729-s522	0.6575	0.6575	0.6575	0.6575	Bacteria <bacteria>;Actinobacteria <actinobacteria>;Coriobacteriia;Coriobacteriales;Atopobiaceae;Atopobium;Atopobium minutum
 sv-237:m22n729-s522	0	0	1	1	Bacteria <bacteria>
 sv-237:m22n729-s522	0	0	1	1	Bacteria <bacteria>;Actinobacteria <actinobacteria>
 sv-237:m22n729-s522	0.7062	0.7062	1	1	Bacteria <bacteria>;Actinobacteria <actinobacteria>;Coriobacteriia
@@ -1929,15 +1929,15 @@ sv-193:m22n729-s522	0.02833	0.02989	0.8234	0.8688	Bacteria <bacteria>;Fusobacter
 sv-193:m22n729-s522	0.7688	0.8112	0.7688	0.8112	Bacteria <bacteria>;Fusobacteria <Fusobacteria>;Fusobacteriia;Fusobacteriales;Leptotrichiaceae;Streptobacillus;Streptobacillus moniliformis
 sv-193:m22n729-s522	0.0262	0.02765	0.0262	0.02765	Bacteria <bacteria>;Fusobacteria <Fusobacteria>;Fusobacteriia;Fusobacteriales;Leptotrichiaceae;Streptobacillus;Streptobacillus ratti
 sv-193:m22n729-s522	0.1244	0.1312	0.1244	0.1312	DISTANT
-sv-194:m22n729-s522	0	0	0.8229	0.8687	Bacteria <bacteria>
-sv-194:m22n729-s522	0	0	0.8229	0.8687	Bacteria <bacteria>;Fusobacteria <Fusobacteria>
-sv-194:m22n729-s522	0	0	0.8229	0.8687	Bacteria <bacteria>;Fusobacteria <Fusobacteria>;Fusobacteriia
-sv-194:m22n729-s522	0	0	0.8229	0.8687	Bacteria <bacteria>;Fusobacteria <Fusobacteria>;Fusobacteriia;Fusobacteriales
-sv-194:m22n729-s522	0	0	0.8229	0.8687	Bacteria <bacteria>;Fusobacteria <Fusobacteria>;Fusobacteriia;Fusobacteriales;Leptotrichiaceae
-sv-194:m22n729-s522	0.02833	0.0299	0.8229	0.8687	Bacteria <bacteria>;Fusobacteria <Fusobacteria>;Fusobacteriia;Fusobacteriales;Leptotrichiaceae;Streptobacillus
-sv-194:m22n729-s522	0.7684	0.8111	0.7684	0.8111	Bacteria <bacteria>;Fusobacteria <Fusobacteria>;Fusobacteriia;Fusobacteriales;Leptotrichiaceae;Streptobacillus;Streptobacillus moniliformis
-sv-194:m22n729-s522	0.02621	0.02766	0.02621	0.02766	Bacteria <bacteria>;Fusobacteria <Fusobacteria>;Fusobacteriia;Fusobacteriales;Leptotrichiaceae;Streptobacillus;Streptobacillus ratti
-sv-194:m22n729-s522	0.1244	0.1313	0.1244	0.1313	DISTANT
+sv-194:m48n729-s522	0	0	0.8229	0.8687	Bacteria <bacteria>
+sv-194:m48n729-s522	0	0	0.8229	0.8687	Bacteria <bacteria>;Fusobacteria <Fusobacteria>
+sv-194:m48n729-s522	0	0	0.8229	0.8687	Bacteria <bacteria>;Fusobacteria <Fusobacteria>;Fusobacteriia
+sv-194:m48n729-s522	0	0	0.8229	0.8687	Bacteria <bacteria>;Fusobacteria <Fusobacteria>;Fusobacteriia;Fusobacteriales
+sv-194:m48n729-s522	0	0	0.8229	0.8687	Bacteria <bacteria>;Fusobacteria <Fusobacteria>;Fusobacteriia;Fusobacteriales;Leptotrichiaceae
+sv-194:m48n729-s522	0.02833	0.0299	0.8229	0.8687	Bacteria <bacteria>;Fusobacteria <Fusobacteria>;Fusobacteriia;Fusobacteriales;Leptotrichiaceae;Streptobacillus
+sv-194:m48n729-s522	0.7684	0.8111	0.7684	0.8111	Bacteria <bacteria>;Fusobacteria <Fusobacteria>;Fusobacteriia;Fusobacteriales;Leptotrichiaceae;Streptobacillus;Streptobacillus moniliformis
+sv-194:m48n729-s522	0.02621	0.02766	0.02621	0.02766	Bacteria <bacteria>;Fusobacteria <Fusobacteria>;Fusobacteriia;Fusobacteriales;Leptotrichiaceae;Streptobacillus;Streptobacillus ratti
+sv-194:m48n729-s522	0.1244	0.1313	0.1244	0.1313	DISTANT
 sv-197:m48n729-s522	0	0	0.8234	0.8688	Bacteria <bacteria>
 sv-197:m48n729-s522	0	0	0.8234	0.8688	Bacteria <bacteria>;Fusobacteria <Fusobacteria>
 sv-197:m48n729-s522	0	0	0.8234	0.8688	Bacteria <bacteria>;Fusobacteria <Fusobacteria>;Fusobacteriia
@@ -1947,15 +1947,15 @@ sv-197:m48n729-s522	0.02832	0.02988	0.8234	0.8688	Bacteria <bacteria>;Fusobacter
 sv-197:m48n729-s522	0.7688	0.8113	0.7688	0.8113	Bacteria <bacteria>;Fusobacteria <Fusobacteria>;Fusobacteriia;Fusobacteriales;Leptotrichiaceae;Streptobacillus;Streptobacillus moniliformis
 sv-197:m48n729-s522	0.0262	0.02764	0.0262	0.02764	Bacteria <bacteria>;Fusobacteria <Fusobacteria>;Fusobacteriia;Fusobacteriales;Leptotrichiaceae;Streptobacillus;Streptobacillus ratti
 sv-197:m48n729-s522	0.1243	0.1312	0.1243	0.1312	DISTANT
-sv-216:m22n729-s522	0	0	0.8234	0.8687	Bacteria <bacteria>
-sv-216:m22n729-s522	0	0	0.8234	0.8687	Bacteria <bacteria>;Fusobacteria <Fusobacteria>
-sv-216:m22n729-s522	0	0	0.8234	0.8687	Bacteria <bacteria>;Fusobacteria <Fusobacteria>;Fusobacteriia
-sv-216:m22n729-s522	0	0	0.8234	0.8687	Bacteria <bacteria>;Fusobacteria <Fusobacteria>;Fusobacteriia;Fusobacteriales
-sv-216:m22n729-s522	0	0	0.8234	0.8687	Bacteria <bacteria>;Fusobacteria <Fusobacteria>;Fusobacteriia;Fusobacteriales;Leptotrichiaceae
-sv-216:m22n729-s522	0.02834	0.0299	0.8234	0.8687	Bacteria <bacteria>;Fusobacteria <Fusobacteria>;Fusobacteriia;Fusobacteriales;Leptotrichiaceae;Streptobacillus
-sv-216:m22n729-s522	0.7688	0.8111	0.7688	0.8111	Bacteria <bacteria>;Fusobacteria <Fusobacteria>;Fusobacteriia;Fusobacteriales;Leptotrichiaceae;Streptobacillus;Streptobacillus moniliformis
-sv-216:m22n729-s522	0.02622	0.02766	0.02622	0.02766	Bacteria <bacteria>;Fusobacteria <Fusobacteria>;Fusobacteriia;Fusobacteriales;Leptotrichiaceae;Streptobacillus;Streptobacillus ratti
-sv-216:m22n729-s522	0.1244	0.1313	0.1244	0.1313	DISTANT
+sv-216:m48n729-s522	0	0	0.8234	0.8687	Bacteria <bacteria>
+sv-216:m48n729-s522	0	0	0.8234	0.8687	Bacteria <bacteria>;Fusobacteria <Fusobacteria>
+sv-216:m48n729-s522	0	0	0.8234	0.8687	Bacteria <bacteria>;Fusobacteria <Fusobacteria>;Fusobacteriia
+sv-216:m48n729-s522	0	0	0.8234	0.8687	Bacteria <bacteria>;Fusobacteria <Fusobacteria>;Fusobacteriia;Fusobacteriales
+sv-216:m48n729-s522	0	0	0.8234	0.8687	Bacteria <bacteria>;Fusobacteria <Fusobacteria>;Fusobacteriia;Fusobacteriales;Leptotrichiaceae
+sv-216:m48n729-s522	0.02834	0.0299	0.8234	0.8687	Bacteria <bacteria>;Fusobacteria <Fusobacteria>;Fusobacteriia;Fusobacteriales;Leptotrichiaceae;Streptobacillus
+sv-216:m48n729-s522	0.7688	0.8111	0.7688	0.8111	Bacteria <bacteria>;Fusobacteria <Fusobacteria>;Fusobacteriia;Fusobacteriales;Leptotrichiaceae;Streptobacillus;Streptobacillus moniliformis
+sv-216:m48n729-s522	0.02622	0.02766	0.02622	0.02766	Bacteria <bacteria>;Fusobacteria <Fusobacteria>;Fusobacteriia;Fusobacteriales;Leptotrichiaceae;Streptobacillus;Streptobacillus ratti
+sv-216:m48n729-s522	0.1244	0.1313	0.1244	0.1313	DISTANT
 sv-251:m48n729-s522	0	0	0.8233	0.8688	Bacteria <bacteria>
 sv-251:m48n729-s522	0	0	0.8233	0.8688	Bacteria <bacteria>;Fusobacteria <Fusobacteria>
 sv-251:m48n729-s522	0	0	0.8233	0.8688	Bacteria <bacteria>;Fusobacteria <Fusobacteria>;Fusobacteriia
@@ -2108,13 +2108,13 @@ sv-177:m48n729-s521	0.1947	0.1947	1	1	Bacteria <bacteria>;Bacteroidetes <Bactero
 sv-177:m48n729-s521	0	0	0.8053	0.8053	Bacteria <bacteria>;Bacteroidetes <Bacteroidetes>;Bacteroidia;Bacteroidales;Prevotellaceae
 sv-177:m48n729-s521	0	0	0.8053	0.8053	Bacteria <bacteria>;Bacteroidetes <Bacteroidetes>;Bacteroidia;Bacteroidales;Prevotellaceae;Prevotella
 sv-177:m48n729-s521	0.8053	0.8053	0.8053	0.8053	Bacteria <bacteria>;Bacteroidetes <Bacteroidetes>;Bacteroidia;Bacteroidales;Prevotellaceae;Prevotella;Prevotella buccalis
-sv-191:m22n729-s521	0	0	1	1	Bacteria <bacteria>
-sv-191:m22n729-s521	0	0	1	1	Bacteria <bacteria>;Bacteroidetes <Bacteroidetes>
-sv-191:m22n729-s521	0	0	1	1	Bacteria <bacteria>;Bacteroidetes <Bacteroidetes>;Bacteroidia
-sv-191:m22n729-s521	0.1451	0.1451	1	1	Bacteria <bacteria>;Bacteroidetes <Bacteroidetes>;Bacteroidia;Bacteroidales
-sv-191:m22n729-s521	0	0	0.8549	0.8549	Bacteria <bacteria>;Bacteroidetes <Bacteroidetes>;Bacteroidia;Bacteroidales;Prevotellaceae
-sv-191:m22n729-s521	0	0	0.8549	0.8549	Bacteria <bacteria>;Bacteroidetes <Bacteroidetes>;Bacteroidia;Bacteroidales;Prevotellaceae;Prevotella
-sv-191:m22n729-s521	0.8549	0.8549	0.8549	0.8549	Bacteria <bacteria>;Bacteroidetes <Bacteroidetes>;Bacteroidia;Bacteroidales;Prevotellaceae;Prevotella;Prevotella buccalis
+sv-192:m22n729-s521	0	0	1	1	Bacteria <bacteria>
+sv-192:m22n729-s521	0	0	1	1	Bacteria <bacteria>;Bacteroidetes <Bacteroidetes>
+sv-192:m22n729-s521	0	0	1	1	Bacteria <bacteria>;Bacteroidetes <Bacteroidetes>;Bacteroidia
+sv-192:m22n729-s521	0.1451	0.1451	1	1	Bacteria <bacteria>;Bacteroidetes <Bacteroidetes>;Bacteroidia;Bacteroidales
+sv-192:m22n729-s521	0	0	0.8549	0.8549	Bacteria <bacteria>;Bacteroidetes <Bacteroidetes>;Bacteroidia;Bacteroidales;Prevotellaceae
+sv-192:m22n729-s521	0	0	0.8549	0.8549	Bacteria <bacteria>;Bacteroidetes <Bacteroidetes>;Bacteroidia;Bacteroidales;Prevotellaceae;Prevotella
+sv-192:m22n729-s521	0.8549	0.8549	0.8549	0.8549	Bacteria <bacteria>;Bacteroidetes <Bacteroidetes>;Bacteroidia;Bacteroidales;Prevotellaceae;Prevotella;Prevotella buccalis
 sv-220:m48n729-s520	0	0	1	1	Bacteria <bacteria>
 sv-220:m48n729-s520	0	0	1	1	Bacteria <bacteria>;Bacteroidetes <Bacteroidetes>
 sv-220:m48n729-s520	0	0	1	1	Bacteria <bacteria>;Bacteroidetes <Bacteroidetes>;Bacteroidia
@@ -2200,13 +2200,13 @@ sv-254:S10_S37	0.5136	0.5178	0.9919	1	Bacteria <bacteria>;Bacteroidetes <Bactero
 sv-254:S10_S37	0	0	0.4783	0.4822	Bacteria <bacteria>;Bacteroidetes <Bacteroidetes>;Bacteroidia;Bacteroidales;Bacteroidaceae
 sv-254:S10_S37	0	0	0.4783	0.4822	Bacteria <bacteria>;Bacteroidetes <Bacteroidetes>;Bacteroidia;Bacteroidales;Bacteroidaceae;Bacteroides
 sv-254:S10_S37	0.4783	0.4822	0.4783	0.4822	Bacteria <bacteria>;Bacteroidetes <Bacteroidetes>;Bacteroidia;Bacteroidales;Bacteroidaceae;Bacteroides;Bacteroides finegoldii
-sv-268:S10_S37	0.1131	0.1131	1	1	Bacteria <bacteria>
-sv-268:S10_S37	0	0	0.8869	0.8869	Bacteria <bacteria>;Proteobacteria
-sv-268:S10_S37	0	0	0.8869	0.8869	Bacteria <bacteria>;Proteobacteria;Deltaproteobacteria
-sv-268:S10_S37	0	0	0.8869	0.8869	Bacteria <bacteria>;Proteobacteria;Deltaproteobacteria;Desulfovibrionales
-sv-268:S10_S37	0	0	0.8869	0.8869	Bacteria <bacteria>;Proteobacteria;Deltaproteobacteria;Desulfovibrionales;Desulfovibrionaceae
-sv-268:S10_S37	0	0	0.8869	0.8869	Bacteria <bacteria>;Proteobacteria;Deltaproteobacteria;Desulfovibrionales;Desulfovibrionaceae;Desulfovibrio
-sv-268:S10_S37	0.8869	0.8869	0.8869	0.8869	Bacteria <bacteria>;Proteobacteria;Deltaproteobacteria;Desulfovibrionales;Desulfovibrionaceae;Desulfovibrio;Desulfovibrio biadhensis
+sv-269:S10_S37	0.1131	0.1131	1	1	Bacteria <bacteria>
+sv-269:S10_S37	0	0	0.8869	0.8869	Bacteria <bacteria>;Proteobacteria
+sv-269:S10_S37	0	0	0.8869	0.8869	Bacteria <bacteria>;Proteobacteria;Deltaproteobacteria
+sv-269:S10_S37	0	0	0.8869	0.8869	Bacteria <bacteria>;Proteobacteria;Deltaproteobacteria;Desulfovibrionales
+sv-269:S10_S37	0	0	0.8869	0.8869	Bacteria <bacteria>;Proteobacteria;Deltaproteobacteria;Desulfovibrionales;Desulfovibrionaceae
+sv-269:S10_S37	0	0	0.8869	0.8869	Bacteria <bacteria>;Proteobacteria;Deltaproteobacteria;Desulfovibrionales;Desulfovibrionaceae;Desulfovibrio
+sv-269:S10_S37	0.8869	0.8869	0.8869	0.8869	Bacteria <bacteria>;Proteobacteria;Deltaproteobacteria;Desulfovibrionales;Desulfovibrionaceae;Desulfovibrio;Desulfovibrio biadhensis
 sv-215:H10_S91	0	0	0.9894	0.9894	Bacteria <bacteria>
 sv-215:H10_S91	0.002117	0.002117	0.9894	0.9894	Bacteria <bacteria>;Proteobacteria
 sv-215:H10_S91	0.05984	0.05984	0.9873	0.9873	Bacteria <bacteria>;Proteobacteria;Betaproteobacteria

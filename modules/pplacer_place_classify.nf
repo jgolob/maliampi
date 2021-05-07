@@ -685,35 +685,42 @@ elif aln_sto_intgz:
             'fasta'
         )
 # Model
-phylo_model = json.loads(tar_h.extractfile(
-        tar_contents_dict[contents['files'].get('phylo_model')]
-    ).read().decode('utf-8')
-).get('subs_rates')
+if 'raxml_ng_model' in contents['files']:
+    with open('model.txt', 'wt') as out_h:
+        out_h.write(tar_h.extractfile(
+            tar_contents_dict[contents['files'].get('raxml_ng_model')]
+        ).read().decode('utf-8'))
 
-re_basefreq = re.compile(r'Base frequencies: (?P<A>0\\.\\d+) (?P<C>0\\.\\d+) (?P<G>0\\.\\d+) (?P<T>0\\.\\d+)')
-bf_m = re_basefreq.search(tar_h.extractfile(
-        tar_contents_dict[contents['files'].get('tree_stats')]
-    ).read().decode('utf-8'))
-with open('model.txt', 'wt') as model_h:
-    model_h.writelines( 
-        "GTR{"+
-        "{}/{}/{}/{}/{}/{}".format(
-            phylo_model['ac'],
-            phylo_model['ag'],
-            phylo_model['at'],
-            phylo_model['cg'],
-            phylo_model['ct'],
-            phylo_model['gt'],
+else:
+    phylo_model = json.loads(tar_h.extractfile(
+            tar_contents_dict[contents['files'].get('phylo_model')]
+        ).read().decode('utf-8')
+    ).get('subs_rates')
+
+    re_basefreq = re.compile(r'Base frequencies: (?P<A>0\\.\\d+) (?P<C>0\\.\\d+) (?P<G>0\\.\\d+) (?P<T>0\\.\\d+)')
+    bf_m = re_basefreq.search(tar_h.extractfile(
+            tar_contents_dict[contents['files'].get('tree_stats')]
+        ).read().decode('utf-8'))
+    with open('model.txt', 'wt') as model_h:
+        model_h.writelines( 
+            "GTR{"+
+            "{}/{}/{}/{}/{}/{}".format(
+                phylo_model['ac'],
+                phylo_model['ag'],
+                phylo_model['at'],
+                phylo_model['cg'],
+                phylo_model['ct'],
+                phylo_model['gt'],
+            )
+            +"}"+"+FU{"+
+            "{}/{}/{}/{}".format(
+                bf_m['A'],
+                bf_m['C'],
+                bf_m['G'],
+                bf_m['T'],
+            )
+            +"}"
         )
-        +"}"+"+FU{"+
-        "{}/{}/{}/{}".format(
-            bf_m['A'],
-            bf_m['C'],
-            bf_m['G'],
-            bf_m['T'],
-        )
-        +"}"
-    )
 
 with open('leaf_info.csv', 'wt') as leaf_h:
     leaf_h.write(tar_h.extractfile(
@@ -724,8 +731,6 @@ with open('taxonomy.csv', 'wt') as leaf_h:
     leaf_h.write(tar_h.extractfile(
         tar_contents_dict[contents['files'].get('taxonomy')]
     ).read().decode('utf-8'))
-
-
 """
 }
 
