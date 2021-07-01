@@ -168,10 +168,10 @@ include { make_refpkg_wf } from './modules/refpackage' params (
     raxmlng_parsimony_trees: params.raxmlng_parsimony_trees,
     raxmlng_random_trees: params.raxmlng_random_trees,
     raxmlng_bootstrap_cutoff: params.raxmlng_bootstrap_cutoff,
-    raxmlng_seed: params.raxmlng_seed
+    raxmlng_seed: params.raxmlng_seed,
 
-    raxml_model: params.raxml_model
-    raxml_parsiomony_seed: params.raxml_parsiomony_seed
+    raxml_model: params.raxml_model,
+    raxml_parsiomony_seed: params.raxml_parsiomony_seed,
     raxml: params.raxml
 
 )
