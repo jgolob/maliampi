@@ -12,6 +12,8 @@ container__raxmlng = 'quay.io/biocontainers/raxml-ng:1.0.2--h32fcf60_1'
 container__dada2pplacer = "golob/dada2-pplacer:0.8.0__bcw_0.3.1A"
 container__taxtastic = "golob/taxtastic:0.9.5D"
 
+container__raxml = "quay.io/biocontainers/raxml:8.2.4--h779adbc_4"
+
 
 
 workflow make_refpkg_wf {
@@ -85,36 +87,48 @@ workflow make_refpkg_wf {
     )
 
     //
-    // Step 8. Make a tree from the alignment.
-    //
-    RaxmlTreeNG(ConvertAlnToFasta.out)
-    
-    //
-    // Step 9. Make a tax table for the refpkg sequences
+    // Step 8. Make a tax table for the refpkg sequences
     //
     TaxtableForSI(
         tax_db,
         ConfirmSI.out
     )
 
-
     //
+    // Step 9. Make a tree from the alignment.
     // Step 10. Combine into a refpkg
     //
+    if (params.raxml == 'ng') {
+        RaxmlTreeNG(ConvertAlnToFasta.out)
+        CombineRefpkg_ng(
+            ConvertAlnToFasta.out,
+            AlignRepoRecruits.out[0],
+            RaxmlTreeNG.out.tree,
+            RaxmlTreeNG.out.log,
+            TaxtableForSI.out,
+            ConfirmSI.out,
+            ObtainCM.out,
+            RaxmlTreeNG.out.model
+        )
+        refpkg_tgz = CombineRefpkg_ng.out
 
-    CombineRefpkg(
-        ConvertAlnToFasta.out,
-        AlignRepoRecruits.out[0],
-        RaxmlTreeNG.out.tree,
-        RaxmlTreeNG.out.log,
-        TaxtableForSI.out,
-        ConfirmSI.out,
-        ObtainCM.out,
-        RaxmlTreeNG.out.model
-    )
-
+    } else if (params.raxml == 'og') {
+        RaxmlTree(ConvertAlnToFasta.out)
+        RaxmlTree_cleanupInfo(RaxmlTree.out[1])
+        CombineRefpkg_og(
+            ConvertAlnToFasta.out,
+            AlignRepoRecruits.out[0],
+            RaxmlTree.out[0],
+            RaxmlTree_cleanupInfo.out,
+            TaxtableForSI.out,
+            ConfirmSI.out,
+            ObtainCM.out,
+        )
+        refpkg_tgz = CombineRefpkg_og.out
+    }
+    
     emit:
-        refpkg_tgz = CombineRefpkg.out
+        refpkg_tgz = refpkg_tgz
 
 }
 
@@ -305,6 +319,53 @@ process RaxmlTreeNG {
     """
 }
 
+process RaxmlTree {
+    container = "${container__raxml}"
+    label = 'mem_veryhigh'
+    errorStrategy = 'retry'
+
+    input:
+        file recruits_aln_fasta_f
+    
+    output:
+        file "RAxML_bestTree.refpkg"
+        file "RAxML_info.refpkg"
+    
+    """
+    raxmlHPC-PTHREADS-AVX2 \
+    -n refpkg \
+    -m ${params.raxml_model} \
+    -s ${recruits_aln_fasta_f} \
+    -p ${params.raxml_parsiomony_seed} \
+    -T ${task.cpus}
+    """
+}
+
+process RaxmlTree_cleanupInfo {
+    container = "${container__fastatools}"
+    label = 'io_limited'
+    errorStrategy = 'retry'
+
+    input:
+        file "RAxML_info.unclean.refpkg"
+    
+    output:
+        file "RAxML_info.refpkg"
+
+
+"""
+#!/usr/bin/env python
+with open("RAxML_info.refpkg",'wt') as out_h:
+    with open("RAxML_info.unclean.refpkg", 'rt') as in_h:
+        past_cruft = False
+        for l in in_h:
+            if "This is RAxML version" == l[0:21]:
+                past_cruft = True
+            if past_cruft:
+                out_h.write(l)
+"""
+}
+
 process TaxtableForSI {
     container = "${container__taxtastic}"
     label = 'io_limited'
@@ -335,7 +396,7 @@ process ObtainCM {
     """
 }
 
-process CombineRefpkg {
+process CombineRefpkg_ng {
     container = "${container__taxtastic}"
     label = 'io_limited'
 
@@ -392,6 +453,41 @@ ENDPYTHON
 tar cvf refpkg.tar  -C refpkg/ .
 gzip refpkg.tar
 """
+}
+
+process CombineRefpkg_og {
+    container = "${container__pplacer}"
+    label = 'io_limited'
+
+    afterScript("rm -rf refpkg/*")
+    publishDir "${params.output}/refpkg/", mode: 'copy'
+
+    input:
+        file recruits_aln_fasta_f
+        file recruits_aln_sto_f
+        file refpkg_tree_f 
+        file refpkg_tree_stats_clean_f 
+        file refpkg_tt_f
+        file refpkg_si_corr_f
+        file refpkg_cm
+    
+    output:
+        file "refpkg.tgz"
+    
+    """
+    taxit create --locus 16S \
+    --package-name refpkg \
+    --clobber \
+    --aln-fasta ${recruits_aln_fasta_f} \
+    --aln-sto ${recruits_aln_sto_f} \
+    --tree-file ${refpkg_tree_f} \
+    --tree-stats ${refpkg_tree_stats_clean_f} \
+    --taxonomy ${refpkg_tt_f} \
+    --seq-info ${refpkg_si_corr_f} \
+    --profile ${refpkg_cm} && \
+    ls -l refpkg/ && \
+    tar czvf refpkg.tgz  -C refpkg/ .
+    """
 }
 
 process AddRAxMLModel {
@@ -463,6 +559,7 @@ def helpMessage() {
         --repo_fasta          Repository of 16S rRNA genes.
         --repo_si             Information about the 16S rRNA genes.
         --email               Email (for NCBI)
+        --raxml               Which raxml to use: og (original) or ng (new). Default: og
     Options:
       Common to all:
         --output              Directory to place outputs (default invocation dir)
@@ -474,6 +571,8 @@ def helpMessage() {
         --repo_min_id               Minimum percent ID to a SV to be recruited (default = 0.8)
         --repo_max_accepts          Maximum number of recruits per SV (default = 10)
         --cmalign_mxsize            Infernal cmalign mxsize (default = 8196)
+        --raxml_model               RAxML model for tree formation (default = 'GTRGAMMA')
+        --raxml_parsiomony_seed     (default = 12345)
         --raxmlng_model             Subsitution model (default 'GTR+G')
         --raxmlng_parsimony_trees   How many seed parsimony trees (default 10)
         --raxmlng_random_trees      How many seed random trees (default 10)
@@ -485,21 +584,28 @@ def helpMessage() {
 
 // paramters
 params.help = false
-
 params.taxdmp = false
+
+params.raxml = 'og'
+
+
+params.email = null
+params.repo_fasta = null
+params.repo_si = null
+
 
 params.repo_min_id = 0.8
 params.repo_max_accepts = 10
 params.cmalign_mxsize = 8196
+
 params.raxml_model = 'GTRGAMMA'
 params.raxml_parsiomony_seed = 12345
 
 params.raxmlng_model = 'GTR+G'
-params.raxmlng_parsimony_trees = 10
-params.raxmlng_random_trees = 10
+params.raxmlng_parsimony_trees = 1
+params.raxmlng_random_trees = 1
 params.raxmlng_bootstrap_cutoff = 0.3
 params.raxmlng_seed = 12345
-
 
 // standalone workflow for module
 workflow {
@@ -509,7 +615,10 @@ workflow {
             params.help || 
             (params.repo_fasta == null) ||
             (params.repo_si == null) ||
-            (params.email == null)
+            (params.email == null) || (
+                (params.raxml != 'og') &
+                (params.raxml != 'ng')
+            )
         ){
         // Invoke the function above which prints the help message
         helpMessage()
