@@ -472,7 +472,7 @@ process CombineRefpkg_og {
         file refpkg_cm
     
     output:
-        file "refpkg.tgz"
+        file "refpkg.tar.gz"
     
     """
     taxit create --locus 16S \
@@ -486,7 +486,7 @@ process CombineRefpkg_og {
     --seq-info ${refpkg_si_corr_f} \
     --profile ${refpkg_cm} && \
     ls -l refpkg/ && \
-    tar czvf refpkg.tgz  -C refpkg/ .
+    tar czvf refpkg.tar.gz  -C refpkg/ .
     """
 }
 
