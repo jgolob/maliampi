@@ -42,7 +42,7 @@ workflow make_refpkg_wf {
         repo_fasta
     )
     repo_recruits_f = RefpkgSearchRepo.out[0]
-        
+
     //
     // Step 4. Filter SeqInfo to recruits
     //
@@ -75,28 +75,40 @@ workflow make_refpkg_wf {
     )
 
     //
-    // Step 7. Align recruited seqs
+    // Step 7. Check for and adjucticate identical sequences
     //
-    AlignRepoRecruits(repo_recruits_f, ObtainCM.out)
+    HandleDuplicatedSeqs(
+        repo_recruits_f,
+        ConfirmSI.out,
+        tax_db
+    )
 
     //
-    // Step 7. Convert alignment from STO -> FASTA format
+    // Step 8. Align recruited seqs
+    //
+    AlignRepoRecruits(
+        HandleDuplicatedSeqs.out[1],
+        ObtainCM.out
+    )
+
+    //
+    // Step 9. Convert alignment from STO -> FASTA format
     //
     ConvertAlnToFasta(
         AlignRepoRecruits.out[0]
     )
 
     //
-    // Step 8. Make a tax table for the refpkg sequences
+    // Step 10. Make a tax table for the refpkg sequences
     //
     TaxtableForSI(
         tax_db,
-        ConfirmSI.out
+        HandleDuplicatedSeqs.out[0]
     )
 
     //
-    // Step 9. Make a tree from the alignment.
-    // Step 10. Combine into a refpkg
+    // Step 11. Make a tree from the alignment.
+    // Step 12. Combine into a refpkg
     //
     if (params.raxml == 'ng') {
         RaxmlTreeNG(ConvertAlnToFasta.out)
@@ -106,7 +118,7 @@ workflow make_refpkg_wf {
             RaxmlTreeNG.out.tree,
             RaxmlTreeNG.out.log,
             TaxtableForSI.out,
-            ConfirmSI.out,
+            HandleDuplicatedSeqs.out[0],
             ObtainCM.out,
             RaxmlTreeNG.out.model
         )
@@ -121,7 +133,7 @@ workflow make_refpkg_wf {
             RaxmlTree.out[0],
             RaxmlTree_cleanupInfo.out,
             TaxtableForSI.out,
-            ConfirmSI.out,
+            HandleDuplicatedSeqs.out[0],
             ObtainCM.out,
         )
         refpkg_tgz = CombineRefpkg_og.out
@@ -129,7 +141,7 @@ workflow make_refpkg_wf {
     
     emit:
         refpkg_tgz = refpkg_tgz
-
+// */
 }
 
 
@@ -163,7 +175,108 @@ process RefpkgSearchRepo {
     """
 }
 
+process HandleDuplicatedSeqs {
+    container = "${container__fastatools}"
+    label = 'io_limited'
 
+    input:
+        path(repo_recruits_f)
+        path(seq_info_f)
+        path(tax_db)
+    
+    
+    output:
+        path('refpkg_nodup.seq_info.csv'), emit: seq_info
+        path('repo_recruits_nodup.fasta'), emit: seqs
+
+"""
+#!/usr/bin/env python
+import fastalite
+import csv
+import sqlite3
+from collections import defaultdict
+
+def get_lineage(tax_id, cursor):
+    cur_tax_id = tax_id
+    lineage = [cur_tax_id]
+    while cur_tax_id != '1':
+        cur_tax_id = cursor.execute("SELECT parent_id FROM nodes where tax_id=?", (cur_tax_id,)).fetchone()[0]
+        lineage.append(cur_tax_id)
+    return lineage
+
+tax_db = sqlite3.connect('${tax_db}')
+tax_db_cur = tax_db.cursor()
+
+with open('${seq_info_f}', 'rt') as sif:
+    si_r = csv.DictReader(sif)
+    seq_info = {
+        r['seqname']: r
+        for r in si_r
+    }
+
+seq_ids = defaultdict(set)
+with open('${repo_recruits_f}', 'rt') as recruit_h:
+    for sr in fastalite.fastalite(recruit_h):
+        seq_ids[sr.seq].add(sr.id)
+
+# Loop through the sequence groups. 
+valid_seqs = set()
+for seq, ids in seq_ids.items():
+    if len(ids) == 1:
+        # If there is only one ID for a sequence it automatically passes!
+        valid_seqs.add(list(ids)[0])
+        continue
+    tax_ids = {seq_info[i]['tax_id']: i for i in ids}
+    if len(tax_ids) == 1:
+        # Only one tax id, pick a random one as our champion
+        valid_seqs.add(list(ids)[0])
+        print("++++")
+        for i in ids:
+            print(seq_info[i]['organism'])
+        continue
+    # Implicit else multiple taxa...
+    # Get the lineages for these taxa to root
+    tax_lineages = {
+        tid: get_lineage(tid, tax_db_cur)
+        for tid in tax_ids
+    }
+    # And the depth of each lineage
+    lin_depth_tax = {
+        len(lineage): tid
+        for tid, lineage in
+        tax_lineages.items()
+    }
+    # Pick the seq from the deepest lineage to be the representitive
+    valid_seqs.add(
+        tax_ids[
+            lin_depth_tax[max(lin_depth_tax.keys())]
+        ]
+    )
+    print('---')
+    for i in ids:
+        print(seq_info[i]['organism'])
+
+# Outputs!
+
+with open('${seq_info_f}', 'rt') as si_in, open('refpkg_nodup.seq_info.csv', 'wt') as si_out:
+    si_reader = csv.DictReader(si_in)
+    si_writer = csv.DictWriter(si_out, si_reader.fieldnames)
+    si_writer.writeheader()
+    for r in si_reader:
+        if r['seqname'] in valid_seqs:
+            si_writer.writerow(r)
+
+with open('${repo_recruits_f}', 'rt') as seqs_in, open('repo_recruits_nodup.fasta', 'wt') as seqs_out:
+    for sr in fastalite.fastalite(seqs_in):
+        if sr.id in valid_seqs:
+            seqs_out.write(
+                ">{}\\n{}\\n".format(
+                    sr.id,
+                    sr.seq
+                )
+            )
+"""
+}
 
 process FilterSeqInfo {
     container = "${container__fastatools}"
