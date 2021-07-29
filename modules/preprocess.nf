@@ -73,7 +73,7 @@ workflow preprocess_wf {
 process barcodecop {
     container "${container__barcodecop}"
     label 'io_limited'
-    errorStrategy "retry"
+    errorStrategy "ignore"
 
     input:
     tuple val(specimen), val(batch), file(R1), file(R2), file(I1), file(I2)
