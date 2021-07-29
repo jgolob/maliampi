@@ -8,7 +8,7 @@
     3) Place SV on the reference package
     4) Classify the SV using the placements + reference package
 */
-nextflow.preview.dsl=2
+nextflow.enable.dsl=2
 
 // Defaults for parameters
 params.help = false
@@ -37,8 +37,11 @@ params.goods_min_reads = 30
 params.repo_min_id = 0.8
 params.repo_max_accepts = 10
 params.cmalign_mxsize = 8196
-params.raxml_model = 'GTRGAMMA'
-params.raxml_parsiomony_seed = 12345
+params.raxmlng_model = 'GTR+G'
+params.raxmlng_parsimony_trees = 10
+params.raxmlng_random_trees = 10
+params.raxmlng_bootstrap_cutoff = 0.3
+params.raxmlng_seed = 12345
 params.taxdmp = false
 
 // pplacer place
@@ -93,14 +96,20 @@ def helpMessage() {
         --truncLenF             (default = 0)
         --truncLenR             (default = 0)
         --truncQ                (default = 2)
+        --minOverlap            (default = 12)
+        --maxMismatch           (default = 0)
+
 
     Ref Package options (defaults generally fine):
-        --repo_min_id           Minimum percent ID to a SV to be recruited (default = 0.8)
-        --repo_max_accepts      Maximum number of recruits per SV (default = 10)
-        --cmalign_mxsize        Infernal cmalign mxsize (default = 8196)
-        --raxml_model           RAxML model for tree formation (default = 'GTRGAMMA')
-        --raxml_parsiomony_seed (default = 12345)
-        --taxdmp                Path to taxdmp.zip. If not provided, it will be downloaded
+        --repo_min_id               Minimum percent ID to a SV to be recruited (default = 0.8)
+        --repo_max_accepts          Maximum number of recruits per SV (default = 10)
+        --cmalign_mxsize            Infernal cmalign mxsize (default = 8196)
+        --raxmlng_model             Subsitution model (default 'GTR+G')
+        --raxmlng_parsimony_trees   How many seed parsimony trees (default 10)
+        --raxmlng_random_trees      How many seed random trees (default 10)
+        --raxmlng_bootstrap_cutoff  When to stop boostraps (default = 0.3)
+        --raxmlng_seed              Random seed for RAxML-ng (default = 12345)
+        --taxdmp                    (Optional) taxdmp.zip from the repository
 
     Placement / Classification Options (defaults generally fine):
         --pp_classifer                  pplacer classifer (default = 'hybrid2')
@@ -146,14 +155,18 @@ include { make_refpkg_wf } from './modules/refpackage' params (
     repo_min_id: params.repo_min_id,
     repo_max_accepts: params.repo_max_accepts,
     cmalign_mxsize: params.cmalign_mxsize,
-    raxml_model: params.raxml_model,
-    raxml_parsiomony_seed: params.raxml_parsiomony_seed,
     taxdmp: params.taxdmp,
-    email: params.email
+    email: params.email,
+
+    raxmlng_model: params.raxmlng_model,
+    raxmlng_parsimony_trees: params.raxmlng_parsimony_trees,
+    raxmlng_random_trees: params.raxmlng_random_trees,
+    raxmlng_bootstrap_cutoff: params.raxmlng_bootstrap_cutoff,
+    raxmlng_seed: params.raxmlng_seed
 
 )
 
-include { pplacer_place_classify_wf } from './modules/pplacer_place_classify' params (
+include { epang_place_classify_wf } from './modules/epang_place_classify' params (
     output: params.output,
     cmalign_mxsize: params.cmalign_mxsize,
     // Placer
@@ -246,11 +259,12 @@ workflow {
     //
     // STEP 3. Place and Classify
     //
-    pplacer_place_classify_wf(
+    epang_place_classify_wf(
         dada2_wf.out.sv_fasta,
         make_refpkg_wf.out.refpkg_tgz,
         dada2_wf.out.sv_weights,
-        dada2_wf.out.sv_map
+        dada2_wf.out.sv_map,
+        dada2_wf.out.sv_long,
     )
     
 }

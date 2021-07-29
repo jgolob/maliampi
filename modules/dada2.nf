@@ -1,9 +1,9 @@
 //
 //  ESVs via DADA2
 //
-nextflow.preview.dsl=2
+nextflow.enable.dsl=2
 
-container__dada2 = "golob/dada2:1.14.1.ub.1804"
+container__dada2 = "quay.io/biocontainers/bioconductor-dada2:1.18.0--r40h399db7b_1"
 container__fastcombineseqtab = "golob/dada2-fast-combineseqtab:0.5.0__1.12.0__BCW_0.3.1"
 container__dada2pplacer = "golob/dada2-pplacer:0.8.0__bcw_0.3.1A"
 container__goodsfilter = "golob/goodsfilter:0.1.6"
@@ -20,7 +20,7 @@ params.trimLeft = 0
 params.maxN = 0
 params.maxEE = 'Inf'
 params.truncLenF = 0
-params.truncLenF_se = 310
+params.truncLenF_se = 0
 params.truncLenF_pyro = 250
 params.truncLenR = 0
 params.truncQ = 2
@@ -29,6 +29,8 @@ params.errM_randomize = 'TRUE'
 params.errM_nbases = '1e8'
 params.chimera_method = 'consensus'
 params.maxLenPyro = 350
+params.maxMismatch = 0
+params.minOverlap = 12
 
 workflow dada2_wf {
     take: miseq_pe_ch
@@ -36,7 +38,6 @@ workflow dada2_wf {
     take: pyro_ch
 
     main:
-
     //
     // STEP 1: filter trim (by specimen)
     //
@@ -44,7 +45,6 @@ workflow dada2_wf {
     // Single end and pyro need to be handled differently at the f/t step
     dada2_ft_se(miseq_se_ch)
     dada2_ft_pyro(pyro_ch)
-
     ft_reads_pe = dada2_ft.out
     .branch{
         empty: file(it[2]).isEmpty() || file(it[3]).isEmpty()
@@ -315,10 +315,10 @@ workflow dada2_wf {
     //
     // STEP 10. Transform output to be pplacer and mothur style
     //
-    dada2_convert_output(
+    Dada2_convert_output(
         dada2_remove_bimera.out[0].map{ file(it) }
     )
-    //dada2_convert_output(
+    //Dada2_convert_output(
     //    goods_filter_seqtab.out[0].map{ file(it) }
     //)
 
@@ -330,11 +330,11 @@ workflow dada2_wf {
     .set{ failures }
 
     emit:
-       sv_fasta         = dada2_convert_output.out[0] 
-       sv_map           = dada2_convert_output.out[1]
-       sv_weights       = dada2_convert_output.out[2]
-       sv_long          = dada2_convert_output.out[3]
-       sv_sharetable    = dada2_convert_output.out[4]
+       sv_fasta         = Dada2_convert_output.out[0] 
+       sv_map           = Dada2_convert_output.out[1]
+       sv_weights       = Dada2_convert_output.out[2]
+       sv_long          = Dada2_convert_output.out[3]
+       sv_sharetable    = Dada2_convert_output.out[4]
        sv_table         = dada2_remove_bimera.out[0]
        failures         = failures
     // */
@@ -351,13 +351,13 @@ process dada2_ft {
         tuple val(specimen), val(batch), file(R1), file(R2)
     
     output:
-        tuple val(specimen), val(batch), file("${R1.getSimpleName()}.dada2.ft.fq.gz"), file("${R2.getSimpleName()}.dada2.ft.fq.gz")
+        tuple val(specimen), val(batch), file("${R1.getSimpleName()}.R1.dada2.ft.fq.gz"), file("${R2.getSimpleName()}.R2.dada2.ft.fq.gz")
     """
     #!/usr/bin/env Rscript
     library('dada2'); 
     filterAndTrim(
-        '${R1}', '${R1.getSimpleName()}.dada2.ft.fq.gz',
-        '${R2}', '${R2.getSimpleName()}.dada2.ft.fq.gz',
+        '${R1}', '${R1.getSimpleName()}.R1.dada2.ft.fq.gz',
+        '${R2}', '${R2.getSimpleName()}.R2.dada2.ft.fq.gz',
         trimLeft = ${params.trimLeft},
         maxN = ${params.maxN},
         maxEE = ${params.maxEE},
@@ -432,15 +432,15 @@ process dada2_derep {
         tuple val(specimen), val(batch), file(R1), file(R2)
     
     output:
-        tuple val(specimen), val(batch), file("${R1.getSimpleName()}.dada2.ft.derep.rds"), file("${R2.getSimpleName()}.dada2.ft.derep.rds")
+        tuple val(specimen), val(batch), file("${specimen}.R1.dada2.ft.derep.rds"), file("${specimen}.R2.dada2.ft.derep.rds")
     
     """
     #!/usr/bin/env Rscript
     library('dada2');
     derep_1 <- derepFastq('${R1}');
-    saveRDS(derep_1, '${R1.getSimpleName()}.dada2.ft.derep.rds');
+    saveRDS(derep_1, '${specimen}.R1.dada2.ft.derep.rds');
     derep_2 <- derepFastq('${R2}');
-    saveRDS(derep_2, '${R2.getSimpleName()}.dada2.ft.derep.rds');
+    saveRDS(derep_2, '${specimen}.R2.dada2.ft.derep.rds');
     """ 
 }
 
@@ -453,13 +453,13 @@ process dada2_derep_se {
         tuple val(specimen), val(batch), file(R1)
     
     output:
-        tuple val(specimen), val(batch), file("${R1.getSimpleName()}.dada2.ft.derep.rds")
+        tuple val(specimen), val(batch), file("${specimen}.dada2.ft.derep.rds")
     
     """
     #!/usr/bin/env Rscript
     library('dada2');
     derep_1 <- derepFastq('${R1}');
-    saveRDS(derep_1, '${R1.getSimpleName()}.dada2.ft.derep.rds');
+    saveRDS(derep_1, '${specimen}.dada2.ft.derep.rds');
     """ 
 }
 
@@ -472,13 +472,13 @@ process dada2_derep_pyro {
         tuple val(specimen), val(batch), file(R1)
     
     output:
-        tuple val(specimen), val(batch), file("${R1.getSimpleName()}.dada2.ft.derep.rds")
+        tuple val(specimen), val(batch), file("${specimen}.dada2.ft.derep.rds")
     
     """
     #!/usr/bin/env Rscript
     library('dada2');
     derep_1 <- derepFastq('${R1}');
-    saveRDS(derep_1, '${R1.getSimpleName()}.dada2.ft.derep.rds');
+    saveRDS(derep_1, '${specimen}.dada2.ft.derep.rds');
     """ 
 }
 
@@ -492,7 +492,7 @@ process dada2_learn_error {
         tuple val(batch_specimens), val(batch), file(reads), val(read_num)
 
     output:
-        tuple batch, read_num, file("${batch}.${read_num}.errM.rds"), file("${batch}.${read_num}.errM.csv")
+        tuple val(batch), val(read_num), file("${batch}.${read_num}.errM.rds"), file("${batch}.${read_num}.errM.csv")
 
     """
     #!/usr/bin/env Rscript
@@ -524,7 +524,7 @@ process dada2_learn_error_pyro {
         tuple val(batch_specimens), val(batch), file(reads), val(read_num)
 
     output:
-        tuple batch, read_num, file("${batch}.${read_num}.errM.rds"), file("${batch}.${read_num}.errM.csv")
+        tuple val(batch), val(read_num), file("${batch}.${read_num}.errM.rds"), file("${batch}.${read_num}.errM.csv")
 
     """
     #!/usr/bin/env Rscript
@@ -561,8 +561,10 @@ process dada2_derep_batches {
     """
     #!/usr/bin/env Rscript
     library('dada2');
+    derep_str <- trimws('${dereps}')
+    print(derep_str)
     derep <- lapply(
-        unlist(strsplit('${dereps}', ' ', fixed=TRUE)),
+        unlist(strsplit(derep_str, ' ', fixed=TRUE)),
         readRDS
     );
     saveRDS(derep, "${batch}_${read_num}_derep.rds")
@@ -663,7 +665,7 @@ process dada2_merge {
     errorStrategy "finish"
 
     input:
-        tuple val(specimen), val(batch), file(R1dada), file(R2dada), file(R1), file(R2)
+        tuple val(specimen), val(batch), file("R1.dada2.rds"), file("R2.dada2.rds"), file("R1.derep.rds"), file("R2.derep.rds")
 
     output:
         tuple val(batch), val(specimen), file("${specimen}.dada2.merged.rds")
@@ -671,14 +673,17 @@ process dada2_merge {
     """
     #!/usr/bin/env Rscript
     library('dada2');
-    dada_1 <- readRDS('${R1dada}');
-    derep_1 <- readRDS('${R1}');
-    dada_2 <- readRDS('${R2dada}');
-    derep_2 <- readRDS('${R2}');        
+    dada_1 <- readRDS('R1.dada2.rds');
+    derep_1 <- readRDS('R1.derep.rds');
+    dada_2 <- readRDS('R2.dada2.rds');
+    derep_2 <- readRDS('R2.derep.rds');        
     merger <- mergePairs(
         dada_1, derep_1,
         dada_2, derep_2,
         verbose=TRUE,
+        trimOverhang=TRUE,
+        maxMismatch=${params.maxMismatch},
+        minOverlap=${params.minOverlap}
     );
     saveRDS(merger, "${specimen}.dada2.merged.rds");
     """
@@ -775,21 +780,21 @@ process dada2_remove_bimera {
     """
 }
 
-process dada2_convert_output {
+process Dada2_convert_output {
     container "${container__dada2pplacer}"
     label 'io_mem'
     publishDir "${params.output}/sv/", mode: 'copy'
     errorStrategy "finish"
 
     input:
-        file(final_seqtab_csv)
+        path (final_seqtab_csv)
 
     output:
-        file "dada2.sv.fasta"
-        file "dada2.sv.map.csv"
-        file "dada2.sv.weights.csv"
-        file "dada2.specimen.sv.long.csv"
-        file "dada2.sv.shared.txt"
+        path "dada2.sv.fasta", emit: sv_fasta
+        path "dada2.sv.map.csv", emit: sv_map
+        path "dada2.sv.weights.csv", emit: sv_weights
+        path "dada2.specimen.sv.long.csv", emit: sv_long
+        path "dada2.sv.shared.txt", emit: sharetable
 
     """
     dada2-seqtab-to-pplacer \
@@ -877,12 +882,18 @@ def helpMessage() {
         --truncLenF             (default = 0)
         --truncLenR             (default = 0)
         --truncQ                (default = 2)
+        --minOverlap            (default = 12)
+        --maxMismatch           (default = 0)
 
     """.stripIndent()
 }
 
 workflow {
-    
+    if (params.manifest == null) {
+        helpMessage()
+        exit 0
+    }
+
     // Load manifest!
     manifest = read_manifest(
         Channel.from(
