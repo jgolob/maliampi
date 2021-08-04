@@ -544,7 +544,7 @@ process ObtainCM {
 
 process CombineRefpkg_ng {
     container = "${container__taxtastic}"
-    label = 'io_limited'
+    label = 'io_mem'
 
     afterScript("rm -rf refpkg/*")
     publishDir "${params.output}/refpkg/", mode: 'copy'
@@ -603,7 +603,7 @@ gzip refpkg.tar
 
 process CombineRefpkg_og {
     container = "${container__pplacer}"
-    label = 'io_limited'
+    label = 'io_mem'
 
     afterScript("rm -rf refpkg/*")
     publishDir "${params.output}/refpkg/", mode: 'copy'
