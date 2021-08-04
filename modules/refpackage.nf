@@ -6,9 +6,9 @@ nextflow.enable.dsl=2
 container__vsearch = "quay.io/biocontainers/vsearch:2.17.0--h95f258a_1"
 container__fastatools = "golob/fastatools:0.8.0A"
 container__pplacer = "golob/pplacer:1.1alpha19rc_BCW_0.3.1A"
-container__seqinfosync = "golob/seqinfo_taxonomy_sync:0.2.1__bcw.0.3.0"
+container__seqinfosync = "golob/seqinfo_taxonomy_sync:0.3.0"
 container__infernal = "quay.io/biocontainers/infernal:1.1.4--h779adbc_0"
-container__raxmlng = 'quay.io/biocontainers/raxml-ng:1.0.2--h32fcf60_1'
+container__raxmlng = 'quay.io/biocontainers/raxml-ng:1.0.3--h32fcf60_0'
 container__dada2pplacer = "golob/dada2-pplacer:0.8.0__bcw_0.3.1A"
 container__taxtastic = "golob/taxtastic:0.9.5D"
 
@@ -344,7 +344,7 @@ process BuildTaxtasticDB {
 
 process ConfirmSI {
     container = "${container__seqinfosync}"
-    label = 'io_limited'
+    label = 'io_mem'
 
     input:
         file taxonomy_db_f
@@ -407,10 +407,37 @@ process ConvertAlnToFasta {
     """
 }
 
+process ConvertAlnToPhy {
+    container = "${container__fastatools}"
+    label = 'io_limited'
+    errorStrategy "finish"
+
+    input: 
+        file recruits_aln_sto_f
+    
+    output:
+        file "recruits.aln.phy"
+    
+    """
+    #!/usr/bin/env python
+    from Bio import AlignIO
+
+    with open('recruits.aln.phy', 'wt') as out_h:
+        AlignIO.write(
+            AlignIO.read(
+                open('${recruits_aln_sto_f}', 'rt'),
+                'stockholm'
+            ),
+            out_h,
+            'phylip-relaxed'
+        )
+    """
+}
+
 process RaxmlTreeNG {
     container = "${container__raxmlng}"
     label = 'mem_veryhigh'
-    errorStrategy = 'retry'
+    errorStrategy = 'finish'
 
     input:
         path recruits_aln_fasta_f
@@ -422,9 +449,15 @@ process RaxmlTreeNG {
     
     """
     raxml-ng \
-    --prefix refpkg \
+    --parse \
     --model ${params.raxmlng_model} \
     --msa ${recruits_aln_fasta_f} \
+    --seed ${params.raxmlng_seed}
+
+    raxml-ng \
+    --prefix refpkg \
+    --model ${params.raxmlng_model} \
+    --msa ${recruits_aln_fasta_f}.raxml.rba \
     --tree pars{${params.raxmlng_parsimony_trees}},rand{${params.raxmlng_random_trees}} \
     --bs-cutoff ${params.raxmlng_bootstrap_cutoff} \
     --seed ${params.raxmlng_seed} \
