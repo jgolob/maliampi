@@ -6,11 +6,13 @@ nextflow.enable.dsl=2
 container__vsearch = "quay.io/biocontainers/vsearch:2.17.0--h95f258a_1"
 container__fastatools = "golob/fastatools:0.8.0A"
 container__pplacer = "golob/pplacer:1.1alpha19rc_BCW_0.3.1A"
-container__seqinfosync = "golob/seqinfo_taxonomy_sync:0.2.1__bcw.0.3.0"
+container__seqinfosync = "golob/seqinfo_taxonomy_sync:0.3.0"
 container__infernal = "quay.io/biocontainers/infernal:1.1.4--h779adbc_0"
-container__raxmlng = 'quay.io/biocontainers/raxml-ng:1.0.2--h32fcf60_1'
+container__raxmlng = 'quay.io/biocontainers/raxml-ng:1.0.3--h32fcf60_0'
 container__dada2pplacer = "golob/dada2-pplacer:0.8.0__bcw_0.3.1A"
 container__taxtastic = "golob/taxtastic:0.9.5D"
+
+container__raxml = "quay.io/biocontainers/raxml:8.2.4--h779adbc_4"
 
 
 
@@ -40,7 +42,7 @@ workflow make_refpkg_wf {
         repo_fasta
     )
     repo_recruits_f = RefpkgSearchRepo.out[0]
-        
+
     //
     // Step 4. Filter SeqInfo to recruits
     //
@@ -73,49 +75,73 @@ workflow make_refpkg_wf {
     )
 
     //
-    // Step 7. Align recruited seqs
+    // Step 7. Check for and adjucticate identical sequences
     //
-    AlignRepoRecruits(repo_recruits_f, ObtainCM.out)
+    HandleDuplicatedSeqs(
+        repo_recruits_f,
+        ConfirmSI.out,
+        tax_db
+    )
 
     //
-    // Step 7. Convert alignment from STO -> FASTA format
+    // Step 8. Align recruited seqs
+    //
+    AlignRepoRecruits(
+        HandleDuplicatedSeqs.out[1],
+        ObtainCM.out
+    )
+
+    //
+    // Step 9. Convert alignment from STO -> FASTA format
     //
     ConvertAlnToFasta(
         AlignRepoRecruits.out[0]
     )
 
     //
-    // Step 8. Make a tree from the alignment.
-    //
-    RaxmlTreeNG(ConvertAlnToFasta.out)
-    
-    //
-    // Step 9. Make a tax table for the refpkg sequences
+    // Step 10. Make a tax table for the refpkg sequences
     //
     TaxtableForSI(
         tax_db,
-        ConfirmSI.out
+        HandleDuplicatedSeqs.out[0]
     )
 
-
     //
-    // Step 10. Combine into a refpkg
+    // Step 11. Make a tree from the alignment.
+    // Step 12. Combine into a refpkg
     //
+    if (params.raxml == 'ng') {
+        RaxmlTreeNG(ConvertAlnToFasta.out)
+        CombineRefpkg_ng(
+            ConvertAlnToFasta.out,
+            AlignRepoRecruits.out[0],
+            RaxmlTreeNG.out.tree,
+            RaxmlTreeNG.out.log,
+            TaxtableForSI.out,
+            HandleDuplicatedSeqs.out[0],
+            ObtainCM.out,
+            RaxmlTreeNG.out.model
+        )
+        refpkg_tgz = CombineRefpkg_ng.out
 
-    CombineRefpkg(
-        ConvertAlnToFasta.out,
-        AlignRepoRecruits.out[0],
-        RaxmlTreeNG.out.tree,
-        RaxmlTreeNG.out.log,
-        TaxtableForSI.out,
-        ConfirmSI.out,
-        ObtainCM.out,
-        RaxmlTreeNG.out.model
-    )
-
+    } else if (params.raxml == 'og') {
+        RaxmlTree(ConvertAlnToFasta.out)
+        RaxmlTree_cleanupInfo(RaxmlTree.out[1])
+        CombineRefpkg_og(
+            ConvertAlnToFasta.out,
+            AlignRepoRecruits.out[0],
+            RaxmlTree.out[0],
+            RaxmlTree_cleanupInfo.out,
+            TaxtableForSI.out,
+            HandleDuplicatedSeqs.out[0],
+            ObtainCM.out,
+        )
+        refpkg_tgz = CombineRefpkg_og.out
+    }
+    
     emit:
-        refpkg_tgz = CombineRefpkg.out
-
+        refpkg_tgz = refpkg_tgz
+// */
 }
 
 
@@ -149,7 +175,108 @@ process RefpkgSearchRepo {
     """
 }
 
+process HandleDuplicatedSeqs {
+    container = "${container__fastatools}"
+    label = 'io_limited'
 
+    input:
+        path(repo_recruits_f)
+        path(seq_info_f)
+        path(tax_db)
+    
+    
+    output:
+        path('refpkg_nodup.seq_info.csv'), emit: seq_info
+        path('repo_recruits_nodup.fasta'), emit: seqs
+
+"""
+#!/usr/bin/env python
+import fastalite
+import csv
+import sqlite3
+from collections import defaultdict
+
+def get_lineage(tax_id, cursor):
+    cur_tax_id = tax_id
+    lineage = [cur_tax_id]
+    while cur_tax_id != '1':
+        cur_tax_id = cursor.execute("SELECT parent_id FROM nodes where tax_id=?", (cur_tax_id,)).fetchone()[0]
+        lineage.append(cur_tax_id)
+    return lineage
+
+tax_db = sqlite3.connect('${tax_db}')
+tax_db_cur = tax_db.cursor()
+
+with open('${seq_info_f}', 'rt') as sif:
+    si_r = csv.DictReader(sif)
+    seq_info = {
+        r['seqname']: r
+        for r in si_r
+    }
+
+seq_ids = defaultdict(set)
+with open('${repo_recruits_f}', 'rt') as recruit_h:
+    for sr in fastalite.fastalite(recruit_h):
+        seq_ids[sr.seq].add(sr.id)
+
+# Loop through the sequence groups. 
+valid_seqs = set()
+for seq, ids in seq_ids.items():
+    if len(ids) == 1:
+        # If there is only one ID for a sequence it automatically passes!
+        valid_seqs.add(list(ids)[0])
+        continue
+    tax_ids = {seq_info[i]['tax_id']: i for i in ids}
+    if len(tax_ids) == 1:
+        # Only one tax id, pick a random one as our champion
+        valid_seqs.add(list(ids)[0])
+        print("++++")
+        for i in ids:
+            print(seq_info[i]['organism'])
+        continue
+    # Implicit else multiple taxa...
+    # Get the lineages for these taxa to root
+    tax_lineages = {
+        tid: get_lineage(tid, tax_db_cur)
+        for tid in tax_ids
+    }
+    # And the depth of each lineage
+    lin_depth_tax = {
+        len(lineage): tid
+        for tid, lineage in
+        tax_lineages.items()
+    }
+    # Pick the seq from the deepest lineage to be the representitive
+    valid_seqs.add(
+        tax_ids[
+            lin_depth_tax[max(lin_depth_tax.keys())]
+        ]
+    )
+    print('---')
+    for i in ids:
+        print(seq_info[i]['organism'])
+
+# Outputs!
+
+with open('${seq_info_f}', 'rt') as si_in, open('refpkg_nodup.seq_info.csv', 'wt') as si_out:
+    si_reader = csv.DictReader(si_in)
+    si_writer = csv.DictWriter(si_out, si_reader.fieldnames)
+    si_writer.writeheader()
+    for r in si_reader:
+        if r['seqname'] in valid_seqs:
+            si_writer.writerow(r)
+
+with open('${repo_recruits_f}', 'rt') as seqs_in, open('repo_recruits_nodup.fasta', 'wt') as seqs_out:
+    for sr in fastalite.fastalite(seqs_in):
+        if sr.id in valid_seqs:
+            seqs_out.write(
+                ">{}\\n{}\\n".format(
+                    sr.id,
+                    sr.seq
+                )
+            )
+"""
+}
 
 process FilterSeqInfo {
     container = "${container__fastatools}"
@@ -217,7 +344,7 @@ process BuildTaxtasticDB {
 
 process ConfirmSI {
     container = "${container__seqinfosync}"
-    label = 'io_limited'
+    label = 'io_mem'
 
     input:
         file taxonomy_db_f
@@ -280,10 +407,37 @@ process ConvertAlnToFasta {
     """
 }
 
+process ConvertAlnToPhy {
+    container = "${container__fastatools}"
+    label = 'io_limited'
+    errorStrategy "finish"
+
+    input: 
+        file recruits_aln_sto_f
+    
+    output:
+        file "recruits.aln.phy"
+    
+    """
+    #!/usr/bin/env python
+    from Bio import AlignIO
+
+    with open('recruits.aln.phy', 'wt') as out_h:
+        AlignIO.write(
+            AlignIO.read(
+                open('${recruits_aln_sto_f}', 'rt'),
+                'stockholm'
+            ),
+            out_h,
+            'phylip-relaxed'
+        )
+    """
+}
+
 process RaxmlTreeNG {
     container = "${container__raxmlng}"
     label = 'mem_veryhigh'
-    errorStrategy = 'retry'
+    errorStrategy = 'finish'
 
     input:
         path recruits_aln_fasta_f
@@ -295,14 +449,67 @@ process RaxmlTreeNG {
     
     """
     raxml-ng \
-    --prefix refpkg \
+    --parse \
     --model ${params.raxmlng_model} \
     --msa ${recruits_aln_fasta_f} \
+    --seed ${params.raxmlng_seed}
+
+    raxml-ng \
+    --prefix refpkg \
+    --model ${params.raxmlng_model} \
+    --msa ${recruits_aln_fasta_f}.raxml.rba \
     --tree pars{${params.raxmlng_parsimony_trees}},rand{${params.raxmlng_random_trees}} \
     --bs-cutoff ${params.raxmlng_bootstrap_cutoff} \
     --seed ${params.raxmlng_seed} \
     --threads ${task.cpus}
     """
+}
+
+process RaxmlTree {
+    container = "${container__raxml}"
+    label = 'mem_veryhigh'
+    errorStrategy = 'retry'
+
+    input:
+        file recruits_aln_fasta_f
+    
+    output:
+        file "RAxML_bestTree.refpkg"
+        file "RAxML_info.refpkg"
+    
+    """
+    raxmlHPC-PTHREADS-AVX2 \
+    -n refpkg \
+    -m ${params.raxml_model} \
+    -s ${recruits_aln_fasta_f} \
+    -p ${params.raxml_parsiomony_seed} \
+    -T ${task.cpus}
+    """
+}
+
+process RaxmlTree_cleanupInfo {
+    container = "${container__fastatools}"
+    label = 'io_limited'
+    errorStrategy = 'retry'
+
+    input:
+        file "RAxML_info.unclean.refpkg"
+    
+    output:
+        file "RAxML_info.refpkg"
+
+
+"""
+#!/usr/bin/env python
+with open("RAxML_info.refpkg",'wt') as out_h:
+    with open("RAxML_info.unclean.refpkg", 'rt') as in_h:
+        past_cruft = False
+        for l in in_h:
+            if "This is RAxML version" == l[0:21]:
+                past_cruft = True
+            if past_cruft:
+                out_h.write(l)
+"""
 }
 
 process TaxtableForSI {
@@ -325,7 +532,7 @@ process TaxtableForSI {
 
 process ObtainCM {
     container = "${container__infernal}"
-    label = 'io_limited'
+    label = 'io_net'
 
     output:
         file "SSU_rRNA_bacteria.cm"
@@ -335,9 +542,9 @@ process ObtainCM {
     """
 }
 
-process CombineRefpkg {
+process CombineRefpkg_ng {
     container = "${container__taxtastic}"
-    label = 'io_limited'
+    label = 'io_mem'
 
     afterScript("rm -rf refpkg/*")
     publishDir "${params.output}/refpkg/", mode: 'copy'
@@ -392,6 +599,41 @@ ENDPYTHON
 tar cvf refpkg.tar  -C refpkg/ .
 gzip refpkg.tar
 """
+}
+
+process CombineRefpkg_og {
+    container = "${container__pplacer}"
+    label = 'io_mem'
+
+    afterScript("rm -rf refpkg/*")
+    publishDir "${params.output}/refpkg/", mode: 'copy'
+
+    input:
+        file recruits_aln_fasta_f
+        file recruits_aln_sto_f
+        file refpkg_tree_f 
+        file refpkg_tree_stats_clean_f 
+        file refpkg_tt_f
+        file refpkg_si_corr_f
+        file refpkg_cm
+    
+    output:
+        file "refpkg.tar.gz"
+    
+    """
+    taxit create --locus 16S \
+    --package-name refpkg \
+    --clobber \
+    --aln-fasta ${recruits_aln_fasta_f} \
+    --aln-sto ${recruits_aln_sto_f} \
+    --tree-file ${refpkg_tree_f} \
+    --tree-stats ${refpkg_tree_stats_clean_f} \
+    --taxonomy ${refpkg_tt_f} \
+    --seq-info ${refpkg_si_corr_f} \
+    --profile ${refpkg_cm} && \
+    ls -l refpkg/ && \
+    tar czvf refpkg.tar.gz  -C refpkg/ .
+    """
 }
 
 process AddRAxMLModel {
@@ -463,6 +705,7 @@ def helpMessage() {
         --repo_fasta          Repository of 16S rRNA genes.
         --repo_si             Information about the 16S rRNA genes.
         --email               Email (for NCBI)
+        --raxml               Which raxml to use: og (original) or ng (new). Default: og
     Options:
       Common to all:
         --output              Directory to place outputs (default invocation dir)
@@ -474,6 +717,8 @@ def helpMessage() {
         --repo_min_id               Minimum percent ID to a SV to be recruited (default = 0.8)
         --repo_max_accepts          Maximum number of recruits per SV (default = 10)
         --cmalign_mxsize            Infernal cmalign mxsize (default = 8196)
+        --raxml_model               RAxML model for tree formation (default = 'GTRGAMMA')
+        --raxml_parsiomony_seed     (default = 12345)
         --raxmlng_model             Subsitution model (default 'GTR+G')
         --raxmlng_parsimony_trees   How many seed parsimony trees (default 10)
         --raxmlng_random_trees      How many seed random trees (default 10)
@@ -485,21 +730,28 @@ def helpMessage() {
 
 // paramters
 params.help = false
-
 params.taxdmp = false
+
+params.raxml = 'og'
+
+
+params.email = null
+params.repo_fasta = null
+params.repo_si = null
+
 
 params.repo_min_id = 0.8
 params.repo_max_accepts = 10
 params.cmalign_mxsize = 8196
+
 params.raxml_model = 'GTRGAMMA'
 params.raxml_parsiomony_seed = 12345
 
 params.raxmlng_model = 'GTR+G'
-params.raxmlng_parsimony_trees = 10
-params.raxmlng_random_trees = 10
+params.raxmlng_parsimony_trees = 1
+params.raxmlng_random_trees = 1
 params.raxmlng_bootstrap_cutoff = 0.3
 params.raxmlng_seed = 12345
-
 
 // standalone workflow for module
 workflow {
@@ -509,7 +761,10 @@ workflow {
             params.help || 
             (params.repo_fasta == null) ||
             (params.repo_si == null) ||
-            (params.email == null)
+            (params.email == null) || (
+                (params.raxml != 'og') &
+                (params.raxml != 'ng')
+            )
         ){
         // Invoke the function above which prints the help message
         helpMessage()

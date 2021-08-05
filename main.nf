@@ -38,10 +38,13 @@ params.repo_min_id = 0.8
 params.repo_max_accepts = 10
 params.cmalign_mxsize = 8196
 params.raxmlng_model = 'GTR+G'
-params.raxmlng_parsimony_trees = 10
-params.raxmlng_random_trees = 10
+params.raxmlng_parsimony_trees = 1
+params.raxmlng_random_trees = 1
 params.raxmlng_bootstrap_cutoff = 0.3
 params.raxmlng_seed = 12345
+params.raxml_model = 'GTRGAMMA'
+params.raxml_parsiomony_seed = 12345
+params.raxml = 'og'
 params.taxdmp = false
 
 // pplacer place
@@ -101,12 +104,15 @@ def helpMessage() {
 
 
     Ref Package options (defaults generally fine):
+        --raxml                     Which raxml to use: og (original) or ng (new). Default: og
         --repo_min_id               Minimum percent ID to a SV to be recruited (default = 0.8)
         --repo_max_accepts          Maximum number of recruits per SV (default = 10)
         --cmalign_mxsize            Infernal cmalign mxsize (default = 8196)
+        --raxml_model               RAxML model for tree formation (default = 'GTRGAMMA')
+        --raxml_parsiomony_seed     (default = 12345)        
         --raxmlng_model             Subsitution model (default 'GTR+G')
-        --raxmlng_parsimony_trees   How many seed parsimony trees (default 10)
-        --raxmlng_random_trees      How many seed random trees (default 10)
+        --raxmlng_parsimony_trees   How many seed parsimony trees (default 1)
+        --raxmlng_random_trees      How many seed random trees (default 1)
         --raxmlng_bootstrap_cutoff  When to stop boostraps (default = 0.3)
         --raxmlng_seed              Random seed for RAxML-ng (default = 12345)
         --taxdmp                    (Optional) taxdmp.zip from the repository
@@ -162,7 +168,11 @@ include { make_refpkg_wf } from './modules/refpackage' params (
     raxmlng_parsimony_trees: params.raxmlng_parsimony_trees,
     raxmlng_random_trees: params.raxmlng_random_trees,
     raxmlng_bootstrap_cutoff: params.raxmlng_bootstrap_cutoff,
-    raxmlng_seed: params.raxmlng_seed
+    raxmlng_seed: params.raxmlng_seed,
+
+    raxml_model: params.raxml_model,
+    raxml_parsiomony_seed: params.raxml_parsiomony_seed,
+    raxml: params.raxml
 
 )
 
