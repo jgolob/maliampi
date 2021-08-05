@@ -532,7 +532,7 @@ process TaxtableForSI {
 
 process ObtainCM {
     container = "${container__infernal}"
-    label = 'io_limited'
+    label = 'io_net'
 
     output:
         file "SSU_rRNA_bacteria.cm"
