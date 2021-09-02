@@ -28,7 +28,7 @@ params.errM_maxConsist = 10
 params.errM_randomize = 'TRUE'
 params.errM_nbases = '1e8'
 params.chimera_method = 'consensus'
-params.maxLenPyro = 350
+params.maxLenPyro = 'Inf'
 params.maxMismatch = 0
 params.minOverlap = 12
 
