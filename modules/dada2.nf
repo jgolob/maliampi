@@ -416,8 +416,6 @@ process dada2_ft_pyro {
         '${R1}', '${R1.getSimpleName()}.dada2.ft.fq.gz',
         truncLen = ${params.truncLenF_pyro},
         maxLen = ${params.maxLenPyro},
-        HOMOPOLYMER_GAP_PENALTY=-1,
-        BAND_SIZE=32,
         compress = TRUE,
         verbose = TRUE,
         multithread = ${task.cpus}
