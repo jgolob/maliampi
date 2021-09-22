@@ -336,7 +336,7 @@ process RemoveDroppedRecruits{
             r['seqname'] for r in si_reader
         }
     with open('${recruits_fasta}', 'rt') as fasta_in, open('refpkg_recruits.fasta', 'wt') as fasta_out:
-        for sr in fastalite.fastalite(fasta_in:
+        for sr in fastalite.fastalite(fasta_in):
             if sr.id in seqinfo_seqs:
                 fasta_out.write(">{} {}\\n{}\\n".format(
                     sr.id,
