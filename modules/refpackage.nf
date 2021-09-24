@@ -73,12 +73,20 @@ workflow make_refpkg_wf {
         tax_db,
         FilterSeqInfo.out
     )
+    //
+    // Step 6a. Remove recruits dropped at the ConfirmSI step.
+    //
+
+    RemoveDroppedRecruits(
+        repo_recruits_f,
+        ConfirmSI.out
+    )
 
     //
     // Step 7. Check for and adjucticate identical sequences
     //
     HandleDuplicatedSeqs(
-        repo_recruits_f,
+        RemoveDroppedRecruits.out,
         ConfirmSI.out,
         tax_db
     )
@@ -306,6 +314,38 @@ process FilterSeqInfo {
     """
 }
 
+process RemoveDroppedRecruits{
+    container = "${container__fastatools}"
+    label = 'io_limited'
+
+    input:
+        path (recruits_fasta)
+        path (seq_info)
+    
+    output:
+        path('refpkg_recruits.fasta')
+    
+    """
+    #!/usr/bin/env python
+    import fastalite
+    import csv
+
+    with open('${seq_info}') as si_in:
+        si_reader = csv.DictReader(si_in)
+        seqinfo_seqs = {
+            r['seqname'] for r in si_reader
+        }
+    with open('${recruits_fasta}', 'rt') as fasta_in, open('refpkg_recruits.fasta', 'wt') as fasta_out:
+        for sr in fastalite.fastalite(fasta_in):
+            if sr.id in seqinfo_seqs:
+                fasta_out.write(">{} {}\\n{}\\n".format(
+                    sr.id,
+                    sr.description,
+                    sr.seq
+                )) 
+    """
+}
+
 process DlBuildTaxtasticDB {
     container = "${container__taxtastic}"
     label = 'io_limited_local'
@@ -343,7 +383,7 @@ process BuildTaxtasticDB {
 }
 
 process ConfirmSI {
-    container = "${container__seqinfosync}"
+    container = "${container__taxtastic}"
     label = 'io_mem'
 
     input:
@@ -354,9 +394,11 @@ process ConfirmSI {
         file "${refpkg_si_f.baseName}.corr.csv"
     
     """
-    seqinfo_taxonomy_sync.py \
-    ${refpkg_si_f} ${refpkg_si_f.baseName}.corr.csv \
-    --db ${taxonomy_db_f} --email ${params.email}
+    taxit update_taxids \
+    ${refpkg_si_f} \
+    ${taxonomy_db_f} \
+    -o ${refpkg_si_f.baseName}.corr.csv \
+    -a drop
     """
 }
 
