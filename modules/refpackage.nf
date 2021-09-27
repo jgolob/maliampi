@@ -498,12 +498,14 @@ process RaxmlTreeNG {
 
     raxml-ng \
     --prefix refpkg \
-    --model ${params.raxmlng_model} \
     --msa ${recruits_aln_fasta_f}.raxml.rba \
     --tree pars{${params.raxmlng_parsimony_trees}},rand{${params.raxmlng_random_trees}} \
     --bs-cutoff ${params.raxmlng_bootstrap_cutoff} \
     --seed ${params.raxmlng_seed} \
-    --threads ${task.cpus}
+    --threads ${task.cpus} \
+    --bs-trees autoMRE \
+    --bootstrap \
+    --bs-metric TBE
     """
 }
 
