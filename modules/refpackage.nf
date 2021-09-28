@@ -41,7 +41,11 @@ workflow make_refpkg_wf {
         sv_fasta_f,
         repo_fasta
     )
-    repo_recruits_f = RefpkgSearchRepo.out[0]
+    BestHitFilter(
+        RefpkgSearchRepo.out.recruits,
+        RefpkgSearchRepo.out.uc
+    )
+    repo_recruits_f = BestHitFilter.out
 
     //
     // Step 4. Filter SeqInfo to recruits
@@ -158,14 +162,14 @@ process RefpkgSearchRepo {
     label = 'multithread'
 
     input:
-        file(sv_fasta_f)
-        file(repo_fasta)
+        path(sv_fasta_f)
+        path(repo_fasta)
     
     output:
-        file "${repo_fasta}.repo.recruits.fasta" 
-        file "${repo_fasta}.uc" 
-        file "${repo_fasta}.sv.nohit.fasta"
-        file "${repo_fasta}.vsearch.log"
+        path "${repo_fasta}.repo.recruits.fasta", emit: recruits
+        path "${repo_fasta}.uc", emit: uc
+        path "${repo_fasta}.sv.nohit.fasta", emit: nohits
+        path "${repo_fasta}.vsearch.log", emit: log
         
 
     """
@@ -182,6 +186,59 @@ process RefpkgSearchRepo {
     | tee -a ${repo_fasta}.vsearch.log
     """
 }
+
+process BestHitFilter {
+    container = "${container__fastatools}"
+    label = 'io_limited'
+
+    input:
+        path(repo_recruits_f)
+        path(repo_recruits_uc)
+    
+    output:
+        path('recruits.besthit.fasta'), emit: seqs
+
+"""
+#!/usr/bin/env python
+import csv
+import fastalite
+from collections import defaultdict
+
+with open('${repo_recruits_uc}', 'rt') as in_uc:
+    uc_data = [
+        (
+            row[8], # SV
+            row[9], # Reference
+            float(row[3]) # Pct ID
+        )
+        for row in 
+        csv.reader(in_uc, delimiter='\\t')
+        if row[3] != '*'
+    ]
+sv_max_pctid = defaultdict(float)
+# Figure out the best-pct-id for each SV
+for sv, ref, pctid in uc_data:
+    sv_max_pctid[sv] = max([sv_max_pctid[sv], pctid])
+
+# Only keep refs as good as the best hit for an SV
+besthit_refs = {
+    ref
+    for sv, ref, pctid
+    in uc_data
+    if sv_max_pctid[sv] == pctid
+}
+# Output
+with open('${repo_recruits_f}', 'rt') as in_fasta, open('recruits.besthit.fasta', 'wt') as out_fasta:
+    for sr in fastalite.fastalite(in_fasta):
+        if sr.id in besthit_refs:
+            out_fasta.write(">{} {}\\n{}\\n".format(
+                sr.id,
+                sr.description,
+                sr.seq
+            ))
+"""
+}
+
 
 process HandleDuplicatedSeqs {
     container = "${container__fastatools}"
