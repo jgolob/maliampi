@@ -405,7 +405,7 @@ process RemoveDroppedRecruits{
 
 process DlBuildTaxtasticDB {
     container = "${container__taxtastic}"
-    label = 'io_limited_local'
+    label = 'io_net'
     errorStrategy = 'finish'
 
     output:
