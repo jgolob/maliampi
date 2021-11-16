@@ -360,7 +360,7 @@ filtered_ref = {
 # Use this to create out outputted final output
 with open('filter_data/out.seqs.fasta', 'wt') as ref_out:
     for ref_id in filtered_ref:
-        ref_out.write(">{}\n{}\n".format(
+        ref_out.write(">{}\\n{}\\n".format(
             ref_id,
             id_seq.get(ref_id)
         ))
