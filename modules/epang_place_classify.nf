@@ -482,7 +482,7 @@ with open('epang_taxon_file.tsv', 'wt') as tf_h:
 
 process Gappa_Classify {
     container = "${container__gappa}"
-    label = 'multithreaded'
+    label = 'mem_veryhigh'
     publishDir "${params.output}/classify", mode: 'copy'
     errorStrategy 'ignore'
 
@@ -657,6 +657,7 @@ process EDPL {
     container = "${container__gappa}"
     label = 'multithreaded'
     publishDir "${params.output}/placement", mode: 'copy'
+    errorStrategy 'ignore' 
 
     input:
         path dedup_jplace
