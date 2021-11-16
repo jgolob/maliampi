@@ -85,7 +85,7 @@ workflow make_refpkg_wf {
     //
     CombinedRefFilter(
         RemoveDroppedRecruits.out,
-        RefpkgSearchRepo,
+        RefpkgSearchRepo.out.uc,
         tax_db,
         ConfirmSI.out,
     )
