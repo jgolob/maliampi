@@ -358,7 +358,7 @@ filtered_ref = {
 }
 
 # Use this to create out outputted final output
-with open('filter_data/out.seqs.fasta', 'wt') as ref_out:
+with open('references.fasta', 'wt') as ref_out:
     for ref_id in filtered_ref:
         ref_out.write(">{}\\n{}\\n".format(
             ref_id,
@@ -367,7 +367,7 @@ with open('filter_data/out.seqs.fasta', 'wt') as ref_out:
 
 si_columns = list(seq_info.values())[0].keys()
 
-with open('references.fasta', 'wt') as si_out:
+with open('references_seq_info.csv', 'wt') as si_out:
     si_writer = csv.DictWriter(
         si_out,
         fieldnames=si_columns
