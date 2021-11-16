@@ -49,7 +49,6 @@ workflow make_refpkg_wf {
         repo_si
     )
 
-
     //
     // Step 5. (get) or build a taxonomy db
     //
@@ -86,7 +85,7 @@ workflow make_refpkg_wf {
     //
     CombinedRefFilter(
         RemoveDroppedRecruits.out,
-        RefpkgSearchRepo
+        RefpkgSearchRepo,
         tax_db,
         ConfirmSI.out,
     )
@@ -194,8 +193,10 @@ process CombinedRefFilter {
         path(seq_info)
 
     output:
-        path('references.fasta'), emit: recruit_seq
-        path('references_seq_info.csv'), emit: recruit_si
+        path "references.fasta", emit: recruit_seq
+        path "references_seq_info.csv", emit: recruit_si
+
+
 """
 #!/usr/bin/env python
 import fastalite
@@ -214,14 +215,15 @@ def get_lineage(tax_id, cursor):
 # Get the seq <-> ID linkage and ID <-> seq linkage
 seq_ids = defaultdict(set)
 id_seq = {}
-with open('${repo_recruit_f)}', 'rt') as recruit_h:
+with open('${repo_recruit_f}', 'rt') as recruit_h:
     for sr in fastalite.fastalite(recruit_h):
         seq_ids[sr.seq].add(sr.id)
         id_seq[sr.id] = sr.seq
 
 all_refs = set(id_seq.keys())
+
 ### Start with the UC of alignment SV <-> Repo
-with open("${repo_recruit_uc}", 'rt') as in_uc:
+with open('${repo_recruit_uc}', 'rt') as in_uc:
     uc_data = [
         (
             row[8], # SV
@@ -229,7 +231,7 @@ with open("${repo_recruit_uc}", 'rt') as in_uc:
             float(row[3]) # Pct ID
         )
         for row in 
-        csv.reader(in_uc, delimiter='\t')
+        csv.reader(in_uc, delimiter='\\t')
         if row[3] != '*' and row[9] in all_refs
     ]
 sv_max_pctid = defaultdict(float)
@@ -375,9 +377,7 @@ with open('references_seq_info.csv', 'wt') as si_out:
         r for i, r in seq_info.items()
         if i in filtered_ref
     ])
-
 """
-
 }
 
 process BestHitFilter {
