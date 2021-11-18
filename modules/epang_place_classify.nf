@@ -43,8 +43,6 @@ workflow epang_place_classify_wf {
     take:
         sv_fasta_f
         refpkg_tgz_f
-        sv_weights_f
-        sv_map_f
         sv_long_f
 
     main:
@@ -130,8 +128,7 @@ workflow epang_place_classify_wf {
     //  Step 8. Alpha diversity
     //
     PplacerAlphaDiversity(
-        EPAngPlacement.out,
-        sv_map_f 
+        GappaSplit.out
     )
 
     //
@@ -849,20 +846,49 @@ process PplacerAlphaDiversity {
     container = "${container__pplacer}"
     label = 'io_limited'
 
-    publishDir "${params.output}/placement", mode: 'copy'
-
     input:
-        file dedup_jplace_f
-        file sv_map_f
+        path jplace_f
     output:
-        file 'alpha_diversity.csv.gz'
+        path "${jplace_f.getBaseName()}.ad.csv"
 
     
     """
     guppy fpd --csv --include-pendant --chao-d 0,1,1.00001,2,3,4,5 \
-    ${dedup_jplace_f}:${sv_map_f} |
-    gzip > alpha_diversity.csv.gz
+    ${jplace_f} > ${jplace_f.getBaseName()}.ad.csv
     """
+}
+
+process CombineSpAd {
+    container = "${container__fastatools}"
+    label = 'io_limited'
+    publishDir "${params.output}/placement", mode: 'copy'
+
+    input:
+        path specimen_ad_csv
+    
+    output:
+        path "alpha_diversity.csv.gz"
+    
+"""
+#!/usr/bin/env python
+import csv
+import gzip
+files_to_combine = "${specimen_ad_csv}".split()
+combined_data = [
+    row
+    for fn in files_to_combine
+    for row in csv.DictReader(
+        open(fn, 'rt')
+    )
+]
+
+with gzip.open('alpha_diversity.csv.gz', 'wt') as out_h:
+    out_w = csv.DictWriter(out_h,fieldnames=combined_data[0].keys())
+    out_w.writeheader()
+    out_w.writerows(combined_data)
+
+"""
+
 }
 
 
@@ -1150,6 +1176,7 @@ sv_classification.to_csv("sv_taxonomy.csv", index=False)
 //      Components for running the module independently
 //
 params.sv_fasta = null
+params.sv_long = null
 params.weights = null
 params.map = null
 params.sharetable = null
@@ -1168,6 +1195,10 @@ def helpMessage() {
         --sv_fasta            Fasta file with all the sequence variants to be placed
         --weights             Headerless CSV file with weights (shared_sv_id, specimen_sv_id, count)
         --map                 (specimen_sv_id, specimen)
+                        OR
+        --sv_fasta            Fasta file with all the sequence variants to be placed
+        --sv_long             Headered CSV file with at least columns: (specimen, sv, count)
+        --map                 (specimen_sv_id, specimen)        
                         OR
         --sv_fasta            Fasta file with all the sequence variants to be placed
         --sharetable          Mothur-style sharetable
@@ -1205,7 +1236,14 @@ workflow {
 
     refpkg_tgz_f = file(params.refpkg)
 
-    if (
+    if  (
+        (params.sv_fasta != null) &&
+        (params.sv_long != null )
+    ) {
+        sv_long_f = path(params.sv_long)
+
+    }
+    else if (
         (params.sv_fasta != null) &&
         (params.weights != null ) &&
         (params.map != null)
@@ -1246,8 +1284,6 @@ workflow {
     epang_place_classify_wf (
         sv_fasta_f,
         refpkg_tgz_f,
-        weights_f,
-        map_f,
         sv_long_f,
     )
 }
