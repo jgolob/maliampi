@@ -655,7 +655,7 @@ sv_taxonomy.to_csv('sv_taxonomy.csv', index=None)
 
 process EDPL {
     container = "${container__gappa}"
-    label = 'multithreaded'
+    label = 'multithread'
     publishDir "${params.output}/placement", mode: 'copy'
     errorStrategy 'ignore' 
 
