@@ -1243,7 +1243,7 @@ workflow {
         (params.sv_fasta != null) &&
         (params.sv_long != null )
     ) {
-        sv_long_f = path(params.sv_long)
+        sv_long_f = file(params.sv_long)
 
     }
     else if (
