@@ -1243,6 +1243,7 @@ workflow {
         (params.sv_fasta != null) &&
         (params.sv_long != null )
     ) {
+        sv_fasta_f = file(params.sv_fasta)
         sv_long_f = file(params.sv_long)
 
     }
