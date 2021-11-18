@@ -706,7 +706,7 @@ with open('${sv_long_f}', 'rt') as in_h, open('sv_multiplicity.csv', 'wt') as ou
 
 process GappaSplit {
     container = "${container__gappa}"
-    label = 'multithreaded'
+    label = 'multithread'
     publishDir "${params.output}/placement/", mode: 'copy'
 
     input:
