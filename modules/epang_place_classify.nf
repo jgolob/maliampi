@@ -128,7 +128,10 @@ workflow epang_place_classify_wf {
     //  Step 8. Alpha diversity
     //
     PplacerAlphaDiversity(
-        GappaSplit.out
+        GappaSplit.out.flatten()
+    )
+    CombineSpAd(
+        PplacerAlphaDiversity.out.toList()    
     )
 
     //
