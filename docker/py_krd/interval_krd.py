@@ -40,8 +40,8 @@ def main():
             'krd',
             '--file-prefix', "v{:05d}__".format(ojp_i),
             '--matrix-format', 'list',
-            '--jplace-path', new_jplace,
-        ] + old_jplaces)
+            '--jplace-path', new_jplace, ojp_fn
+        ])
         if (sp.returncode == 0):
             successful_pairs.append(
                 'v{:05d}__krd_matrix.csv'.format(ojp_i)
