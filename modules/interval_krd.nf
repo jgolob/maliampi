@@ -27,7 +27,7 @@ workflow {
 
 process Gappa_KRD_1t1 {
     container = "${container__gappa}"
-    label = 'multithread'
+    label = 'io_limited'
 
     input:
         path new_jplace
