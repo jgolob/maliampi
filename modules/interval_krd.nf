@@ -17,8 +17,8 @@ workflow {
     new_jplace_files = Channel.fromPath(params.new_jplace+"/*.jplace.gz")
 
     Gappa_KRD_1t1(
-        old_jplace_files,
-        new_jplace_files.toList()
+        new_jplace_files,
+        old_jplace_files.toList(),
     )
     CombineKRDLong(
         Gappa_KRD_1t1.out.toList()
