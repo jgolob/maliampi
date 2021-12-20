@@ -14,6 +14,7 @@ container__goodsfilter = "golob/goodsfilter:0.1.6"
 // common
 params.output = '.'
 params.help = false
+params.dada2_ft = false
 
 // dada2-sv
 params.trimLeft = 0
@@ -41,27 +42,45 @@ workflow dada2_wf {
     //
     // STEP 1: filter trim (by specimen)
     //
-    dada2_ft(miseq_pe_ch)
-    // Single end and pyro need to be handled differently at the f/t step
-    dada2_ft_se(miseq_se_ch)
-    dada2_ft_pyro(pyro_ch)
-    ft_reads_pe = dada2_ft.out
-    .branch{
-        empty: file(it[2]).isEmpty() || file(it[3]).isEmpty()
-        valid: true
-    }
-
-    ft_reads_se = dada2_ft_se.out
-    .branch{
-            empty: file(it[2]).isEmpty()
-            valid: true
-        }
-    
-    ft_reads_pyro = dada2_ft_pyro.out
+    // By default do *not* use dada2 ft. Instead assume trim galore dealt with the key stuff.
+    if (params.dada2_ft) {
+        dada2_ft(miseq_pe_ch)
+        // Single end and pyro need to be handled differently at the f/t step
+        dada2_ft_se(miseq_se_ch)
+        dada2_ft_pyro(pyro_ch)
+        ft_reads_pe = dada2_ft.out
         .branch{
-            empty: file(it[2]).isEmpty()
+            empty: file(it[2]).isEmpty() || file(it[3]).isEmpty()
             valid: true
         }
+
+        ft_reads_se = dada2_ft_se.out
+        .branch{
+                empty: file(it[2]).isEmpty()
+                valid: true
+            }
+        
+        ft_reads_pyro = dada2_ft_pyro.out
+            .branch{
+                empty: file(it[2]).isEmpty()
+                valid: true
+            }
+    } // end if dada2 ft
+    else {
+        ft_reads_pe = miseq_pe_ch.branch{
+            empty: false
+            valid: true
+        }
+        ft_reads_se = miseq_pe_ch.branch{
+            empty: false
+            valid: true
+        }
+        ft_reads_pyro = pyro_ch.branch{
+            empty: false
+            valid: true
+        }
+
+    } // end skip dada2 ft
 
 
     //
