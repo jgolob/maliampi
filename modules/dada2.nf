@@ -71,7 +71,7 @@ workflow dada2_wf {
             empty: false
             valid: true
         }
-        ft_reads_se = miseq_pe_ch.branch{
+        ft_reads_se = miseq_se_ch.branch{
             empty: false
             valid: true
         }
