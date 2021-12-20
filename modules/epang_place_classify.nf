@@ -22,7 +22,7 @@ params.pp_nbc_boot = 100
 params.pp_nbc_target_rank = 'genus'
 params.pp_nbc_word_length = 8
 params.pp_seed = 1
-params.cmalign_mxsize = 8196
+params.cmalign_mxsize = 2048
 
 // Containers!
 container__infernal = "quay.io/biocontainers/infernal:1.1.4--h779adbc_0"
