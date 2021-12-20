@@ -41,13 +41,11 @@ workflow make_refpkg_wf {
         sv_fasta_f,
         repo_fasta
     )
-    repo_recruits_f = RefpkgSearchRepo.out[0]
-
     //
     // Step 4. Filter SeqInfo to recruits
     //
     FilterSeqInfo(
-        repo_recruits_f,
+        RefpkgSearchRepo.out.recruits,
         repo_si
     )
 
@@ -78,24 +76,25 @@ workflow make_refpkg_wf {
     //
 
     RemoveDroppedRecruits(
-        repo_recruits_f,
+        RefpkgSearchRepo.out.recruits,
         ConfirmSI.out
     )
 
     //
-    // Step 7. Check for and adjucticate identical sequences
+    // Step 7. Filter down recruits removing duplicates and down to besthits
     //
-    HandleDuplicatedSeqs(
+    CombinedRefFilter(
         RemoveDroppedRecruits.out,
+        RefpkgSearchRepo.out.uc,
+        tax_db,
         ConfirmSI.out,
-        tax_db
     )
 
     //
     // Step 8. Align recruited seqs
     //
     AlignRepoRecruits(
-        HandleDuplicatedSeqs.out[1],
+        CombinedRefFilter.out.recruit_seq,
         ObtainCM.out
     )
 
@@ -111,7 +110,7 @@ workflow make_refpkg_wf {
     //
     TaxtableForSI(
         tax_db,
-        HandleDuplicatedSeqs.out[0]
+        CombinedRefFilter.out.recruit_si
     )
 
     //
@@ -126,7 +125,7 @@ workflow make_refpkg_wf {
             RaxmlTreeNG.out.tree,
             RaxmlTreeNG.out.log,
             TaxtableForSI.out,
-            HandleDuplicatedSeqs.out[0],
+            CombinedRefFilter.out.recruit_si,
             ObtainCM.out,
             RaxmlTreeNG.out.model
         )
@@ -141,7 +140,7 @@ workflow make_refpkg_wf {
             RaxmlTree.out[0],
             RaxmlTree_cleanupInfo.out,
             TaxtableForSI.out,
-            HandleDuplicatedSeqs.out[0],
+            CombinedRefFilter.out.recruit_si,
             ObtainCM.out,
         )
         refpkg_tgz = CombineRefpkg_og.out
@@ -158,14 +157,14 @@ process RefpkgSearchRepo {
     label = 'multithread'
 
     input:
-        file(sv_fasta_f)
-        file(repo_fasta)
+        path(sv_fasta_f)
+        path(repo_fasta)
     
     output:
-        file "${repo_fasta}.repo.recruits.fasta" 
-        file "${repo_fasta}.uc" 
-        file "${repo_fasta}.sv.nohit.fasta"
-        file "${repo_fasta}.vsearch.log"
+        path "${repo_fasta}.repo.recruits.fasta", emit: recruits
+        path "${repo_fasta}.uc", emit: uc
+        path "${repo_fasta}.sv.nohit.fasta", emit: nohits
+        path "${repo_fasta}.vsearch.log", emit: log
         
 
     """
@@ -183,19 +182,20 @@ process RefpkgSearchRepo {
     """
 }
 
-process HandleDuplicatedSeqs {
+process CombinedRefFilter {
     container = "${container__fastatools}"
     label = 'io_limited'
 
     input:
-        path(repo_recruits_f)
-        path(seq_info_f)
-        path(tax_db)
-    
-    
+        path(repo_recruit_f)
+        path(repo_recruit_uc)
+        path(taxdb)
+        path(seq_info)
+
     output:
-        path('refpkg_nodup.seq_info.csv'), emit: seq_info
-        path('repo_recruits_nodup.fasta'), emit: seqs
+        path "references.fasta", emit: recruit_seq
+        path "references_seq_info.csv", emit: recruit_si
+
 
 """
 #!/usr/bin/env python
@@ -212,35 +212,57 @@ def get_lineage(tax_id, cursor):
         lineage.append(cur_tax_id)
     return lineage
 
-tax_db = sqlite3.connect('${tax_db}')
-tax_db_cur = tax_db.cursor()
+# Get the seq <-> ID linkage and ID <-> seq linkage
+seq_ids = defaultdict(set)
+id_seq = {}
+with open('${repo_recruit_f}', 'rt') as recruit_h:
+    for sr in fastalite.fastalite(recruit_h):
+        seq_ids[sr.seq].add(sr.id)
+        id_seq[sr.id] = sr.seq
 
-with open('${seq_info_f}', 'rt') as sif:
+all_refs = set(id_seq.keys())
+
+### Start with the UC of alignment SV <-> Repo
+with open('${repo_recruit_uc}', 'rt') as in_uc:
+    uc_data = [
+        (
+            row[8], # SV
+            row[9], # Reference_id
+            float(row[3]) # Pct ID
+        )
+        for row in 
+        csv.reader(in_uc, delimiter='\\t')
+        if row[3] != '*' and row[9] in all_refs
+    ]
+sv_max_pctid = defaultdict(float)
+# Figure out the best-pct-id for each SV
+for sv, ref, pctid in uc_data:
+    sv_max_pctid[sv] = max([sv_max_pctid[sv], pctid])
+
+
+
+# Load in seq_info
+with open('${seq_info}', 'rt') as sif:
     si_r = csv.DictReader(sif)
     seq_info = {
         r['seqname']: r
         for r in si_r
     }
 
-seq_ids = defaultdict(set)
-with open('${repo_recruits_f}', 'rt') as recruit_h:
-    for sr in fastalite.fastalite(recruit_h):
-        seq_ids[sr.seq].add(sr.id)
+# For each reference sequence, pick a *representitive* seq_id
+tax_db = sqlite3.connect('${taxdb}')
+tax_db_cur = tax_db.cursor()
 
-# Loop through the sequence groups. 
-valid_seqs = set()
+seq_rep_id = {}
 for seq, ids in seq_ids.items():
     if len(ids) == 1:
         # If there is only one ID for a sequence it automatically passes!
-        valid_seqs.add(list(ids)[0])
+        seq_rep_id[seq] = list(ids)[0]
         continue
-    tax_ids = {seq_info[i]['tax_id']: i for i in ids}
+    tax_ids = {seq_info[i]['tax_id']: i for i in ids if i in seq_info}
     if len(tax_ids) == 1:
         # Only one tax id, pick a random one as our champion
-        valid_seqs.add(list(ids)[0])
-        print("++++")
-        for i in ids:
-            print(seq_info[i]['organism'])
+        seq_rep_id[seq] = list(ids)[0]
         continue
     # Implicit else multiple taxa...
     # Get the lineages for these taxa to root
@@ -255,36 +277,110 @@ for seq, ids in seq_ids.items():
         tax_lineages.items()
     }
     # Pick the seq from the deepest lineage to be the representitive
-    valid_seqs.add(
-        tax_ids[
+    seq_rep_id[seq] = tax_ids[
             lin_depth_tax[max(lin_depth_tax.keys())]
         ]
-    )
-    print('---')
-    for i in ids:
-        print(seq_info[i]['organism'])
 
-# Outputs!
+# Only keep ref seqs as good as the best hit for an SV
+besthit_ref_seqs = [
+    (sv, id_seq[ref])
+    for sv, ref, pctid
+    in uc_data
+    if sv_max_pctid[sv] == pctid
+]
 
-with open('${seq_info_f}', 'rt') as si_in, open('refpkg_nodup.seq_info.csv', 'wt') as si_out:
-    si_reader = csv.DictReader(si_in)
-    si_writer = csv.DictWriter(si_out, si_reader.fieldnames)
-    si_writer.writeheader()
-    for r in si_reader:
-        if r['seqname'] in valid_seqs:
-            si_writer.writerow(r)
+# Refseq -> besthit SV
+refseq_sv = defaultdict(set)
+for sv, refseq in besthit_ref_seqs:
+    refseq_sv[refseq].add(sv)
 
-with open('${repo_recruits_f}', 'rt') as seqs_in, open('repo_recruits_nodup.fasta', 'wt') as seqs_out:
-    for sr in fastalite.fastalite(seqs_in):
-        if sr.id in valid_seqs:
-            seqs_out.write(
-                ">{}\\n{}\\n".format(
-                    sr.id,
-                    sr.seq
-                )
+# How many SV does each ref cover?
+ref_sv_cnt = {
+    k: len(v)
+    for k, v in refseq_sv.items()
+}
+
+# Get rid of ref sequences that only represent less than MIN_REF_SV
+MIN_REF_SV = 2
+filtered_sv_ref = [
+    (sv, seq_rep_id.get(ref))
+    for ref, svs in refseq_sv.items()
+    for sv in svs
+    if len(svs) >= MIN_REF_SV
+]
+
+# For the sv post the shared ref filter who no longer have a best hit, see if there is any hit for them 
+# e.g. some reference in the current set that there is some identity, even if not as good as the best hits
+covered_sv = {sv for sv, ref in filtered_sv_ref}
+extant_refs = {ref for sv, ref in filtered_sv_ref}
+addbacksv_refs = defaultdict(list)
+for sv, ref_id, pct_id in uc_data:
+    if sv not in covered_sv:
+        if ref_id in extant_refs:
+            addbacksv_refs[sv].append((
+                ref_id, # Ref_ID
+                pct_id, # Pct_ID
+                True # Already part of our reference?
+            ))
+        elif pct_id == sv_max_pctid[sv]:
+            addbacksv_refs[sv].append((
+                ref_id,
+                pct_id,
+                False
+            ))
+# Great, now use this dict to make a decision of which refs to add for each sv
+for sv, svr in addbacksv_refs.items():
+    sv_seq_pctid = {
+        id_seq.get(r): pct_id
+        for r, pct_id, already_in in svr
+        if not already_in
+    }
+    # Was there totally no representation?
+    if len([r for r, pct_id, already_in in svr if already_in]) == 0:
+        # if not, add in everything
+        filtered_sv_ref += [
+            (sv, seq_rep_id.get(s))
+            for s in sv_seq_pctid.keys()
+        ]
+    else:
+        # It's not perfect, but given we have some representation, just pick the longest sequence
+        filtered_sv_ref.append(
+            (
+                sv,
+                seq_rep_id.get(sorted(sv_seq_pctid.keys(), key=lambda v: len(v))[-1])
             )
+        )
+
+filtered_ref = {
+    ref
+    for sv, ref
+    in filtered_sv_ref
+}
+
+# Use this to create out outputted final output
+with open('references.fasta', 'wt') as ref_out:
+    for ref_id in filtered_ref:
+        ref_out.write(">{}\\n{}\\n".format(
+            ref_id,
+            id_seq.get(ref_id)
+        ))
+
+si_columns = list(seq_info.values())[0].keys()
+
+with open('references_seq_info.csv', 'wt') as si_out:
+    si_writer = csv.DictWriter(
+        si_out,
+        fieldnames=si_columns
+    )
+    si_writer.writeheader()
+    si_writer.writerows([
+        r for i, r in seq_info.items()
+        if i in filtered_ref
+    ])
 """
 }
+
+
 
 process FilterSeqInfo {
     container = "${container__fastatools}"
@@ -348,7 +444,7 @@ process RemoveDroppedRecruits{
 
 process DlBuildTaxtasticDB {
     container = "${container__taxtastic}"
-    label = 'io_limited_local'
+    label = 'io_net'
     errorStrategy = 'finish'
 
     output:
