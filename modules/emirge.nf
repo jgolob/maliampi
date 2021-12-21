@@ -312,15 +312,17 @@ process MakeSeqLong {
 
     input:
         tuple val(SRR), path(SRR_fasta)
+
     output:
         tuple val(SRR), path(SRR_fasta), path("${SRR}.seq_long.csv")
+
 """
 #!/usr/bin/env python
 import fastalite
 import re
 import pandas as pd
 
-re_desc = re.compile(r'^(?P<id>^\d+\|\w+) Prior=(?P<prior>\d\.\d+) Length=(?P<length>\d+) NormPrior=(?P<norm_prior>\d\.\d+)$')
+re_desc = re.compile(r'^(?P<id>^\\d+\\|\\w+) Prior=(?P<prior>\\d\\.\\d+) Length=(?P<length>\\d+) NormPrior=(?P<norm_prior>\\d\\.\\d+)\$')
 
 seq_md = pd.DataFrame()
 for sr in fastalite.fastalite(open('test_results/test.fasta', 'rt')):
@@ -353,6 +355,7 @@ process CombineSeqLong {
     output:
         path("combined.seq_long.csv")
         path("combined.sv.fasta")
+
 """
 #!/usr/bin/env python
 import pandas as pd
