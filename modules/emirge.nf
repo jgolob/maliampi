@@ -130,7 +130,6 @@ workflow {
                 it[1]
             ]}
         )
-        MakeSeqLong.view()
         
         CombineSeqLong(
             MakeSeqLong.out
