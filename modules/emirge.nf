@@ -5,7 +5,7 @@ container__emirge = "golob/emirge:0.62.1F"
 container__fastcombineseqtab = "golob/dada2-fast-combineseqtab:0.5.0__1.12.0__BCW_0.3.1"
 container__dada2pplacer = "golob/dada2-pplacer:0.8.0__bcw_0.3.1A"
 container__trimgalore = 'quay.io/biocontainers/trim-galore:0.6.6--0'
-
+container__fastatools = "golob/fastatools:0.8.0A"
 // Using DSL-2
 nextflow.enable.dsl=2
 
@@ -133,7 +133,7 @@ workflow {
         
         CombineSeqLong(
             MakeSeqLong.out
-                .map{ it[1]  }
+                .map{ it[2]  }
 		        .toList()
         ) 
 // */
@@ -306,7 +306,7 @@ process EMIRGE_PE {
 }
 
 process MakeSeqLong {
-    container = "${container__dada2pplacer}"
+    container = "${container__fastatools}"
     label = "io_limited"
 
     input:
@@ -319,28 +319,49 @@ process MakeSeqLong {
 #!/usr/bin/env python
 import fastalite
 import re
-import pandas as pd
+import csv
 
 re_desc = re.compile(r'^(?P<id>^\\d+\\|\\w+) Prior=(?P<prior>\\d\\.\\d+) Length=(?P<length>\\d+) NormPrior=(?P<norm_prior>\\d\\.\\d+)\$')
 
-seq_md = pd.DataFrame()
-for sr in fastalite.fastalite(open('test_results/test.fasta', 'rt')):
+seq_long = []
+
+for sr in fastalite.fastalite(open('${SRR_fasta}', 'rt')):
     m = re_desc.search(sr.description)
     if m is None:
         print(sr.description)
         continue
     # Implicit else
-    seq_md.loc[m['id'], 'seq_id'] = m['id']
-    seq_md.loc[m['id'], 'seq'] = sr.seq
-    seq_md.loc[m['id'], 'length'] = int(m['length'])
-    seq_md.loc[m['id'], 'n_amb'] = len([b for b in sr.seq if b.upper() not in {'A', 'C', 'T', 'G'} ])
-    seq_md.loc[m['id'], 'fract'] = float(m['prior'])
-    seq_md.loc[m['id'], 'fract_n'] = float(m['norm_prior'])
+    seq_long.append({
+        'id': m['id'],
+        'seq': sr.seq,
+        'length': int(m['length']),
+        'n_amb': len([b for b in sr.seq if b.upper() not in {'A', 'C', 'T', 'G'} ]),
+        'fract': float(m['prior']),
+        'fract_n': float(m['norm_prior']),
+        'specimen': '${SRR}',
+        
+    })
 
-seq_md['count'] = (seq_md.fract / seq_md.fract.min()).astype(int)
-seq_md['specimen'] = '${SRR}'
+min_fract = min([v['fract'] for v in seq_long])
+for v in seq_long:
+    v['count'] = int(v['fract'] / min_fract)
 
-seq_md.to_csv('${SRR}.seq_long.csv', index=None)
+with open('${SRR}.seq_long.csv', 'wt') as out_h:
+    w = csv.DictWriter(
+        out_h,
+        fieldnames=[
+            'specimen',
+            'seq',
+            'count',
+            'fract',
+            'fract_n',
+            'length',
+            'n_amb',
+            'id'
+        ]
+    )
+    w.writeheader()
+    w.writerows(seq_long)
 """
 }
 
