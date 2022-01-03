@@ -39,7 +39,7 @@ jobs:
           [[ -s output/placement/adcl.csv.gz ]]
           [[ -s output/placement/edpl_list.csv ]]
           [[ -s output/placement/alpha_diversity.csv.gz ]]
-          [[ -s output/placement/krd/krd_matrix.csv.gz ]]
+          [[ -s output/placement/kr_distance.csv.gz ]]
       - name:  Verify output (classification)
         run: |
           [[ -s output/classify/sv_taxonomy.csv ]]
