@@ -32,10 +32,17 @@ container__dada2pplacer = "golob/dada2-pplacer:0.8.0__bcw_0.3.1A"
 container__easel = 'quay.io/biocontainers/easel:0.47--h516909a_0'
 container__epang = "quay.io/biocontainers/epa-ng:0.3.8--h9a82719_1"
 container__gappa = 'quay.io/biocontainers/gappa:0.7.1--h9a82719_1'
+container__krd = "golob/gappa:0.3"
 
 
 // includes
 include { Dada2_convert_output } from './dada2' params (
+    output: params.output
+)
+include { 
+    Gappa_KRD_1t1
+    CombineKRDLong
+} from './interval_krd' params (
     output: params.output
 )
 
@@ -137,9 +144,21 @@ workflow epang_place_classify_wf {
     //
     //  Step 9. KR (phylogenetic) distance 
     //
-    Gappa_KRD(
+    //  Complete this 1:n. 
+    //   I.e. for each specimen, run a process to compare to all others.
+    //   This is to reduce the scope of the node needed to run a true n:m process of all pairs
+
+    Gappa_KRD_1t1(
+        GappaSplit.out.flatten(),
         GappaSplit.out
     )
+
+    Gappa_KRD_1t1.out.view()
+    
+    CombineKRDLong(
+        Gappa_KRD_1t1.out.toList()
+    )
+
     //
     //  END Placement
     //
