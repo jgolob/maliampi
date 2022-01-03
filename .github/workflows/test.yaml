@@ -184,7 +184,7 @@ jobs:
           [[ -s output_seqtable/placement/adcl.csv.gz ]]
           [[ -s output_seqtable/placement/edpl_list.csv ]]
           [[ -s output_seqtable/placement/alpha_diversity.csv.gz ]]
-          [[ -s output/placement/krd_long.csv.gz ]]
+          [[ -s output_seqtable/placement/krd_long.csv.gz ]]
           [[ -s output_seqtable/classify/sv_taxonomy.csv ]]   
 
   epang_place_classify_sharetable_workflow:
@@ -213,6 +213,6 @@ jobs:
           [[ -s output_sharetable/placement/adcl.csv.gz ]]
           [[ -s output_sharetable/placement/edpl_list.csv ]]
           [[ -s output_sharetable/placement/alpha_diversity.csv.gz ]]
-          [[ -s output/placement/krd_long.csv.gz ]]
+          [[ -s output_sharetable/placement/krd_long.csv.gz ]]
           [[ -s output_sharetable/classify/sv_taxonomy.csv ]]  
           
