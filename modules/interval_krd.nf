@@ -31,7 +31,7 @@ process Gappa_KRD_1t1 {
 
     input:
         path new_jplace
-        path old_jplaces
+        path old_jplaces, stageAs: "that/${x}.jplace.gz"
     output:
         path "v${new_jplace.name.replace('.jplace.gz', '')}.krd_long.csv"
 
@@ -43,15 +43,32 @@ process Gappa_KRD_1t1 {
     """
 }
 
+process Gappa_KRD_1tm {
+    container = "${container__krd}"
+    label = 'io_limited'
+
+    input:
+        tuple path(this_jplace), path(those_jplaces, stageAs: "those/")
+    output:
+        path "v${this_jplace.name.replace('.jplace.gz', '')}.krd_long.csv"
+
+    
+    """
+    interval_krd.py \
+    --new-jplace ${this_jplace} \
+    --old-jplaces "${those_jplaces}"
+    """
+}
+
 process CombineKRDLong {
     container = "${container__krd}"
     label = 'io_limited'
-    publishDir "${params.output}/", mode: 'copy'
+    publishDir "${params.output}/placement", mode: 'copy'
 
     input:
         path krd_longs
     output:
-        path "interval_krd_long.csv.gz"
+        path "krd_long.csv.gz"
     
 """
 #!/usr/bin/env python3
@@ -60,7 +77,7 @@ import gzip
 
 krd_long_fn = "${krd_longs}".split()
 
-with gzip.open("interval_krd_long.csv.gz", 'wt') as out_h:
+with gzip.open("krd_long.csv.gz", 'wt') as out_h:
     w = csv.DictWriter(out_h, fieldnames=['specimen_1', 'specimen_2', 'krd'])
     w.writeheader()
     for fn in krd_long_fn:

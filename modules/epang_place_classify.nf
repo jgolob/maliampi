@@ -39,8 +39,9 @@ container__krd = "golob/gappa:0.3"
 include { Dada2_convert_output } from './dada2' params (
     output: params.output
 )
+
 include { 
-    Gappa_KRD_1t1
+    Gappa_KRD_1tm
     CombineKRDLong
 } from './interval_krd' params (
     output: params.output
@@ -148,15 +149,20 @@ workflow epang_place_classify_wf {
     //   I.e. for each specimen, run a process to compare to all others.
     //   This is to reduce the scope of the node needed to run a true n:m process of all pairs
 
-    Gappa_KRD_1t1(
-        GappaSplit.out.flatten(),
-        GappaSplit.out
+    jplace_ch = GappaSplit.out.flatten()
+    jplace_list = jplace_ch.toSortedList()
+
+    Gappa_KRD_1tm(
+        jplace_ch.combine(
+            jplace_list
+        ).map{[
+            it[0],
+            it[1..-1]
+        ]}
     )
 
-    Gappa_KRD_1t1.out.view()
-    
     CombineKRDLong(
-        Gappa_KRD_1t1.out.toList()
+        Gappa_KRD_1tm.out.toList()
     )
 
     //
