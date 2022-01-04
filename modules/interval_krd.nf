@@ -9,7 +9,7 @@ nextflow.enable.dsl=2
 params.old_jplace = false
 params.new_jplace = false
 params.output = '.'
-container__krd = "golob/gappa:0.4"
+container__krd = "golob/gappa:0.5"
 
 workflow {
     

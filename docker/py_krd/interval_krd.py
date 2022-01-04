@@ -45,6 +45,7 @@ def main():
             'gappa',
             'analyze',
             'krd',
+            '--threads', '1',
             '--file-prefix', "v{:05d}__".format(ojp_i),
             '--matrix-format', 'list',
             '--jplace-path', new_jplace, ojp_fn
