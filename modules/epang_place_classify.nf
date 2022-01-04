@@ -32,7 +32,7 @@ container__dada2pplacer = "golob/dada2-pplacer:0.8.0__bcw_0.3.1A"
 container__easel = 'quay.io/biocontainers/easel:0.47--h516909a_0'
 container__epang = "quay.io/biocontainers/epa-ng:0.3.8--h9a82719_1"
 container__gappa = 'quay.io/biocontainers/gappa:0.7.1--h9a82719_1'
-container__krd = "golob/gappa:0.3"
+container__krd = "golob/gappa:0.4"
 
 
 // includes

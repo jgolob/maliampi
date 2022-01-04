@@ -9,7 +9,7 @@ nextflow.enable.dsl=2
 params.old_jplace = false
 params.new_jplace = false
 params.output = '.'
-container__krd = "golob/gappa:0.3"
+container__krd = "golob/gappa:0.4"
 
 workflow {
     
@@ -39,7 +39,7 @@ process Gappa_KRD_1t1 {
     """
     interval_krd.py \
     --new-jplace ${new_jplace} \
-    --old-jplaces "${old_jplaces}"
+    --old-jplaces that/
     """
 }
 

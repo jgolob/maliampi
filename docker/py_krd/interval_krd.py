@@ -27,10 +27,17 @@ def main():
     new_jplace = args.new_jplace
 
     #
-    old_jplaces = [
-        jp for jp in args.old_jplaces.split()
-        if jp.endswith('jplace.gz')
-    ]
+    if os.path.isdir(args.old_jplaces):
+        old_jplaces = [
+            os.path.join(args.old_jplaces, fn)
+            for fn in os.listdir(args.old_jplaces)
+            if fn.endswith('jplace.gz')
+        ]
+    else:
+        old_jplaces = [
+            jp for jp in args.old_jplaces.split()
+            if jp.endswith('jplace.gz')
+        ]
 
     successful_pairs = []
     for ojp_i, ojp_fn in enumerate(old_jplaces):
