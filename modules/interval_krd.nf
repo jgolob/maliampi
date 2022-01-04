@@ -31,7 +31,7 @@ process Gappa_KRD_1t1 {
 
     input:
         path new_jplace
-        path old_jplaces, stageAs: "that/${x}.jplace.gz"
+        path old_jplaces, stageAs: "that/"
     output:
         path "v${new_jplace.name.replace('.jplace.gz', '')}.krd_long.csv"
 
@@ -56,7 +56,7 @@ process Gappa_KRD_1tm {
     """
     interval_krd.py \
     --new-jplace ${this_jplace} \
-    --old-jplaces "${those_jplaces}"
+    --old-jplaces those/
     """
 }
 
