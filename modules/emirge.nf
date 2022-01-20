@@ -1,7 +1,7 @@
 #!/usr/bin/env nextflow
 
 // containers
-container__emirge = "golob/emirge:0.62.1F"
+container__emirge = "golob/emirge:0.62.1G"
 container__fastcombineseqtab = "golob/dada2-fast-combineseqtab:0.5.0__1.12.0__BCW_0.3.1"
 container__dada2pplacer = "golob/dada2-pplacer:0.8.0__bcw_0.3.1A"
 container__trimgalore = 'quay.io/biocontainers/trim-galore:0.6.6--0'
@@ -12,6 +12,7 @@ nextflow.enable.dsl=2
 
 // Set default values for parameters
 params.manifest = false
+params.ref = false
 params.output = '.'
 params.help = false
 
@@ -30,11 +31,14 @@ def helpMessage() {
 
     Required Arguments:
       --manifest            CSV format. Must have at least the following columns:
-                                - Sample_ID -> SRRxxxxxxxx to download
+                                - specimen -> unique descriptor
                                 - R1 -> path to first of paired end reads
                             Optionally will have
                                 - R2 -> path to second of paired end reads
                                     (Can be empty)
+
+      --ref                 FASTA file of 16s rRNA gene alleles to use as our reference.
+                            Must be gzipped.
 
       --output              Folder to write output files, which will be organized to:
                                 args.output/SRRxxxxxxxx.fasta.gz
@@ -49,7 +53,7 @@ def helpMessage() {
 workflow {
     main:
         // Show help message if the user specifies the --help flag at runtime
-        if (params.help || params.manifest == false || params.output == false){
+        if (params.help || params.manifest == false || params.output == false || params.ref == false){
             // Invoke the function above which prints the help message
             helpMessage()
             // Exit out and do not run anything else
@@ -109,9 +113,17 @@ workflow {
             failed: it[4].strip() == '-nan' || it[5].strip() == '-nan'
             merged: true
         }
+        
+        // Convert the reference (fasta.gzip) into an index for use
+        EMIRGE_MakeRef(
+            file(params.ref)
+        )
+        
         // Then use the results to run emirge on these specimens
         EMIRGE_PE(
-            pe_post_merge.merged
+            pe_post_merge.merged,
+            EMIRGE_MakeRef.out.ref_fasta,
+            EMIRGE_MakeRef.out.ref_btindex
         )
       // Run EMIRGE on SE reads
         EMIRGE_SE(
@@ -119,7 +131,9 @@ workflow {
                 pe_post_merge.failed.map{
                     [it[0], it[1], it[3].strip()]
                 }
-            )
+            ),
+            EMIRGE_MakeRef.out.ref_fasta,
+            EMIRGE_MakeRef.out.ref_btindex
         )
 
     // Make seq_longs
@@ -226,6 +240,26 @@ process MergePairs {
     """
 }
 
+process EMIRGE_MakeRef {
+    container = "${container__emirge}"
+    label = "multithread"
+    //publishDir "${params.output}/EMIRGE/${SRR}", mode: 'copy'
+    maxForks 5
+    errorStrategy 'finish'
+
+    input:
+        path(ref_fasta_gz)
+    
+    output:
+        path('SSU_candidates.fasta'), emit: ref_fasta
+        path('SSU_candidates_btindex.*'), emit: ref_btindex
+    
+    """
+    gunzip -c ${ref_fasta_gz} > SSU_candidates.fasta
+    bowtie-build SSU_candidates.fasta SSU_candidates_btindex --threads ${task.cpus}
+    """
+}
+
 process EMIRGE_SE {
     container = "${container__emirge}"
     label = "multithread"
@@ -235,6 +269,8 @@ process EMIRGE_SE {
 
     input:
         tuple val(SRR), file(R1), val(MAX_READ_LEN)
+        path (ref_fasta)
+        path (ref_btindex)
     
     output:
         tuple val(SRR), file("${SRR}_final.fasta"), file("${SRR}_mapped_reads.sam"), file("${SRR}_bowtie.final.PE.bam"), file("${SRR}.emirge.log"), file("${SRR}_emirge.tgz")
@@ -245,8 +281,8 @@ process EMIRGE_SE {
     --processors ${task.cpus} \
     -1 ${R1} \
     -l ${MAX_READ_LEN.trim()} \
-    -f /emirge/db/arf_c100/SSU_candidates.fasta \
-    -b /emirge/db/arf_c100/SSU_candidates_btindex  \
+    -f ${ref_fasta} \
+    -b ${ref_btindex[0].getSimpleName()}  \
     --phred33 \
     --iterations ${params.max_iterations} \
      >> ${SRR}.emirge.log 2>&1 || true 
@@ -272,6 +308,8 @@ process EMIRGE_PE {
 
     input:
         tuple val(SRR), file(R1), file(R2), val(MAX_READ_LEN), val(INSERT_MEAN), val(INSERT_STD)
+        path (ref_fasta)
+        path (ref_btindex)
     
     output:
         tuple val(SRR), file("${SRR}_final.fasta"), file("${SRR}_mapped_reads.sam"), file("${SRR}_bowtie.final.PE.bam"), file("${SRR}.emirge.log"), file("${SRR}_emirge.tgz")
@@ -287,8 +325,8 @@ process EMIRGE_PE {
     -2 ${SRR}.R2.fasta \
     -i ${INSERT_MEAN.trim()} \
     -s ${INSERT_STD.trim()} \
-    -f /emirge/db/arf_c100/SSU_candidates.fasta \
-    -b /emirge/db/arf_c100/SSU_candidates_btindex  \
+    -f ${ref_fasta} \
+    -b ${ref_btindex[0].getSimpleName()} \
     --phred33 \
     --iterations ${params.max_iterations} \
      >> ${SRR}.emirge.log 2>&1 || true
