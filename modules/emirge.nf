@@ -296,6 +296,8 @@ process EMIRGE_SE {
     cd ..
     samtools view -F 4 ${SRR}_bowtie.final.PE.bam > ${SRR}_mapped_reads.sam
     tar czvf ${SRR}_emirge.tgz ${SRR}_emirge_run/
+
+    rm -rf ${SRR}_emirge_run/iter.*
     """
 }
 
