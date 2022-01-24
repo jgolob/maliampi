@@ -337,11 +337,11 @@ process EMIRGE_PE {
     ln -s \$LAST_ITER iter.final
     cp iter.final/bowtie.iter.??.PE.bam ../${SRR}_bowtie.final.PE.bam
     
+
     cd ..
     samtools view -F 4 ${SRR}_bowtie.final.PE.bam > ${SRR}_mapped_reads.sam
     tar czvf ${SRR}_emirge.tgz ${SRR}_emirge_run/
-
-    rm -r iter.*
+    rm -rf ${SRR}_emirge_run/iter.*
     """
 }
 
