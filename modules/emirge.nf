@@ -15,6 +15,7 @@ params.manifest = false
 params.ref = false
 params.output = '.'
 params.help = false
+params.nopreprocess = false
 
 params.max_iterations = 10
 
@@ -43,6 +44,9 @@ def helpMessage() {
       --output              Folder to write output files, which will be organized to:
                                 args.output/SRRxxxxxxxx.fasta.gz
                                 Where the fasta file is the recovered 16S rRNA alleles
+      
+    Optional arguments:
+      --nopreprocess        Skip trim step (only if data was previously preprocessed)
 
     Output Files:
     """.stripIndent()
@@ -96,17 +100,26 @@ workflow {
         ]}
 
         // Trimgalore to clean up the reads...
-        TrimGalore(pe_ch)
-        TrimGaloreSE(se_ch)
+        if (params.nopreprocess) {
+            pe_ft_ch = pe_ch
+            se_ft_ch = se_ch
+        } else {
+            TrimGalore(pe_ch)
+            TrimGaloreSE(se_ch)
+            pe_ft_ch = TrimGalore(pe_ch).out
+            se_ft_ch = TrimGaloreSE(se_ch).out
+        }
+        
+        
 
 
         // Get the max read length 
-        MaxReadLen_SE(TrimGaloreSE.out)
-        MaxReadLen_PE(TrimGalore.out)
+        MaxReadLen_SE(se_ft_ch)
+        MaxReadLen_PE(pe_ft_ch)
   
         // For PE only, merge the pairs to get the inset lengths
         MergePairs(
-            MaxReadLen_PE.out
+            pe_ft_ch
         )
         // OK, if the read pairs FAIL to merge, go ahead and try to salvage as single end reads.
         pe_post_merge = MergePairs.out.branch{
