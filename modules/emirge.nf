@@ -119,7 +119,7 @@ workflow {
   
         // For PE only, merge the pairs to get the inset lengths
         MergePairs(
-            pe_ft_ch
+            MaxReadLen_PE.out
         )
         // OK, if the read pairs FAIL to merge, go ahead and try to salvage as single end reads.
         pe_post_merge = MergePairs.out.branch{
