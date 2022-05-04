@@ -1,0 +1,24 @@
+{
+    "$schema": "https://raw.githubusercontent.com/FredHutch/bash-workbench/main/docs/schema.json",
+    "name": "Nextflow - Docker",
+    "description": "Configure Nextflow to run with Docker enabled",
+    "args": {
+        "work_dir": {
+            "help": "Work directory (for temporary files)",
+            "wb_type": "folder",
+            "wb_env": "WORK_DIR",
+            "default": "work"
+        },
+        "nxf_ver": {
+            "help": "Nextflow Version",
+            "wb_env": "NXF_VER",
+            "wb_type": "string",
+            "default": "21.10.6"
+        },
+        "tower_token": {
+            "help": "Personal token used to monitor workflow status in Tower",
+            "wb_type": "string",
+            "wb_env": "TOWER_ACCESS_TOKEN"
+        }
+    }
+}
