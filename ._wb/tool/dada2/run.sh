@@ -4,7 +4,7 @@ set -euo pipefail
 
 date
 echo
-echo "Running workflow '${WORKFLOW_REPO}/modules/dada2.nf' from ${PWD}"
+echo "Running workflow '${TOOL_REPO}/modules/dada2.nf' from ${PWD}"
 echo
 
 echo "Workflow Parameters:"
@@ -15,7 +15,7 @@ echo
 echo Starting workflow
 nextflow \
     run \
-    "${WORKFLOW_REPO}/modules/dada2.nf" \
+    "${TOOL_REPO}/modules/dada2.nf" \
     -params-file ._wb/tool/params.json \
     -with-report \
     -with-trace \
