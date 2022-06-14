@@ -3,6 +3,11 @@
     "name": "MaLiAmPi - dada2",
     "description": "Process amplicon sequencing data, including sequence trimming and error modeling, to produce sequence abundance tables.",
     "args": {
+        "manifest": {
+            "required": true,
+            "wb_type": "file",
+            "help": "CSV file listing samples (required: specimen,R1,R2; optional: batch,I1,I2"
+        },
         "output": {
             "help": "Location for output data to be written",
             "wb_type": "folder",
