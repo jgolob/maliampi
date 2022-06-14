@@ -1,0 +1,89 @@
+{
+    "$schema": "https://raw.githubusercontent.com/FredHutch/bash-workbench/main/docs/schema.json",
+    "name": "MaLiAmPi - dada2",
+    "description": "Process amplicon sequencing data, including sequence trimming and error modeling, to produce sequence abundance tables.",
+    "args": {
+        "output": {
+            "help": "Location for output data to be written",
+            "wb_type": "folder",
+            "default": "."
+        },
+        "trimLeft": {
+            "default": 0,
+            "wb_type": "integer",
+            "help": "How far to trim on the left"
+        },
+        "maxN": {
+            "default": 0,
+            "wb_type": "integer",
+            "help": "Maximum number of N's allowed"
+        },
+        "maxEE": {
+            "default": "Inf",
+            "wb_type": "string",
+            "help": "maximum number of “expected errors” allowed in a read"
+        },
+        "truncLenF": {
+            "default": 0,
+            "wb_type": "integer",
+            "help": "Truncation length for forward reads"
+        },
+        "truncLenF_se": {
+            "default": 0,
+            "wb_type": "integer",
+            "help": "Truncation length for single-end reads"
+        },
+        "truncLenF_pyro": {
+            "default": 250,
+            "wb_type": "integer",
+            "help": "Truncation length for pyrosequencing reads"
+        },
+        "truncLenR": {
+            "default": 0,
+            "wb_type": "integer",
+            "help": "Truncation length for reverse reads"
+        },
+        "truncQ": {
+            "default": 2,
+            "wb_type": "integer",
+            "help": "Truncate reads at the first instance of this minimum quality score"
+        },
+        "errM_maxConsist": {
+            "default": 10,
+            "wb_type": "integer",
+            "help": "Number of self-consistency steps allowed for error rate convergence"
+        },
+        "errM_randomize": {
+            "default": "TRUE",
+            "wb_type": "select",
+            "wb_choices": ["TRUE", "FALSE"],
+            "help": "Randomize read order when learning error rate"
+        },
+        "errM_nbases": {
+            "default": "1e8",
+            "wb_type": "string",
+            "help": "The minimum number of total bases to use for error rate learning"
+        },
+        "chimera_method": {
+            "default": "consensus",
+            "wb_type": "select",
+            "wb_choices": ["consensus", "pooled", "per-sample"],
+            "help": "Method used for dada2:removeBimeraDenovo"
+        },
+        "maxLenPyro": {
+            "default": "Inf",
+            "wb_type": "string",
+            "help": "Maximum read length used for pyrosequencing reads"
+        },
+        "maxMismatch": {
+            "default": 0,
+            "wb_type": "integer",
+            "help": "Maximum number of mismatches allowed when merging paired-end reads"
+        },
+        "minOverlap": {
+            "default": 12,
+            "wb_type": "integer",
+            "help": "Minimum overlap required when merging paired-end reads"
+        }
+    }
+}
