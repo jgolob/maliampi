@@ -104,8 +104,6 @@ workflow {
             pe_ft_ch = pe_ch
             se_ft_ch = se_ch
         } else {
-            TrimGalore(pe_ch)
-            TrimGaloreSE(se_ch)
             pe_ft_ch = TrimGalore(pe_ch).out
             se_ft_ch = TrimGaloreSE(se_ch).out
         }
