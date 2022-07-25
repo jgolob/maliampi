@@ -366,6 +366,7 @@ process EMIRGE_PE {
 process MakeSeqLong {
     container = "${container__fastatools}"
     label = "io_limited"
+    errorStrategy 'ignore'
 
     input:
         tuple val(SRR), path(SRR_fasta)
@@ -401,8 +402,12 @@ for sr in fastalite.fastalite(open('${SRR_fasta}', 'rt')):
     })
 
 min_fract = min([v['fract'] for v in seq_long])
-for v in seq_long:
-    v['count'] = int(v['fract'] / min_fract)
+if min_fract != 0:
+	for v in seq_long:
+	    v['count'] = int(v['fract'] / min_fract)
+else:
+	for v in seq_long:
+		v['count'] = int(v['fract']*1000)
 
 with open('${SRR}.seq_long.csv', 'wt') as out_h:
     w = csv.DictWriter(
