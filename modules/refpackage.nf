@@ -14,7 +14,8 @@ container__taxtastic = "golob/taxtastic:0.9.5D"
 
 container__raxml = "quay.io/biocontainers/raxml:8.2.4--h779adbc_4"
 
-
+// Default to use the in-project SSU_rRNA_bacteria.cm 
+params.rfam = false
 
 workflow make_refpkg_wf {
     take:
@@ -27,11 +28,25 @@ workflow make_refpkg_wf {
     repo_fasta = file(params.repo_fasta)
     repo_si = file(params.repo_si)
 
-
     //
     // Step 2. Obtain the CM used for the alignment
     //
-    ObtainCM()
+
+    if (params.rfam) {
+        cm_f = file(params.rfam)
+        
+    }
+    else {
+        cm_f = file("$baseDir/../data/SSU_rRNA_bacteria.cm")
+        // have to leave the modules subdirectory to get to main
+    }
+    if(cm_f.isEmpty()) {
+        cm_f = file("$baseDir/data/SSU_rRNA_bacteria.cm")
+    }
+    if(cm_f.isEmpty()) {
+        log.error("Empty covariance matrix")
+    }
+    
 
     //
     //  Step 3. Search the repo for candidates for the Sequence Variants (SV)
@@ -95,7 +110,7 @@ workflow make_refpkg_wf {
     //
     AlignRepoRecruits(
         CombinedRefFilter.out.recruit_seq,
-        ObtainCM.out
+        cm_f
     )
 
     //
@@ -126,7 +141,7 @@ workflow make_refpkg_wf {
             RaxmlTreeNG.out.log,
             TaxtableForSI.out,
             CombinedRefFilter.out.recruit_si,
-            ObtainCM.out,
+            cm_f,
             RaxmlTreeNG.out.model
         )
         refpkg_tgz = CombineRefpkg_ng.out
@@ -141,7 +156,7 @@ workflow make_refpkg_wf {
             RaxmlTree_cleanupInfo.out,
             TaxtableForSI.out,
             CombinedRefFilter.out.recruit_si,
-            ObtainCM.out,
+            cm_f,
         )
         refpkg_tgz = CombineRefpkg_og.out
     }
@@ -876,6 +891,8 @@ params.raxml = 'og'
 params.email = null
 params.repo_fasta = null
 params.repo_si = null
+
+
 
 
 params.repo_min_id = 0.8
