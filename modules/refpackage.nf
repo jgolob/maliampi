@@ -28,15 +28,16 @@ workflow make_refpkg_wf {
     repo_fasta = file(params.repo_fasta)
     repo_si = file(params.repo_si)
 
-
     //
     // Step 2. Obtain the CM used for the alignment
     //
-    if (!params.rfam){
-        ObtainCM()
-        cm_f = ObtainCM.out
-    } else {
-        cm_f = file(params.rfam)
+
+    cm_f = file(params.rfam)
+    if(cm_f.isEmpty()) {
+        cm_f = file("$baseDir/modules/dataset/SSU_rRNA_bacteria.cm")
+    }
+    if(cm_f.isEmpty()) {
+        log.error("Empty covariance matrix")
     }
     
 
@@ -518,6 +519,8 @@ process AlignRepoRecruits {
         file "recruits.aln.scores" 
     
     """
+    cat ${cm}
+
     cmalign \
     --cpu ${task.cpus} --noprob --dnaout --mxsize ${params.cmalign_mxsize} \
     --sfile recruits.aln.scores -o recruits.aln.sto \
