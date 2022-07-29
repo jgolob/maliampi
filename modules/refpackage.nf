@@ -14,7 +14,8 @@ container__taxtastic = "golob/taxtastic:0.9.5D"
 
 container__raxml = "quay.io/biocontainers/raxml:8.2.4--h779adbc_4"
 
-params.rfam = false
+// Default to use the in-project SSU_rRNA_bacteria.cm 
+params.rfam = "$baseDir/dataset/SSU_rRNA_bacteria.cm"
 
 workflow make_refpkg_wf {
     take:
