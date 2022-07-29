@@ -15,7 +15,7 @@ container__taxtastic = "golob/taxtastic:0.9.5D"
 container__raxml = "quay.io/biocontainers/raxml:8.2.4--h779adbc_4"
 
 // Default to use the in-project SSU_rRNA_bacteria.cm 
-params.rfam = "$baseDir/dataset/SSU_rRNA_bacteria.cm"
+params.rfam = false
 
 workflow make_refpkg_wf {
     take:
@@ -32,9 +32,16 @@ workflow make_refpkg_wf {
     // Step 2. Obtain the CM used for the alignment
     //
 
-    cm_f = file(params.rfam)
+    if (params.rfam) {
+        cm_f = file(params.rfam)
+        
+    }
+    else {
+        cm_f = file("$baseDir/../data/SSU_rRNA_bacteria.cm")
+        // have to leave the modules subdirectory to get to main
+    }
     if(cm_f.isEmpty()) {
-        cm_f = file("$baseDir/modules/dataset/SSU_rRNA_bacteria.cm")
+        cm_f = file("$baseDir/data/SSU_rRNA_bacteria.cm")
     }
     if(cm_f.isEmpty()) {
         log.error("Empty covariance matrix")
@@ -519,8 +526,6 @@ process AlignRepoRecruits {
         file "recruits.aln.scores" 
     
     """
-    cat ${cm}
-
     cmalign \
     --cpu ${task.cpus} --noprob --dnaout --mxsize ${params.cmalign_mxsize} \
     --sfile recruits.aln.scores -o recruits.aln.sto \
