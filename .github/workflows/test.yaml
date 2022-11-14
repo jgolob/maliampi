@@ -5,7 +5,7 @@ on: [push, pull_request]
 jobs:
 
   complete_workflow:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     env:
       NXF_ANSI_LOG: 0
     steps:
@@ -48,14 +48,11 @@ jobs:
          
 
   dada2_workflow:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     env:
       NXF_ANSI_LOG: 0
     steps:
       - uses: actions/checkout@v1
-      - name: Add openjdk
-        run: |
-          sudo apt-get update && sudo apt-get install -y openjdk-11-jdk-headless
       - name: Install Nextflow
         run: |
           wget -qO- get.nextflow.io | bash
@@ -79,14 +76,11 @@ jobs:
 
   
   refpkg_workflow:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     env:
       NXF_ANSI_LOG: 0
     steps:
       - uses: actions/checkout@v1
-      - name: Add openjdk
-        run: |
-          sudo apt-get update && sudo apt-get install -y openjdk-11-jdk-headless
       - name: Install Nextflow
         run: |
           wget -qO- get.nextflow.io | bash
@@ -106,14 +100,11 @@ jobs:
           [[ -s output/refpkg/refpkg.tar.gz ]]
 
   pplacer_place_classify_workflow:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     env:
       NXF_ANSI_LOG: 0
     steps:
       - uses: actions/checkout@v1
-      - name: Add openjdk
-        run: |
-          sudo apt-get update && sudo apt-get install -y openjdk-11-jdk-headless  
       - name: Install Nextflow
         run: |
           wget -qO- get.nextflow.io | bash
@@ -141,14 +132,11 @@ jobs:
           [[ -s output/classify/sv_taxonomy.csv ]]
 
   epang_place_classify_weights_map_workflow:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     env:
       NXF_ANSI_LOG: 0
     steps:
       - uses: actions/checkout@v1
-      - name: Add openjdk
-        run: |
-          sudo apt-get update && sudo apt-get install -y openjdk-11-jdk-headless
       - name: Install Nextflow
         run: |
           wget -qO- get.nextflow.io | bash
@@ -173,14 +161,11 @@ jobs:
           [[ -s output/classify/sv_taxonomy.csv ]]  
   
   epang_place_classify_seqtable_workflow:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     env:
       NXF_ANSI_LOG: 0
     steps:
       - uses: actions/checkout@v1
-      - name: Add openjdk
-        run: |
-          sudo apt-get update && sudo apt-get install -y openjdk-11-jdk-headless
       - name: Install Nextflow
         run: |
           wget -qO- get.nextflow.io | bash
@@ -205,14 +190,11 @@ jobs:
           [[ -s output_seqtable/classify/sv_taxonomy.csv ]]   
 
   epang_place_classify_sharetable_workflow:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     env:
       NXF_ANSI_LOG: 0
     steps:
       - uses: actions/checkout@v1
-      - name: Add openjdk
-        run: |
-          sudo apt-get update && sudo apt-get install -y openjdk-11-jdk-headless
       - name: Install Nextflow
         run: |
           wget -qO- get.nextflow.io | bash
