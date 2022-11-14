@@ -13,7 +13,7 @@ jobs:
       - name: Add openjdk
         run: |
           sudo apt-get update && sudo apt-get install -y openjdk-11-jdk-headless
-          update-java-alternatives -l
+          sudo update-java-alternatives -s java-1.11.0-openjdk-amd64
       - name: Install Nextflow
         run: |
           wget -qO- get.nextflow.io | bash
