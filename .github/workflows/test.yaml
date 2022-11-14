@@ -12,7 +12,6 @@ jobs:
       - uses: actions/checkout@v1
       - name: Add openjdk
         run: |
-          update-java-alternatives -l
           sudo update-java-alternatives -s adoptopenjdk-11-hotspot-amd64
       - name: Install Nextflow
         run: |
