@@ -12,7 +12,6 @@ jobs:
       - uses: actions/checkout@v1
       - name: Install Nextflow
         run: |
-          sudo update-java-alternatives -s adoptopenjdk-11-hotspot-amd64
           wget -qO- get.nextflow.io | bash
           sudo mv nextflow /usr/local/bin/
       - name: Free disk space
@@ -24,7 +23,6 @@ jobs:
           df -h
       - name:  Run maliampi (full workflow)
         run: |
-          sudo update-java-alternatives -s adoptopenjdk-11-hotspot-amd64
           nextflow run main.nf -with-docker ubuntu:18.04 -c nextflow.config.sample -profile testing --manifest maliampi-practice-data/autotest_manifest.csv --repo_fasta  maliampi-practice-data/test.repo.fasta --repo_si maliampi-practice-data/test.repo.seq_info.csv --taxdmp maliampi-practice-data/taxdmp.zip --email j-dev@golob.org --raxmlng_parsimony_trees 1 --raxmlng_random_trees 1 --output output  
       - name:  Verify output (DADA2)
         run: |
