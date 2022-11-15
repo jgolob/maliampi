@@ -89,7 +89,7 @@ jobs:
           sudo apt clean
           docker rmi $(docker image ls -aq)
           df -h
-      - name:  Run maliampi-dada2 (dada2 workflow)
+      - name:  Run maliampi-swarm (swarm workflow)
         run: |
           nextflow run modules/swarm.nf -with-docker ubuntu:20.04 -c nextflow.config.sample -profile testing --manifest maliampi-practice-data/autotest_manifest.csv --output output
       - name:  Verify output
