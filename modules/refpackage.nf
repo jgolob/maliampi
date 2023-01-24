@@ -3,7 +3,7 @@
 //
 nextflow.enable.dsl=2
 
-container__vsearch = "quay.io/biocontainers/vsearch:2.17.0--h95f258a_1"
+container__vsearch = "quay.io/biocontainers/vsearch:2.22.1--hf1761c0_0"
 container__fastatools = "golob/fastatools:0.8.0A"
 container__pplacer = "golob/pplacer:1.1alpha19rc_BCW_0.3.1A"
 container__seqinfosync = "golob/seqinfo_taxonomy_sync:0.3.0"
