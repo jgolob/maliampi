@@ -208,16 +208,17 @@ from collections import defaultdict
 import re
 import csv
 
-re_id = re.compile(r'^(?P<specimen>.+);size=(?P<num>\\d+)')
+re_id = re.compile(r'^(?P<read>.+);size=(?P<num>\\d+)')
 
 fasta_fns = "${specimen_fasta}".split()
 # A list to store specimen, sequence, count in long format
 sp_seq_c = []
 
 for fn in fasta_fns:
+    specimen = fn.replace('.derep.fasta.gz', '')
     sp_seq_c += [
         (
-            re_id.match(sr.id)['specimen'],
+            specimen,
             sr.seq,
             int(re_id.match(sr.id)['num']),
         )
