@@ -348,6 +348,7 @@ process SwarmToASV {
 import gzip
 import fastalite
 import csv
+import pandas as pd
 
 # First get a cluster index for each DSV
 
@@ -385,28 +386,19 @@ with gzip.open('swarm_ASV.fasta.gz', 'wt') as ASV_h:
         n += 1
 
 # Now the per-specimen long format
-reads_kept = 0
-reads_filtered = 0
 
-with gzip.open('sp_asv_long.csv.gz', 'wt') as svl_h:
-    svl_w = csv.writer(svl_h)
-    svl_w.writerow(['specimen', 'sv', 'count'])
-    for row in csv.DictReader(
-        gzip.open('${specimen_dsv_count}', 'rt')
-        ):
-        dsv_cluster = DSV_clusterIdx.get(row['dsv'], -1)
-        asv = cluster_ASVid.get(dsv_cluster, None)
-        if asv is None:
-            reads_filtered += int(row['count'])
-            continue
-        # Implicit else
-        reads_kept += int(row['count'])
-        svl_w.writerow([
-            row['specimen'],
-            asv,
-            int(row['count'])
-        ])
-        
+
+sp_dsv_l = pd.read_csv('${specimen_dsv_count}')
+sp_dsv_l['clusterIdx'] = sp_dsv_l.dsv.apply(DSV_clusterIdx.get)
+sp_dsv_l['sv'] = sp_dsv_l.clusterIdx.apply(cluster_ASVid.get)
+sp_asv_l = sp_dsv_l.groupby(['specimen', 'sv']).sum(
+    numeric_only=True
+).reset_index()[['specimen', 'sv', 'count']]
+
+sp_asv_l.to_csv('sp_asv_long.csv.gz', index=None)
+
+reads_kept = sp_asv_l['count'].sum()
+reads_filtered = sp_dsv_l['count'].sum() - reads_kept
 
 print("Kept", reads_kept)
 print("Filtered", reads_filtered)
