@@ -891,7 +891,7 @@ params.taxdmp = false
 
 // Add a parameter for a maximum allele size. Tighter can help with the subsequent alignments etc
 
-param.max_allele_len = 1600
+params.max_allele_len = 1600
 
 params.raxml = 'og'
 
