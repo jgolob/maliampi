@@ -1,0 +1,94 @@
+{
+    "$schema": "https://raw.githubusercontent.com/FredHutch/bash-workbench/main/docs/schema.json",
+    "name": "MaLiAmPi - refpackage",
+    "description": "Make a pplacer-style reference package for reads",
+    "args": {
+        "output": {
+            "help": "Location for output data to be written",
+            "wb_type": "folder",
+            "default": "."
+        },
+        "sv_fasta": {
+            "help": "Sequence variants (in FASTA format)",
+            "wb_type": "file"
+        },
+        "seqtable": {
+            "help": "DADA2 style sequence table (in CSV format)",
+            "wb_type": "file"
+        },
+        "repo_fasta": {
+            "help": "Repository of 16S rRNA genes (FASTA)",
+            "wb_type": "file",
+            "required": true
+        },
+        "repo_si": {
+            "help": "Information about the 16S rRNA genes",
+            "wb_type": "file",
+            "required": true
+        },
+        "email": {
+            "help": "Email (for NCBI)",
+            "wb_type": "string"
+        },
+        "raxml": {
+            "help": "Which raxml to use: og (original) or ng (new). Default: og",
+            "wb_type": "select",
+            "wb_choices": ["og", "ng"],
+            "default": "og"
+        },
+        "repo_min_id": {
+            "help": "Minimum percent ID to a SV to be recruited (default = 0.8)",
+            "wb_type": "float",
+            "default": 0.8
+        },
+        "repo_max_accepts": {
+            "help": "Maximum number of recruits per SV (default = 10)",
+            "wb_type": "integer",
+            "default": 10
+        },
+        "cmalign_mxsize": {
+            "help": "Infernal cmalign mxsize (default = 8196)",
+            "wb_type": "integer",
+            "default": 8196
+        },
+        "raxml_model": {
+            "help": "RAxML model for tree formation (default = 'GTRGAMMA')",
+            "wb_type": "string",
+            "default": "GTRGAMMA"
+        },
+        "raxml_parsiomony_seed": {
+            "help": "(default = 12345)",
+            "wb_type": "integer",
+            "default": 12345
+        },
+        "raxmlng_model": {
+            "help": "Subsitution model (default 'GTR+G')",
+            "wb_type": "string",
+            "default": "GTR+G"
+        },
+        "raxmlng_parsimony_trees": {
+            "help": "How many seed parsimony trees (default 10)",
+            "wb_type": "integer",
+            "default": 10
+        },
+        "raxmlng_random_trees": {
+            "help": "How many seed random trees (default 10)",
+            "wb_type": "integer",
+            "default": 10
+        },
+        "raxmlng_bootstrap_cutoff": {
+            "help": "When to stop boostraps (default = 0.3)",
+            "wb_type": "float",
+            "default": 0.3
+        },
+        "raxmlng_seed": {
+            "help": "Random seed for RAxML-ng (default = 12345)",
+            "wb_type": "integer",
+            "default": 12345
+        },
+        "taxdmp": {
+            "help": "(Optional) taxdmp.zip from the repository",
+            "wb_type": "file"
+        }
+    }
+}

@@ -102,3 +102,4 @@ ENV/
 # testing stuff
 *working/
 *Audit
+*.code-workspace
