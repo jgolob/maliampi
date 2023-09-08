@@ -1,5 +1,6 @@
 container__barcodecop = "golob/barcodecop:0.5__bc_1"
 container__trimgalore = 'quay.io/biocontainers/trim-galore:0.6.6--0'
+container__fastqc = 'biocontainers/fastqc:v0.11.9_cv8'
 
 workflow preprocess_wf {
     take: indexed_ch
@@ -37,9 +38,6 @@ workflow preprocess_wf {
         ]}
         .mix(bcc_results.valid)
         .set{ demultiplexed_ch }
-
-    // For the paired end reads, run them through trim galore
-    TrimGalore(demultiplexed_ch)
     // For the unpaired reads, figure out if they are miseq or pyro using the 'data_type' column. 
     // If non-existant, assume it is miseq
     unpaired_ch
@@ -55,6 +53,37 @@ workflow preprocess_wf {
     ]}.set {
         miseq_se
     }
+    // Run the 'before' quality control check
+    FastQC_Raw(
+        demultiplexed_ch.map {
+            [
+                it[0], // specimen
+                it[1], // Batch
+                'R1',
+                it[2], // R1
+            ]
+        }.mix(
+        demultiplexed_ch.map {
+            [
+                it[0], // specimen
+                it[1], // Batch
+                'R2',
+                it[3], // R1            
+            ]
+        }).mix(unpaired_ch.map {
+            sample ->
+            [
+                sample.specimen,
+                sample.batch,
+                'R1',
+                file(sample.R1)
+            ]
+        })
+    )
+
+    // For the paired end reads, run them through trim galore
+    TrimGalore(demultiplexed_ch)
+
     // And trimgalore
     TrimGaloreSE(miseq_se)
 
@@ -72,6 +101,28 @@ workflow preprocess_wf {
         miseq_se = TrimGaloreSE.out
         pyro = pyro_ch
         empty = bcc_results.empty
+}
+
+
+// Processes
+process FastQC_Raw {
+    container "${container__fastqc}"
+    label 'io_limited'
+    errorStrategy 'ignore'
+    publishDir "${params.output}/sv/fastqc/", mode: 'copy'
+
+    input:
+        tuple val(specimen), val(batch), val(read), path("Raw__${specimen}__${read}.fastq.gz")
+
+    output:
+        tuple val(specimen), val(batch), val(read), path("Raw__${specimen}__${read}_fastqc.html"), path("Raw__${specimen}__${read}_fastqc.zip")
+    
+    """
+    set -e
+
+    fastqc --threads ${task.cpus} Raw__${specimen}__${read}.fastq.gz
+
+    """
 }
 
 // Use trim_galore to handle adapters / etc

@@ -7,6 +7,7 @@ container__dada2 = "quay.io/biocontainers/bioconductor-dada2:1.26.0--r42hc247a5b
 container__fastcombineseqtab = "golob/dada2-fast-combineseqtab:0.5.0__1.12.0__BCW_0.3.1"
 container__dada2pplacer = "golob/dada2-pplacer:0.8.0__bcw_0.3.1A"
 container__goodsfilter = "golob/goodsfilter:0.1.6"
+container__fastqc = 'biocontainers/fastqc:v0.11.9_cv8'
 
 // parameters for individual operation
 // Defaults for parameters
@@ -63,7 +64,44 @@ workflow dada2_wf {
             valid: true
         }
 
-
+    // Post trimming and filtering QC
+    FastQC_PostFT(
+        ft_reads_pe.valid.map{
+            [
+                it[0], // specimen,
+                it[1], // batch,
+                'R1',
+                it[2], // R1
+            ]
+        }.mix(
+             ft_reads_pe.valid.map{
+                [
+                    it[0], // specimen,
+                    it[1], // batch,
+                    'R2',
+                    it[3], // R1
+                ]                
+             }
+        ).mix(
+            ft_reads_se.valid.map{
+                [
+                    it[0], // specimen,
+                    it[1], // batch,
+                    'R1',
+                    it[2], // R1                    
+                ]
+            }
+        ).mix(
+            ft_reads_pyro.valid.map {
+                [
+                    it[0], // specimen,
+                    it[1], // batch,
+                    'R1',
+                    it[2], // R1                    
+                ]                
+            }
+        )
+    )
     //
     // STEP 2: dereplicate (by specimen)
     //
@@ -837,6 +875,26 @@ process goods_filter_seqtab {
     --min_prev ${params.min_sv_prev} \
     --min_reads ${params.goods_min_reads} \
     --curves_path curves/
+    """
+}
+
+process FastQC_PostFT {
+    container "${container__fastqc}"
+    label 'io_limited'
+    errorStrategy 'ignore'
+    publishDir "${params.output}/sv/fastqc/", mode: 'copy'
+
+    input:
+        tuple val(specimen), val(batch), val(read), path("PostFT__${specimen}__${read}.fastq.gz")
+
+    output:
+        tuple val(specimen), val(batch), val(read), path("PostFT__${specimen}__${read}_fastqc.html"), path("PostFT__${specimen}__${read}_fastqc.zip")
+    
+    """
+    set -e
+
+    fastqc --threads ${task.cpus} PostFT__${specimen}__${read}.fastq.gz
+
     """
 }
 
