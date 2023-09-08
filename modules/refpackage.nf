@@ -232,6 +232,10 @@ seq_ids = defaultdict(set)
 id_seq = {}
 with open('${repo_recruit_f}', 'rt') as recruit_h:
     for sr in fastalite.fastalite(recruit_h):
+        # Here is where we can do our max-length filtering
+        if len(sr.seq) > ${params.max_allele_len}:
+            continue
+        # Implicit else...
         seq_ids[sr.seq].add(sr.id)
         id_seq[sr.id] = sr.seq
 
@@ -884,6 +888,10 @@ def helpMessage() {
 // paramters
 params.help = false
 params.taxdmp = false
+
+// Add a parameter for a maximum allele size. Tighter can help with the subsequent alignments etc
+
+params.max_allele_len = 1600
 
 params.raxml = 'og'
 
