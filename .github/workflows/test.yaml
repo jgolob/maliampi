@@ -23,7 +23,7 @@ jobs:
           df -h
       - name:  Run maliampi (full workflow)
         run: |
-          nextflow run main.nf -with-docker ubuntu:18.04 -c nextflow.config.sample -profile testing --manifest maliampi-practice-data/autotest_manifest.csv --repo_fasta  maliampi-practice-data/test.repo.fasta --repo_si maliampi-practice-data/test.repo.seq_info.csv --taxdmp maliampi-practice-data/taxdmp.zip --email j-dev@golob.org --raxmlng_parsimony_trees 1 --raxmlng_random_trees 1 --output output  
+          nextflow run main.nf -with-docker ubuntu:20.04 -c nextflow.config.sample -profile testing --manifest maliampi-practice-data/autotest_manifest.csv --repo_fasta  maliampi-practice-data/test.repo.fasta --repo_si maliampi-practice-data/test.repo.seq_info.csv --taxdmp maliampi-practice-data/taxdmp.zip --email j-dev@golob.org --raxmlng_parsimony_trees 1 --raxmlng_random_trees 1 --output output  
       - name:  Verify output (DADA2)
         run: |
           [[ -s output/sv/dada2.specimen.sv.long.csv ]]
@@ -64,7 +64,7 @@ jobs:
           df -h
       - name:  Run maliampi-dada2 (dada2 workflow)
         run: |
-          nextflow run modules/dada2.nf -with-docker ubuntu:18.04 -c nextflow.config.sample -profile testing --manifest maliampi-practice-data/autotest_manifest.csv --output output
+          nextflow run modules/dada2.nf -with-docker ubuntu:20.04 -c nextflow.config.sample -profile testing --manifest maliampi-practice-data/autotest_manifest.csv --output output
       - name:  Verify output
         run: |
           [[ -s output/sv/dada2.specimen.sv.long.csv ]]
@@ -72,7 +72,34 @@ jobs:
           [[ -s output/sv/dada2.sv.map.csv ]]
           [[ -s output/sv/dada2.sv.weights.csv ]]
 
-  
+  swarm_workflow:
+    runs-on: ubuntu-20.04
+    env:
+      NXF_ANSI_LOG: 0
+    steps:
+      - uses: actions/checkout@v1
+      - name: Install Nextflow
+        run: |
+          wget -qO- get.nextflow.io | bash
+          sudo mv nextflow /usr/local/bin/
+      - name: Free disk space
+        run: |
+          sudo swapoff -a
+          sudo rm -f /swapfile
+          sudo apt clean
+          docker rmi $(docker image ls -aq)
+          df -h
+      - name:  Run maliampi-swarm (swarm workflow)
+        run: |
+          nextflow run modules/swarm.nf -with-docker ubuntu:20.04 -c nextflow.config.sample -profile testing --manifest maliampi-practice-data/autotest_manifest.csv --output output
+      - name:  Verify output
+        run: |
+          [[ -s output/sv/sp_asv_long.csv.gz ]]
+          [[ -s output/sv/swarm_ASV.fasta.gz ]]
+          [[ -s output/sv/swarm_sv.map.csv ]]
+          [[ -s output/sv/swarm_sv.weights.csv ]]
+
+
   refpkg_workflow:
     runs-on: ubuntu-20.04
     env:
@@ -92,7 +119,7 @@ jobs:
           df -h
       - name:  Run maliampi-refpkg (Reference Package Workflow)
         run: |
-          nextflow run modules/refpackage.nf -with-docker ubuntu:18.04 -c nextflow.config.sample -profile testing --raxmlng_parsimony_trees 1 --raxmlng_random_trees 1 --sv_fasta tests/sv/dada2.sv.fasta --repo_fasta  maliampi-practice-data/test.repo.fasta  --repo_si maliampi-practice-data/test.repo.seq_info.csv --taxdmp maliampi-practice-data/taxdmp.zip --email j-dev@golob.org --output output
+          nextflow run modules/refpackage.nf -with-docker ubuntu:20.04 -c nextflow.config.sample -profile testing --raxmlng_parsimony_trees 1 --raxmlng_random_trees 1 --sv_fasta tests/sv/dada2.sv.fasta --repo_fasta  maliampi-practice-data/test.repo.fasta  --repo_si maliampi-practice-data/test.repo.seq_info.csv --taxdmp maliampi-practice-data/taxdmp.zip --email j-dev@golob.org --output output
       - name:  Verify output
         run: |
           [[ -s output/refpkg/refpkg.tar.gz ]]
@@ -116,7 +143,7 @@ jobs:
           df -h
       - name:  Run maliampi-pplacer (placement and classification)
         run: |
-          nextflow run modules/pplacer_place_classify.nf -with-docker ubuntu:18.04 -c nextflow.config.sample -profile testing --sv_fasta tests/sv/dada2.sv.fasta --weights tests/sv/dada2.sv.weights.csv --map tests/sv/dada2.sv.map.csv  --refpkg tests/refpkg/refpkg.tar.gz --output output
+          nextflow run modules/pplacer_place_classify.nf -with-docker ubuntu:20.04 -c nextflow.config.sample -profile testing --sv_fasta tests/sv/dada2.sv.fasta --weights tests/sv/dada2.sv.weights.csv --map tests/sv/dada2.sv.map.csv  --refpkg tests/refpkg/refpkg.tar.gz --output output
       - name:  Verify output (placement)
         run: |
           [[ -s output/placement/dedup.jplace ]]
@@ -148,7 +175,7 @@ jobs:
           df -h          
       - name:  Run maliampi-epang (placement and classification)
         run: |
-          nextflow run modules/epang_place_classify.nf -with-docker ubuntu:18.04 -c nextflow.config.sample -profile testing --weights tests/sv/dada2.sv.weights.csv --map tests/sv/dada2.sv.map.csv --sv_fasta tests/sv/dada2.sv.fasta  --refpkg tests/refpkg/refpkg.tar.gz --output output
+          nextflow run modules/epang_place_classify.nf -with-docker ubuntu:20.04 -c nextflow.config.sample -profile testing --weights tests/sv/dada2.sv.weights.csv --map tests/sv/dada2.sv.map.csv --sv_fasta tests/sv/dada2.sv.fasta  --refpkg tests/refpkg/refpkg.tar.gz --output output
       - name:  Verify output (placement and classify / weight and map)
         run: |
           [[ -s output/placement/dedup.jplace ]]
@@ -177,7 +204,7 @@ jobs:
           df -h          
       - name:  Run maliampi-epang-seqtable (placement and classification)
         run: |
-          nextflow run modules/epang_place_classify.nf -with-docker ubuntu:18.04 -c nextflow.config.sample -profile testing --seqtable tests/sv/dada2.combined.seqtabs.nochimera.csv  --refpkg tests/refpkg/refpkg.tar.gz --output output_seqtable
+          nextflow run modules/epang_place_classify.nf -with-docker ubuntu:20.04 -c nextflow.config.sample -profile testing --seqtable tests/sv/dada2.combined.seqtabs.nochimera.csv  --refpkg tests/refpkg/refpkg.tar.gz --output output_seqtable
       - name:  Verify output (placement and classify / seqtable)
         run: |
           [[ -s output_seqtable/placement/dedup.jplace ]]
@@ -206,7 +233,7 @@ jobs:
           df -h          
       - name:  Run maliampi-epang-sharetable (placement and classification)
         run: |
-          nextflow run modules/epang_place_classify.nf -with-docker ubuntu:18.04 -c nextflow.config.sample -profile testing --sharetable tests/sv/dada2.sv.shared.txt --sv_fasta tests/sv/dada2.sv.fasta  --refpkg tests/refpkg/refpkg.tar.gz --output output_sharetable
+          nextflow run modules/epang_place_classify.nf -with-docker ubuntu:20.04 -c nextflow.config.sample -profile testing --sharetable tests/sv/dada2.sv.shared.txt --sv_fasta tests/sv/dada2.sv.fasta  --refpkg tests/refpkg/refpkg.tar.gz --output output_sharetable
       - name:  Verify output (placement and classify / sharetable)
         run: |
           [[ -s output_sharetable/placement/dedup.jplace ]]
