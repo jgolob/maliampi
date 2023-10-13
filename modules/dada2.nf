@@ -4,7 +4,7 @@
 nextflow.enable.dsl=2
 
 container__dada2 = "quay.io/biocontainers/bioconductor-dada2:1.26.0--r42hc247a5b_0"
-container__fastcombineseqtab = "golob/dada2-fast-combineseqtab:0.6.0"
+container__fastcombineseqtab = "golob/dada2-fast-combineseqtab:0.6.5"
 container__dada2pplacer = "golob/dada2-pplacer:0.8.0__bcw_0.3.1A"
 container__goodsfilter = "golob/goodsfilter:0.1.6"
 container__fastqc = 'biocontainers/fastqc:v0.11.9_cv8'
