@@ -794,6 +794,7 @@ process Dada2_remove_bimera {
 process Dada2_seqtab_combine_all {
     container "${container__fastcombineseqtab}"
     label 'io_mem'
+    publishDir "${params.output}/sv/", mode: 'copy'    
     errorStrategy "finish"
 
     input:
@@ -821,7 +822,6 @@ process Dada2_convert_output {
 
     input:
         path (final_seqtab_csv)
-        path (final_seqtab_rds)
 
     output:
         path "dada2.sv.fasta", emit: sv_fasta
@@ -830,7 +830,6 @@ process Dada2_convert_output {
         path "dada2.specimen.sv.long.csv", emit: sv_long
         path "dada2.sv.shared.txt", emit: sharetable
         path "${final_seqtab_csv}", emit: seqtab_csv
-        path "${final_seqtab_rds}", emit: seqtab_rds
 
     """
     dada2-seqtab-to-pplacer \
