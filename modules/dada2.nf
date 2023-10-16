@@ -322,7 +322,7 @@ workflow dada2_wf {
     // STEP 8. Combine seqtabs
     //
     // Do this by batch to help with massive data sets
-    dada2_seqtab_combine_batch(    
+    Dada2_seqtab_combine_batch(    
         dada2_seqtab_sp.out
             .groupTuple(by: 0)
             .map{[
@@ -330,35 +330,28 @@ workflow dada2_wf {
                 it[2]
             ]}
     )
-    // then combine each batch seqtab into one seqtab to rule them all
-    dada2_seqtab_combine_all(
-        dada2_seqtab_combine_batch.out
-            .map{ file(it) }
-            .toSortedList()
-    )
-    
-    //
-    // STEP 8. Remove chimera on combined seqtab
-    //
-    dada2_remove_bimera(
-        dada2_seqtab_combine_all.out.map{ file(it) }
-    )
 
     //
-    // STEP 9. Filter using Good's coverage
-    //goods_filter_seqtab(
-    //    dada2_remove_bimera.out[0].map{ file(it) }
-    //)
+    // STEP 8. Remove chimera on batch seqtab
+    //
+    Dada2_remove_bimera(
+        Dada2_seqtab_combine_batch.out
+    )
+
+    // then combine each batch seqtab into one seqtab to rule them all
+    Dada2_seqtab_combine_all(
+        Dada2_remove_bimera.out
+            .map{ file(it[2]) } // Just the RDS files...
+            .toSortedList()
+    )
 
     //
     // STEP 10. Transform output to be pplacer and mothur style
     //
     Dada2_convert_output(
-        dada2_remove_bimera.out[0].map{ file(it) }
+        Dada2_seqtab_combine_all.out.csv,
+        Dada2_seqtab_combine_all.out.rds
     )
-    //Dada2_convert_output(
-    //    goods_filter_seqtab.out[0].map{ file(it) }
-    //)
 
     //
     // STEP 11. Collect all the failures
@@ -373,7 +366,7 @@ workflow dada2_wf {
        sv_weights       = Dada2_convert_output.out[2]
        sv_long          = Dada2_convert_output.out[3]
        sv_sharetable    = Dada2_convert_output.out[4]
-       sv_table         = dada2_remove_bimera.out[0]
+       sv_table         = Dada2_convert_output.out[5]
        failures         = failures
     // */
 }
@@ -751,7 +744,7 @@ process dada2_seqtab_sp {
     """
 }
 
-process dada2_seqtab_combine_batch {
+process Dada2_seqtab_combine_batch {
     container "${container__fastcombineseqtab}"
     label 'io_mem'
     errorStrategy "finish"
@@ -760,7 +753,7 @@ process dada2_seqtab_combine_batch {
         tuple val(batch), file(sp_seqtabs_rds)
 
     output:
-        file("${batch}.dada2.seqtabs.rds")
+        tuple val(batch), file("${batch}.dada2.seqtabs.rds")
 
     """
     set -e
@@ -771,53 +764,52 @@ process dada2_seqtab_combine_batch {
     """
 }
 
-process dada2_seqtab_combine_all {
+process Dada2_remove_bimera {
+    container "${container__dada2}"
+    label 'mem_veryhigh'
+    errorStrategy "finish"
+
+    input:
+        tuple val(batch), path(batch_seqtab)
+
+    output:
+        tuple val(batch), file("seqtab.${batch}.nochimera.csv"), file("seqtab.${batch}.nochimera.rds")
+
+    script:
+    """
+    #!/usr/bin/env Rscript
+    library('dada2');
+    seqtab <- readRDS('${batch_seqtab}');
+    seqtab_nochim <- removeBimeraDenovo(
+        seqtab,
+        method = '${params.chimera_method}',
+        multithread = ${task.cpus}
+    );
+    saveRDS(seqtab_nochim, 'seqtab.${batch}.nochimera.rds'); 
+    write.csv(seqtab_nochim, 'seqtab.${batch}.nochimera.csv', na='');
+    print((sum(seqtab) - sum(seqtab_nochim)) / sum(seqtab));
+    """
+}
+
+process Dada2_seqtab_combine_all {
     container "${container__fastcombineseqtab}"
     label 'io_mem'
     errorStrategy "finish"
 
     input:
-        file(seqtabs_rds)
+        path(seqtabs_rds)
 
     output:
-        file("combined.dada2.seqtabs.rds")
+        path("combined.dada2.seqtabs.csv"), emit: csv
+        path("combined.dada2.seqtabs.rds"), emit: rds
 
     """
     set -e
 
     combine_seqtab \
     --rds combined.dada2.seqtabs.rds \
+    --csv combined.dada2.seqtabs.csv \
     --seqtabs ${seqtabs_rds}
-    """
-}
-
-
-process dada2_remove_bimera {
-    container "${container__dada2}"
-    label 'mem_veryhigh'
-    errorStrategy "finish"
-    publishDir "${params.output}/sv/", mode: 'copy'
-
-    input:
-        file(combined_seqtab)
-
-    output:
-        file("dada2.combined.seqtabs.nochimera.csv")
-        file("dada2.combined.seqtabs.nochimera.rds")
-
-    script:
-    """
-    #!/usr/bin/env Rscript
-    library('dada2');
-    seqtab <- readRDS('${combined_seqtab}');
-    seqtab_nochim <- removeBimeraDenovo(
-        seqtab,
-        method = '${params.chimera_method}',
-        multithread = ${task.cpus}
-    );
-    saveRDS(seqtab_nochim, 'dada2.combined.seqtabs.nochimera.rds'); 
-    write.csv(seqtab_nochim, 'dada2.combined.seqtabs.nochimera.csv', na='');
-    print((sum(seqtab) - sum(seqtab_nochim)) / sum(seqtab));
     """
 }
 
@@ -829,6 +821,7 @@ process Dada2_convert_output {
 
     input:
         path (final_seqtab_csv)
+        path (final_seqtab_rds)
 
     output:
         path "dada2.sv.fasta", emit: sv_fasta
@@ -836,6 +829,8 @@ process Dada2_convert_output {
         path "dada2.sv.weights.csv", emit: sv_weights
         path "dada2.specimen.sv.long.csv", emit: sv_long
         path "dada2.sv.shared.txt", emit: sharetable
+        path "${final_seqtab_csv}", emit: seqtab_csv
+        path "${final_seqtab_rds}", emit: seqtab_rds
 
     """
     dada2-seqtab-to-pplacer \
