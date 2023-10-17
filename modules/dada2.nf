@@ -373,7 +373,7 @@ workflow dada2_wf {
 
 process dada2_ft {
     container "${container__dada2}"
-    label 'io_mem'
+    label 'io_limited'
     //errorStrategy "finish"
     errorStrategy "ignore"
 
