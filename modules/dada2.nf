@@ -801,13 +801,11 @@ process Dada2_seqtab_combine_all {
 
     output:
         path("combined.dada2.seqtabs.csv"), emit: csv
-        path("combined.dada2.seqtabs.rds"), emit: rds
 
     """
     set -e
 
     combine_seqtab \
-    --rds combined.dada2.seqtabs.rds \
     --csv combined.dada2.seqtabs.csv \
     --seqtabs ${seqtabs_rds}
     """
