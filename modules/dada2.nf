@@ -349,8 +349,7 @@ workflow dada2_wf {
     // STEP 10. Transform output to be pplacer and mothur style
     //
     Dada2_convert_output(
-        Dada2_seqtab_combine_all.out.csv,
-        Dada2_seqtab_combine_all.out.rds
+        Dada2_seqtab_combine_all.out.csv
     )
 
     //
