@@ -402,7 +402,7 @@ process dada2_ft {
 
 process dada2_ft_se {
     container "${container__dada2}"
-    label 'io_mem'
+    label 'io_limited'
     //errorStrategy "finish"
     errorStrategy "ignore"
 
@@ -430,7 +430,7 @@ process dada2_ft_se {
 
 process dada2_ft_pyro {
     container "${container__dada2}"
-    label 'io_mem'
+    label 'io_limited'
     //errorStrategy "finish"
     errorStrategy "ignore"
 
@@ -458,7 +458,7 @@ process dada2_ft_pyro {
 
 process dada2_derep {
     container "${container__dada2}"
-    label 'io_mem'
+    label 'io_limited'
     errorStrategy "finish"
 
     input:
@@ -479,7 +479,7 @@ process dada2_derep {
 
 process dada2_derep_se {
     container "${container__dada2}"
-    label 'io_mem'
+    label 'io_limited'
     errorStrategy "finish"
 
     input:
@@ -498,7 +498,7 @@ process dada2_derep_se {
 
 process dada2_derep_pyro {
     container "${container__dada2}"
-    label 'io_mem'
+    label 'io_limited'
     errorStrategy "finish"
 
     input:
@@ -582,7 +582,7 @@ process dada2_learn_error_pyro {
 
 process dada2_derep_batches {
     container "${container__dada2}"
-    label 'io_mem'
+    label 'io_limited'
     errorStrategy "finish"
 
     input:
@@ -606,7 +606,7 @@ process dada2_derep_batches {
 
 process dada2_derep_batches_pyro {
     container "${container__dada2}"
-    label 'io_mem'
+    label 'io_limited'
     errorStrategy "finish"
 
     input:
@@ -669,7 +669,7 @@ process dada2_dada_pyro {
 
 process dada2_demultiplex_dada {
     container "${container__dada2}"
-    label 'io_mem'
+    label 'io_limited'
     errorStrategy "finish"
 
     input:
@@ -724,7 +724,7 @@ process dada2_merge {
 
 process dada2_seqtab_sp {
     container "${container__dada2}"
-    label 'io_mem'
+    label 'io_limited'
     errorStrategy "finish"
 
     input:
@@ -745,7 +745,7 @@ process dada2_seqtab_sp {
 
 process Dada2_seqtab_combine_batch {
     container "${container__fastcombineseqtab}"
-    label 'io_mem'
+    label 'io_limited'
     errorStrategy "finish"
 
     input:
