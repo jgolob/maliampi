@@ -2,7 +2,7 @@ container__barcodecop = "golob/barcodecop:0.5__bc_1"
 container__trimgalore = 'quay.io/biocontainers/trim-galore:0.6.6--0'
 container__fastqc = 'biocontainers/fastqc:v0.11.9_cv8'
 
-workflow preprocess_wf {
+workflow Preprocess_wf {
     take: indexed_ch
     take: paired_ch
     take: unpaired_ch
@@ -20,10 +20,10 @@ workflow preprocess_wf {
     ]}.set{ to_bcc_ch }
 
     // Run barcodecop
-    barcodecop(to_bcc_ch)
+    Barcodecop(to_bcc_ch)
 
     // Raise an error if any of the samples fail barcodecop
-    bcc_results = barcodecop.out.branch {
+    bcc_results = Barcodecop.out.branch {
         empty: (file(it[2]).isEmpty() || file(it[3]).isEmpty())
         valid: true
     }
@@ -158,7 +158,7 @@ process TrimGalore {
 
 
 // Use barcodecop to verify demultiplex
-process barcodecop {
+process Barcodecop {
     container "${container__barcodecop}"
     label 'io_limited'
     errorStrategy "ignore"
