@@ -802,7 +802,7 @@ gzip refpkg.tar
 }
 
 process CombineRefpkg_og {
-    container = "${container__pplacer}"
+    container = "${container__taxtastic}"
     label = 'io_mem'
 
     afterScript("rm -rf refpkg/*")
