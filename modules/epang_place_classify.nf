@@ -29,7 +29,7 @@ container__infernal = "quay.io/biocontainers/infernal:1.1.5--pl5321h031d066_1"
 container__fastatools = "golob/fastatools:0.8.0A"
 container__pplacer = "golob/pplacer:1.1alpha19rc_BCW_0.3.1A"
 container__dada2pplacer = "golob/dada2-pplacer:0.8.0__bcw_0.3.1A"
-container__easel = 'quay.io/biocontainers/easel:0.47--h516909a_0'
+container__easel = 'quay.io/biocontainers/easel:0.49--h031d066_0'
 container__epang = "quay.io/biocontainers/epa-ng:0.3.8--hdcf5f25_4"
 container__gappa = 'quay.io/biocontainers/gappa:0.8.4--hdcf5f25_1'
 

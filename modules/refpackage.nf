@@ -12,6 +12,7 @@ container__raxmlng = 'quay.io/biocontainers/raxml-ng:1.0.3--h32fcf60_0'
 container__dada2pplacer = "golob/dada2-pplacer:0.8.0__bcw_0.3.1A"
 container__taxtastic = "golob/taxtastic:v0.12.0"
 container__iqtree = 'quay.io/biocontainers/iqtree:2.3.3--h21ec9f0_0'
+container__skbio = 'golob/scikit-bio:0.6.0'
 
 container__raxml = "quay.io/biocontainers/raxml:8.2.4--h779adbc_4"
 
@@ -163,10 +164,11 @@ workflow make_refpkg_wf {
     }
     else if (params.raxml == 'iqtree') {
         IQTree(ConvertAlnToFasta.out)
+        BifurcateTree(IQTree.out.tree)
         CombineRefpkg_og(
             ConvertAlnToFasta.out,
             AlignRepoRecruits.out[0],
-            IQTree.out.tree,
+            BifurcateTree.out,
             IQTree.out.iqtree,
             TaxtableForSI.out,
             CombinedRefFilter.out.recruit_si,
@@ -858,6 +860,33 @@ contents = json.loads(
     tar_h.extractfile(
         tar_contents_dict['CONTENTS.json']
     ).read().decode('utf-8')
+)
+
+"""
+
+}
+
+process BifurcateTree {
+    container = "${container__skbio}"
+    label = 'io_limited'
+
+    input:
+        path "consensus_tree.nwk"
+    output:
+        path "consensus_tree_bifurcated.nwk"
+"""
+#!/usr/bin/env python3
+
+from skbio.tree import TreeNode
+
+t = TreeNode.read(
+    open("consensus_tree.nwk", 'rt')
+)
+t.bifurcate()
+t.write(
+    open(
+        "consensus_tree_bifurcated.nwk", 'wt'
+    )
 )
 
 """
