@@ -695,29 +695,33 @@ else:
     phylo_model = json.loads(tar_h.extractfile(
             tar_contents_dict[contents['files'].get('phylo_model')]
         ).read().decode('utf-8')
-    ).get('subs_rates')
+    )
+    subs_rates = phylo_model.get('subs_rates')
+    base_freq = phylo_model.get('frequencies')
 
-    re_basefreq = re.compile(r'Base frequencies: (?P<A>0\\.\\d+) (?P<C>0\\.\\d+) (?P<G>0\\.\\d+) (?P<T>0\\.\\d+)')
-    bf_m = re_basefreq.search(tar_h.extractfile(
-            tar_contents_dict[contents['files'].get('tree_stats')]
-        ).read().decode('utf-8'))
+    if base_freq is None:
+        re_basefreq = re.compile(r'Base frequencies: (?P<A>0\\.\\d+) (?P<C>0\\.\\d+) (?P<G>0\\.\\d+) (?P<T>0\\.\\d+)')
+        base_freq = re_basefreq.search(tar_h.extractfile(
+                tar_contents_dict[contents['files'].get('tree_stats')]
+            ).read().decode('utf-8'))
+        
     with open('model.txt', 'wt') as model_h:
         model_h.writelines( 
             "GTR{"+
             "{}/{}/{}/{}/{}/{}".format(
-                phylo_model['ac'],
-                phylo_model['ag'],
-                phylo_model['at'],
-                phylo_model['cg'],
-                phylo_model['ct'],
-                phylo_model['gt'],
+                subs_rates['ac'],
+                subs_rates['ag'],
+                subs_rates['at'],
+                subs_rates['cg'],
+                subs_rates['ct'],
+                subs_rates['gt'],
             )
             +"}"+"+FU{"+
             "{}/{}/{}/{}".format(
-                bf_m['A'],
-                bf_m['C'],
-                bf_m['G'],
-                bf_m['T'],
+                base_freq['A'],
+                base_freq['C'],
+                base_freq['G'],
+                base_freq['T'],
             )
             +"}"
         )

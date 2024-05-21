@@ -907,7 +907,7 @@ include { read_manifest } from './manifest'
 include { output_failed } from './preprocess' params (
     output: params.output
 )
-include { preprocess_wf } from './preprocess'
+include { Preprocess_wf } from './preprocess'
 
 // Function which prints help message text
 def helpMessage() {
@@ -965,22 +965,22 @@ workflow {
     // manifest.valid_paired contains pairs verified to exist but without index.
 
     // Preprocess
-    preprocess_wf(
+    Preprocess_wf(
         manifest.valid_paired_indexed,
         manifest.valid_paired,
         manifest.valid_unpaired
     )       
-    // preprocess_wf.out.valid is the reads that survived the preprocessing steps.
-    // preprocess_wf.out.empty are the reads that ended up empty with preprocessing
+    // Preprocess_wf.out.valid is the reads that survived the preprocessing steps.
+    // Preprocess_wf.out.empty are the reads that ended up empty with preprocessing
 
     //
     // Step 1: DADA2 to make sequence variants.
     //
 
     dada2_wf(
-        preprocess_wf.out.miseq_pe,
-        preprocess_wf.out.miseq_se,
-        preprocess_wf.out.pyro
+        Preprocess_wf.out.miseq_pe,
+        Preprocess_wf.out.miseq_se,
+        Preprocess_wf.out.pyro
     )
 
 
@@ -991,7 +991,7 @@ workflow {
 
     output_failed(            
         manifest.other.map { [it.specimen, 'failed at manifest'] }.mix(
-        preprocess_wf.out.empty.map{ [it[0], 'preprocessing'] }).mix(
+        Preprocess_wf.out.empty.map{ [it[0], 'preprocessing'] }).mix(
         dada2_wf.out.failures)
         .toList()
         .transpose()

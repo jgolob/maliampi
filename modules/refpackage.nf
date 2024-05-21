@@ -7,10 +7,11 @@ container__vsearch = "quay.io/biocontainers/vsearch:2.22.1--hf1761c0_0"
 container__fastatools = "golob/fastatools:0.8.0A"
 container__pplacer = "golob/pplacer:1.1alpha19rc_BCW_0.3.1A"
 container__seqinfosync = "golob/seqinfo_taxonomy_sync:0.3.0"
-container__infernal = "quay.io/biocontainers/infernal:1.1.4--h779adbc_0"
+container__infernal = "quay.io/biocontainers/infernal:1.1.5--pl5321h031d066_1"
 container__raxmlng = 'quay.io/biocontainers/raxml-ng:1.0.3--h32fcf60_0'
 container__dada2pplacer = "golob/dada2-pplacer:0.8.0__bcw_0.3.1A"
-container__taxtastic = "golob/taxtastic:0.9.5D"
+container__taxtastic = "golob/taxtastic:v0.12.0"
+container__iqtree = 'quay.io/biocontainers/iqtree:2.3.3--h21ec9f0_0'
 
 container__raxml = "quay.io/biocontainers/raxml:8.2.4--h779adbc_4"
 
@@ -160,6 +161,19 @@ workflow make_refpkg_wf {
         )
         refpkg_tgz = CombineRefpkg_og.out
     }
+    else if (params.raxml == 'iqtree') {
+        IQTree(ConvertAlnToFasta.out)
+        CombineRefpkg_og(
+            ConvertAlnToFasta.out,
+            AlignRepoRecruits.out[0],
+            IQTree.out.tree,
+            IQTree.out.iqtree,
+            TaxtableForSI.out,
+            CombinedRefFilter.out.recruit_si,
+            cm_f,
+        )
+        refpkg_tgz = CombineRefpkg_og.out
+    }    
     
     emit:
         refpkg_tgz = refpkg_tgz
@@ -591,6 +605,35 @@ process ConvertAlnToPhy {
     """
 }
 
+process IQTree {
+    container = "${container__iqtree}"
+    label = 'mem_veryhigh'
+    errorstrategy = 'finish'
+
+    input:
+        path recruits_aln_fasta_f
+    
+    output:
+        path "recruits.aln.fasta.contree", emit: tree
+        path "recruits.aln.fasta.log", emit: log
+        path "recruits.aln.fasta.iqtree", emit: iqtree
+
+    """
+    iqtree \
+    -s recruits.aln.fasta \
+    -m ${params.iqtree_model} \
+    --seqtype DNA \
+    --ninit ${params.iqtree_ninit} \
+    --ntop ${params.iqtree_ntop} \
+    --nbest ${params.iqtree_nbest} \
+    -B ${params.iqtree_nbs} \
+    --seed ${params.iqtree_seed} \
+    -T AUTO \
+    --threads-max ${task.cpus}
+
+    """        
+}
+
 process RaxmlTreeNG {
     container = "${container__raxmlng}"
     label = 'mem_veryhigh'
@@ -910,6 +953,15 @@ params.cmalign_mxsize = 8196
 params.raxml_model = 'GTRGAMMA'
 params.raxml_parsiomony_seed = 12345
 
+// IQTRee
+params.iqtree_model = 'GTR+G'
+params.iqtree_ninit = 100
+params.iqtree_ntop = 20
+params.iqtree_nbest = 5
+params.iqtree_nbs = 1000
+
+params.iqtree_seed = 12345
+
 params.raxmlng_model = 'GTR+G'
 params.raxmlng_parsimony_trees = 1
 params.raxmlng_random_trees = 1
@@ -926,7 +978,8 @@ workflow {
             (params.repo_si == null) ||
             (params.email == null) || (
                 (params.raxml != 'og') &
-                (params.raxml != 'ng')
+                (params.raxml != 'ng') &
+                (params.raxml != 'iqtree')
             )
         ){
         // Invoke the function above which prints the help message

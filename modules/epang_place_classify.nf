@@ -30,13 +30,17 @@ container__fastatools = "golob/fastatools:0.8.0A"
 container__pplacer = "golob/pplacer:1.1alpha19rc_BCW_0.3.1A"
 container__dada2pplacer = "golob/dada2-pplacer:0.8.0__bcw_0.3.1A"
 container__easel = 'quay.io/biocontainers/easel:0.47--h516909a_0'
-container__epang = "quay.io/biocontainers/epa-ng:0.3.8--h9a82719_1"
-container__gappa = 'quay.io/biocontainers/gappa:0.7.1--h9a82719_1'
+container__epang = "quay.io/biocontainers/epa-ng:0.3.8--hdcf5f25_4"
+container__gappa = 'quay.io/biocontainers/gappa:0.8.4--hdcf5f25_1'
 
 
 // includes
 include { Dada2_convert_output } from './dada2' params (
     output: params.output
+)
+
+include { ExtractRefpkg } from './pplacer_place_classify' params (
+
 )
 
 workflow epang_place_classify_wf {
@@ -250,154 +254,6 @@ process ConvertAlnToFasta {
         )
     """
 }
-
-process ExtractRefpkg {
-    container = "${container__fastatools}"
-    label = 'io_limited'
-    
-    input:
-        file refpkg_tgz_f
-
-    output:
-        path 'refpkg_tree.nwk', emit: tree
-        path 'refpkg.aln.fasta', emit: ref_aln_fasta
-        path 'refpkg.aln.sto', emit: ref_aln_sto
-        path 'model.txt', emit: model
-        path 'leaf_info.csv', emit: leaf_info
-        path 'taxonomy.csv', emit: taxonomy
-        path 'refpkg.cm', emit: cm
-
-"""
-#!/usr/bin/env python
-import tarfile
-import json
-import os
-import re
-
-tar_h = tarfile.open('${refpkg_tgz_f}')
-tar_contents_dict = {os.path.basename(f.name): f for f in tar_h.getmembers()}
-contents = json.loads(
-    tar_h.extractfile(
-        tar_contents_dict['CONTENTS.json']
-    ).read().decode('utf-8')
-)
-
-with open('refpkg.cm', 'wb') as cm_h:
-    cm_h.write(
-        tar_h.extractfile(
-            tar_contents_dict[contents['files'].get('profile')]
-        ).read()
-    )
-
-with open('refpkg_tree.nwk', 'wt') as tree_h:
-    tree_h.writelines(
-        tar_h.extractfile(
-                tar_contents_dict[contents['files'].get('tree')]
-            ).read().decode('utf-8')
-    )
-
-aln_fasta_intgz = contents['files'].get('aln_fasta')
-aln_sto_intgz = contents['files'].get('aln_sto')
-
-if aln_fasta_intgz and aln_sto_intgz:
-    # Both version of the alignment are in the refpkg
-    with open('refpkg.aln.fasta','w') as out_aln_fasta_h:
-        out_aln_fasta_h.write(
-            tar_h.extractfile(
-                tar_contents_dict[aln_fasta_intgz]
-            ).read().decode('utf-8')
-        )
-    with open('refpkg.aln.sto','w') as out_aln_sto_h:
-        out_aln_sto_h.write(
-            tar_h.extractfile(
-                tar_contents_dict[aln_sto_intgz]
-            ).read().decode('utf-8')
-        )
-elif aln_fasta_intgz:
-    # Only fasta exists
-    with open('refpkg.aln.fasta','w') as out_aln_fasta_h:
-        out_aln_fasta_h.write(
-            tar_h.extractfile(
-                tar_contents_dict[aln_fasta_intgz]
-            ).read().decode('utf-8')
-        )
-    # And convert to sto format
-    with open('refpkg.aln.sto','w') as out_aln_sto_h:
-        AlignIO.write(
-            AlignIO.read(
-                tar_h.extractfile(tar_contents_dict[aln_fasta_intgz]),
-                'fasta'),
-            out_aln_sto_h,
-            'stockholm'
-        )
-elif aln_sto_intgz:
-    # Only STO exists
-    with open('refpkg.aln.sto','w') as out_aln_sto_h:
-        out_aln_sto_h.write(
-            tar_h.extractfile(
-                tar_contents_dict[aln_sto_intgz]
-            ).read().decode('utf-8')
-        )
-    with sopen('refpkg.aln.fasta','w') as out_aln_fasta_h:
-        AlignIO.write(
-            AlignIO.read(
-                            tar_h.extractfile(tar_contents_dict[aln_sto_intgz]),
-                            'stockholm'),
-            out_aln_fasta_h,
-            'fasta'
-        )
-# Model
-if 'raxml_ng_model' in contents['files']:
-    with open('model.txt', 'wt') as out_h:
-        out_h.write(tar_h.extractfile(
-            tar_contents_dict[contents['files'].get('raxml_ng_model')]
-        ).read().decode('utf-8'))
-
-else:
-    phylo_model = json.loads(tar_h.extractfile(
-            tar_contents_dict[contents['files'].get('phylo_model')]
-        ).read().decode('utf-8')
-    ).get('subs_rates')
-
-    re_basefreq = re.compile(r'Base frequencies: (?P<A>0\\.\\d+) (?P<C>0\\.\\d+) (?P<G>0\\.\\d+) (?P<T>0\\.\\d+)')
-    bf_m = re_basefreq.search(tar_h.extractfile(
-            tar_contents_dict[contents['files'].get('tree_stats')]
-        ).read().decode('utf-8'))
-    with open('model.txt', 'wt') as model_h:
-        model_h.writelines( 
-            "GTR{"+
-            "{}/{}/{}/{}/{}/{}".format(
-                phylo_model['ac'],
-                phylo_model['ag'],
-                phylo_model['at'],
-                phylo_model['cg'],
-                phylo_model['ct'],
-                phylo_model['gt'],
-            )
-            +"}"+"+FU{"+
-            "{}/{}/{}/{}".format(
-                bf_m['A'],
-                bf_m['C'],
-                bf_m['G'],
-                bf_m['T'],
-            )
-            +"}"
-        )
-
-with open('leaf_info.csv', 'wt') as leaf_h:
-    leaf_h.write(tar_h.extractfile(
-        tar_contents_dict[contents['files'].get('seq_info')]
-    ).read().decode('utf-8'))
-
-with open('taxonomy.csv', 'wt') as leaf_h:
-    leaf_h.write(tar_h.extractfile(
-        tar_contents_dict[contents['files'].get('taxonomy')]
-    ).read().decode('utf-8'))
-
-
-"""
-}
-
 
 process EPAngPlacement {
     container = "${container__epang}"
@@ -748,8 +604,8 @@ process Gappa_KRD {
 
     gappa analyze krd \
     --jplace-path ${specimen_jplace} \
-    --krd-out-dir krd/ \
-    --krd-compress \
+    --out-dir krd/ \
+    --compress \
     --verbose \
     --threads ${task.cpus}
 
