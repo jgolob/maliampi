@@ -12,7 +12,7 @@ container__raxmlng = 'quay.io/biocontainers/raxml-ng:1.0.3--h32fcf60_0'
 container__dada2pplacer = "golob/dada2-pplacer:0.8.0__bcw_0.3.1A"
 container__taxtastic = "golob/taxtastic:v0.12.0"
 container__iqtree = 'quay.io/biocontainers/iqtree:2.3.3--h21ec9f0_0'
-container__skbio = 'golob/scikit-bio:0.6.0'
+container__pythontrees = 'golob/python-trees:2024-05-22'
 
 container__raxml = "quay.io/biocontainers/raxml:8.2.4--h779adbc_4"
 
@@ -165,7 +165,7 @@ workflow make_refpkg_wf {
     else if (params.raxml == 'iqtree') {
         IQTree(ConvertAlnToFasta.out)
         BifurcateTree(IQTree.out.tree)
-        CombineRefpkg_og(
+        CombineRefpkg_iqtree(
             ConvertAlnToFasta.out,
             AlignRepoRecruits.out[0],
             BifurcateTree.out,
@@ -174,7 +174,7 @@ workflow make_refpkg_wf {
             CombinedRefFilter.out.recruit_si,
             cm_f,
         )
-        refpkg_tgz = CombineRefpkg_og.out
+        refpkg_tgz = CombineRefpkg_iqtree.out
     }    
     
     emit:
@@ -838,6 +838,42 @@ process CombineRefpkg_og {
     """
 }
 
+process CombineRefpkg_iqtree {
+    container = "${container__taxtastic}"
+    label = 'io_mem'
+
+    afterScript("rm -rf refpkg/*")
+    publishDir "${params.output}/refpkg/", mode: 'copy'
+
+    input:
+        file recruits_aln_fasta_f
+        file recruits_aln_sto_f
+        file refpkg_tree_f 
+        file refpkg_tree_stats_clean_f 
+        file refpkg_tt_f
+        file refpkg_si_corr_f
+        file refpkg_cm
+    
+    output:
+        file "refpkg.tar.gz"
+    
+    """
+    taxit create --locus 16S \
+    --package-name refpkg \
+    --clobber \
+    --no-reroot \
+    --aln-fasta ${recruits_aln_fasta_f} \
+    --aln-sto ${recruits_aln_sto_f} \
+    --tree-file ${refpkg_tree_f} \
+    --tree-stats ${refpkg_tree_stats_clean_f} \
+    --taxonomy ${refpkg_tt_f} \
+    --seq-info ${refpkg_si_corr_f} \
+    --profile ${refpkg_cm} && \
+    ls -l refpkg/ && \
+    tar czvf refpkg.tar.gz  -C refpkg/ .
+    """
+}
+
 process AddRAxMLModel {
     container = "${container__taxtastic}"
     label = 'io_limited'
@@ -867,7 +903,7 @@ contents = json.loads(
 }
 
 process BifurcateTree {
-    container = "${container__skbio}"
+    container = "${container__pythontrees}"
     label = 'io_limited'
 
     input:
@@ -877,17 +913,13 @@ process BifurcateTree {
 """
 #!/usr/bin/env python3
 
-from skbio.tree import TreeNode
+from ete3 import Tree
 
-t = TreeNode.read(
-    open("consensus_tree.nwk", 'rt')
-)
-t.bifurcate()
-t.write(
-    open(
-        "consensus_tree_bifurcated.nwk", 'wt'
-    )
-)
+t = Tree("consensus_tree.nwk")
+
+t.resolve_polytomy(recursive=True)
+
+t.write(outfile="consensus_tree_bifurcated.nwk")
 
 """
 
