@@ -35,7 +35,7 @@ container__gappa = 'quay.io/biocontainers/gappa:0.7.1--h9a82719_1'
 
 
 // includes
-include { Dada2_convert_output } from './dada2' params (
+include { Dada2_convert_output } from './dada2' addParams (
     output: params.output
 )
 

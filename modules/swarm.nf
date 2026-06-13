@@ -501,7 +501,7 @@ svl[['sv', 'sv_sp', 'count']].drop_duplicates().to_csv(
 //
 
 include { read_manifest } from './manifest'
-include { output_failed } from './preprocess' params (
+include { output_failed } from './preprocess' addParams (
     output: params.output
 )
 include { preprocess_wf } from './preprocess'
