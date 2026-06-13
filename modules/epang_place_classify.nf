@@ -25,20 +25,20 @@ params.pp_seed = 1
 params.cmalign_mxsize = 2048
 
 // Containers!
-container__infernal = "quay.io/biocontainers/infernal:1.1.4--h779adbc_0"
-container__fastatools = "golob/fastatools:0.8.0A"
-container__pplacer = "golob/pplacer:1.1alpha19rc_BCW_0.3.1A"
-container__dada2pplacer = "golob/dada2-pplacer:0.8.0__bcw_0.3.1A"
-container__easel = 'quay.io/biocontainers/easel:0.47--h516909a_0'
-container__epang = "quay.io/biocontainers/epa-ng:0.3.8--h9a82719_1"
-container__gappa = 'quay.io/biocontainers/gappa:0.7.1--h9a82719_1'
+params.container__infernal = "quay.io/biocontainers/infernal:1.1.4--h779adbc_0"
+params.container__fastatools = "golob/fastatools:0.8.0A"
+params.container__pplacer = "golob/pplacer:1.1alpha19rc_BCW_0.3.1A"
+params.container__dada2pplacer = "golob/dada2-pplacer:0.8.0__bcw_0.3.1A"
+params.container__easel = 'quay.io/biocontainers/easel:0.47--h516909a_0'
+params.container__epang = "quay.io/biocontainers/epa-ng:0.3.8--h9a82719_1"
+params.container__gappa = 'quay.io/biocontainers/gappa:0.7.1--h9a82719_1'
 
 
 // includes
 include { Dada2_convert_output } from './dada2'
 
 workflow epang_place_classify_wf {
-    take:
+    input:
         sv_fasta_f
         refpkg_tgz_f
         sv_long_f
@@ -180,7 +180,7 @@ workflow epang_place_classify_wf {
 
 }
 process AlignSV {
-    container = "${container__infernal}"
+    container = "${params.container__infernal}"
     label = 'mem_veryhigh'
 
     input:
@@ -205,7 +205,7 @@ process AlignSV {
 
 
 process CombineAln_SV_refpkg {
-    container = "${container__easel}"
+    container = "${params.container__easel}"
     label = 'mem_veryhigh'
 
     input:
@@ -225,7 +225,7 @@ process CombineAln_SV_refpkg {
 }
 
 process ConvertAlnToFasta {
-    container = "${container__fastatools}"
+    container = "${params.container__fastatools}"
     label = 'io_limited'
     errorStrategy "retry"
 
@@ -253,7 +253,7 @@ process ConvertAlnToFasta {
 }
 
 process ExtractRefpkg {
-    container = "${container__fastatools}"
+    container = "${params.container__fastatools}"
     label = 'io_limited'
     
     input:
@@ -401,7 +401,7 @@ with open('taxonomy.csv', 'wt') as leaf_h:
 
 
 process EPAngPlacement {
-    container = "${container__epang}"
+    container = "${params.container__epang}"
     label = 'mem_veryhigh'
     publishDir "${params.output}/placement", mode: 'copy'
     input:
@@ -430,7 +430,7 @@ process EPAngPlacement {
 
 
 process MakeEPAngTaxonomy {
-    container = "${container__fastatools}"
+    container = "${params.container__fastatools}"
     label = 'io_limited'
     publishDir "${params.output}/refpkg", mode: 'copy'
 
@@ -483,7 +483,7 @@ with open('epang_taxon_file.tsv', 'wt') as tf_h:
 }
 
 process Gappa_Classify {
-    container = "${container__gappa}"
+    container = "${params.container__gappa}"
     label = 'mem_veryhigh'
     publishDir "${params.output}/classify", mode: 'copy'
     errorStrategy 'ignore'
@@ -512,7 +512,7 @@ process Gappa_Classify {
 }
 
 process Make_Wide_Tax_Table {
-    container "${container__dada2pplacer}"
+    container "${params.container__dada2pplacer}"
     label 'io_mem'
     publishDir "${params.output}/classify", mode: 'copy'
     //errorStrategy "ignore"
@@ -581,7 +581,7 @@ sp_tax_wide_nreads.to_csv("tables/taxon_wide_nreads.${want_rank}.csv")
 }
 
 process Gappa_Extract_Taxonomy {
-    container "${container__dada2pplacer}"
+    container "${params.container__dada2pplacer}"
     label 'io_mem'
     publishDir "${params.output}/classify", mode: 'copy'
     //errorStrategy "ignore"
@@ -657,7 +657,7 @@ sv_taxonomy.to_csv('sv_taxonomy.csv', index=None)
 }
 
 process EDPL {
-    container = "${container__gappa}"
+    container = "${params.container__gappa}"
     label = 'multithread'
     publishDir "${params.output}/placement", mode: 'copy'
     errorStrategy 'ignore' 
@@ -681,7 +681,7 @@ process EDPL {
 }
 
 process MakeSplit {
-    container = "${container__fastatools}"
+    container = "${params.container__fastatools}"
     label = 'io_limited'
     publishDir "${params.output}/sv", mode: 'copy'
 
@@ -709,7 +709,7 @@ with open('${sv_long_f}', 'rt') as in_h, open('sv_multiplicity.csv', 'wt') as ou
 }
 
 process GappaSplit {
-    container = "${container__gappa}"
+    container = "${params.container__gappa}"
     label = 'multithread'
     publishDir "${params.output}/placement/", mode: 'copy'
 
@@ -737,7 +737,7 @@ process GappaSplit {
 }
 
 process Gappa_KRD {
-    container = "${container__gappa}"
+    container = "${params.container__gappa}"
     label = 'mem_veryhigh'
     publishDir "${params.output}/placement/", mode: 'copy'
     errorStrategy 'ignore'
@@ -763,7 +763,7 @@ process Gappa_KRD {
 }
 
 process Gappa_ePCA {
-    container = "${container__gappa}"
+    container = "${params.container__gappa}"
     label = 'mem_veryhigh'
     publishDir "${params.output}/placement/", mode: 'copy'
     errorStrategy 'ignore'
@@ -791,7 +791,7 @@ process Gappa_ePCA {
 }
 
 process PplacerADCL {
-    container = "${container__pplacer}"
+    container = "${params.container__pplacer}"
     label = 'io_limited'
 
     publishDir "${params.output}/placement", mode: 'copy'
@@ -810,7 +810,7 @@ process PplacerADCL {
 }
 
 process PplacerEDPL {
-    container = "${container__pplacer}"
+    container = "${params.container__pplacer}"
     label = 'io_limited'
 
     publishDir "${params.output}/placement", mode: 'copy'
@@ -828,7 +828,7 @@ process PplacerEDPL {
 }
 
 process PplacerPCA {
-    container = "${container__pplacer}"
+    container = "${params.container__pplacer}"
     label = 'io_limited'
     afterScript "rm -r refpkg/"
     publishDir "${params.output}/placement", mode: 'copy'
@@ -856,7 +856,7 @@ process PplacerPCA {
 }
 
 process PplacerAlphaDiversity {
-    container = "${container__pplacer}"
+    container = "${params.container__pplacer}"
     label = 'io_limited'
 
     input:
@@ -873,7 +873,7 @@ process PplacerAlphaDiversity {
 }
 
 process CombineSpAd {
-    container = "${container__fastatools}"
+    container = "${params.container__fastatools}"
     label = 'io_limited'
     publishDir "${params.output}/placement", mode: 'copy'
 
@@ -907,7 +907,7 @@ with gzip.open('alpha_diversity.csv.gz', 'wt') as out_h:
 
 
 process PplacerKR {
-    container = "${container__pplacer}"
+    container = "${params.container__pplacer}"
     label = 'io_limited'
     afterScript "rm -r refpkg/"
     publishDir "${params.output}/placement", mode: 'copy'
@@ -930,7 +930,7 @@ process PplacerKR {
 }
 
 process ClassifyDB_Prep {
-    container = "${container__pplacer}"
+    container = "${params.container__pplacer}"
     label = 'io_limited'
     afterScript "rm -r refpkg/"
     cache = false
@@ -954,7 +954,7 @@ process ClassifyDB_Prep {
 }
 
 process ClassifySV {
-    container = "${container__pplacer}"
+    container = "${params.container__pplacer}"
     label = 'mem_veryhigh'
     afterScript "rm -r refpkg/"
     cache = false
@@ -993,7 +993,7 @@ process ClassifySV {
 }
 
 process ClassifyMCC {
-    container = "${container__pplacer}"
+    container = "${params.container__pplacer}"
     label = 'io_limited'
     cache = false
     publishDir "${params.output}/classify", mode: 'copy'
@@ -1014,7 +1014,7 @@ process ClassifyMCC {
 }
 
 process ClassifyTables {
-    container = "${container__pplacer}"
+    container = "${params.container__pplacer}"
     label = 'io_limited'
     publishDir "${params.output}/classify", mode: 'copy'
 
@@ -1037,7 +1037,7 @@ process ClassifyTables {
 }
 
 process WeightMaptoLong {
-    container = "${container__fastatools}"
+    container = "${params.container__fastatools}"
     label = 'io_limited'
     publishDir "${params.output}/sv", mode: 'copy'
 
@@ -1078,7 +1078,7 @@ with open('${weight}', 'rt') as w_h, open("sp_sv_long.csv", 'wt') as sv_long_h:
 }
 
 process SharetableToMapWeight {
-    container = "${container__fastatools}"
+    container = "${params.container__fastatools}"
     label = 'io_limited'
     publishDir "${params.output}/sv", mode: 'copy'
 
@@ -1146,7 +1146,7 @@ with open("sp_sv_long.csv", 'wt') as svl_h:
 
 
 process Extract_Taxonomy {
-    container "${container__dada2pplacer}"
+    container "${params.container__dada2pplacer}"
     label 'io_mem'
     publishDir "${params.output}/classify", mode: 'copy'
     errorStrategy "ignore"

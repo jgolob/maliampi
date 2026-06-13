@@ -11,7 +11,7 @@ nextflow.enable.dsl=2
 params.old_jplace = false
 params.new_jplace = false
 params.output = '.'
-container__gappa = "golob/gappa:0.3"
+params.container__gappa = "golob/gappa:0.3"
 
 workflow {
     
@@ -28,7 +28,7 @@ workflow {
 }
 
 process Gappa_KRD_1t1 {
-    container "${container__gappa}"
+    container "${params.container__gappa}"
     label 'io_limited'
 
     input:
@@ -47,7 +47,7 @@ process Gappa_KRD_1t1 {
 }
 
 process CombineKRDLong {
-    container "${container__gappa}"
+    container "${params.container__gappa}"
     label 'io_limited'
     publishDir "${params.output}/", mode: 'copy'
 

@@ -6,9 +6,9 @@ nextflow.enable.dsl=2
 // LEGACY — alternative ASV method (swarm). Not part of the supported
 // 5-stage flow (sv→place→classify→stats). Kept for reference; unmaintained.
 
-container__swarm = "quay.io/biocontainers/swarm:3.1.2--h9f5acd7_0"
-container__vsearch = "quay.io/biocontainers/vsearch:2.22.1--hf1761c0_0"
-container__fastatools = "golob/fastatools:0.8.5A"
+params.container__swarm = "quay.io/biocontainers/swarm:3.1.2--h9f5acd7_0"
+params.container__vsearch = "quay.io/biocontainers/vsearch:2.22.1--hf1761c0_0"
+params.container__fastatools = "golob/fastatools:0.8.5A"
 
 
 
@@ -32,9 +32,10 @@ params.chimera_method = 'consensus'
 
 workflow swarm_wf {
     // These should be preprocessed through TrimGalore, etc
-    take: miseq_pe_ch
-    take: miseq_se_ch
-    take: pyro_ch
+    take:
+    miseq_pe_ch
+    miseq_se_ch
+    pyro_ch
 
     main:
     //
@@ -122,7 +123,7 @@ workflow swarm_wf {
 }
 
 process MergePairs {
-    container "${container__vsearch}"
+    container "${params.container__vsearch}"
     label 'io_limited'
     errorStrategy 'ignore'
 
@@ -144,7 +145,7 @@ process MergePairs {
 }
 
 process FilterAndTrim {
-    container "${container__vsearch}"
+    container "${params.container__vsearch}"
     label 'io_limited'
     errorStrategy 'ignore'
 
@@ -170,7 +171,7 @@ process FilterAndTrim {
 }
 
 process SpecimenDereplicate {
-    container "${container__vsearch}"
+    container "${params.container__vsearch}"
     label 'multithread'
     errorStrategy 'ignore'
 
@@ -195,7 +196,7 @@ process SpecimenDereplicate {
 }
 
 process MakeDSVforSwarm {
-    container "${container__fastatools}"
+    container "${params.container__fastatools}"
     label 'io_mem'
     
     input:
@@ -264,7 +265,7 @@ with gzip.open('sp_dsv_count.csv.gz', 'wt') as sdc_h:
 }
 
 process Swarm {
-    container "${container__swarm}"
+    container "${params.container__swarm}"
     label 'multithread'
     errorStrategy 'ignore'
 
@@ -289,7 +290,7 @@ process Swarm {
 }
 
 process RemoveGlobalSingleton {
-    container "${container__fastatools}"
+    container "${params.container__fastatools}"
     label 'io_mem'
     
     input:
@@ -315,7 +316,7 @@ with gzip.open("swarm_seeds.no_singleton.fasta.gz", 'wt') as out_h:
 }
 
 process ChimeraRemoval {
-    container "${container__vsearch}"
+    container "${params.container__vsearch}"
     label 'io_limited'
     errorStrategy 'ignore'
     publishDir "${params.output}/sv/", mode: 'copy'
@@ -337,7 +338,7 @@ process ChimeraRemoval {
 }
 
 process SwarmToASV {
-    container "${container__fastatools}"
+    container "${params.container__fastatools}"
     label 'io_mem'
     publishDir "${params.output}/sv/", mode: 'copy'
 
@@ -414,7 +415,7 @@ print("Percentage Kept", (reads_kept) / (reads_kept + reads_filtered) * 100)
 }
 
 process ConvertOutputs {
-    container "${container__fastatools}"
+    container "${params.container__fastatools}"
     label 'io_mem'
     publishDir "${params.output}/sv/", mode: 'copy'
     

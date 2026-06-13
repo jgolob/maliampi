@@ -1,11 +1,12 @@
-container__barcodecop = "golob/barcodecop:0.5__bc_1"
-container__trimgalore = 'quay.io/biocontainers/trim-galore:0.6.6--0'
-container__fastqc = 'biocontainers/fastqc:v0.11.9_cv8'
+params.container__barcodecop = "golob/barcodecop:0.5__bc_1"
+params.container__trimgalore = 'quay.io/biocontainers/trim-galore:0.6.6--0'
+params.container__fastqc = 'biocontainers/fastqc:v0.11.9_cv8'
 
 workflow preprocess_wf {
-    take: indexed_ch
-    take: paired_ch
-    take: unpaired_ch
+    take:
+    indexed_ch
+    paired_ch
+    unpaired_ch
 
     main:
 
@@ -106,7 +107,7 @@ workflow preprocess_wf {
 
 // Processes
 process FastQC_Raw {
-    container "${container__fastqc}"
+    container "${params.container__fastqc}"
     label 'io_limited'
     errorStrategy 'ignore'
     publishDir "${params.output}/sv/fastqc/", mode: 'copy'
@@ -128,7 +129,7 @@ process FastQC_Raw {
 
 // Use trim_galore to handle adapters / etc
 process TrimGalore {
-    container "${container__trimgalore}"
+    container "${params.container__trimgalore}"
     label 'io_limited'
     errorStrategy 'ignore'
 
@@ -161,7 +162,7 @@ process TrimGalore {
 
 // Use barcodecop to verify demultiplex
 process barcodecop {
-    container "${container__barcodecop}"
+    container "${params.container__barcodecop}"
     label 'io_limited'
     errorStrategy "ignore"
 
@@ -189,7 +190,7 @@ process barcodecop {
 }
 
 process TrimGaloreSE {
-    container "${container__trimgalore}"
+    container "${params.container__trimgalore}"
     label 'io_limited'
     errorStrategy 'ignore'
 
@@ -218,7 +219,7 @@ process TrimGaloreSE {
 
 
 process output_failed {
-    container "${container__barcodecop}"
+    container "${params.container__barcodecop}"
     label 'io_limited'
     publishDir "${params.output}/sv/", mode: 'copy'
     errorStrategy 'retry'

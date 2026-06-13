@@ -3,22 +3,22 @@
 //
 nextflow.enable.dsl=2
 
-container__vsearch = "quay.io/biocontainers/vsearch:2.22.1--hf1761c0_0"
-container__fastatools = "golob/fastatools:0.8.0A"
-container__pplacer = "golob/pplacer:1.1alpha19rc_BCW_0.3.1A"
-container__seqinfosync = "golob/seqinfo_taxonomy_sync:0.3.0"
-container__infernal = "quay.io/biocontainers/infernal:1.1.4--h779adbc_0"
-container__raxmlng = 'quay.io/biocontainers/raxml-ng:1.0.3--h32fcf60_0'
-container__dada2pplacer = "golob/dada2-pplacer:0.8.0__bcw_0.3.1A"
-container__taxtastic = "golob/taxtastic:0.9.5D"
+params.container__vsearch = "quay.io/biocontainers/vsearch:2.22.1--hf1761c0_0"
+params.container__fastatools = "golob/fastatools:0.8.0A"
+params.container__pplacer = "golob/pplacer:1.1alpha19rc_BCW_0.3.1A"
+params.container__seqinfosync = "golob/seqinfo_taxonomy_sync:0.3.0"
+params.container__infernal = "quay.io/biocontainers/infernal:1.1.4--h779adbc_0"
+params.container__raxmlng = 'quay.io/biocontainers/raxml-ng:1.0.3--h32fcf60_0'
+params.container__dada2pplacer = "golob/dada2-pplacer:0.8.0__bcw_0.3.1A"
+params.container__taxtastic = "golob/taxtastic:0.9.5D"
 
-container__raxml = "quay.io/biocontainers/raxml:8.2.4--h779adbc_4"
+params.container__raxml = "quay.io/biocontainers/raxml:8.2.4--h779adbc_4"
 
 // Default to use the in-project SSU_rRNA_bacteria.cm 
 params.rfam = false
 
 workflow make_refpkg_wf {
-    take:
+    input:
         sv_fasta_f
 
     main:
@@ -168,7 +168,7 @@ workflow make_refpkg_wf {
 
 
 process RefpkgSearchRepo {
-    container "${container__vsearch}"
+    container "${params.container__vsearch}"
     label 'multithread'
 
     input:
@@ -199,7 +199,7 @@ process RefpkgSearchRepo {
 }
 
 process CombinedRefFilter {
-    container "${container__fastatools}"
+    container "${params.container__fastatools}"
     label 'io_limited'
 
     input:
@@ -403,7 +403,7 @@ with open('references_seq_info.csv', 'wt') as si_out:
 
 
 process FilterSeqInfo {
-    container "${container__fastatools}"
+    container "${params.container__fastatools}"
     label 'io_limited'
 
     input:
@@ -432,7 +432,7 @@ process FilterSeqInfo {
 }
 
 process RemoveDroppedRecruits{
-    container "${container__fastatools}"
+    container "${params.container__fastatools}"
     label 'io_limited'
 
     input:
@@ -465,7 +465,7 @@ process RemoveDroppedRecruits{
 }
 
 process DlBuildTaxtasticDB {
-    container "${container__taxtastic}"
+    container "${params.container__taxtastic}"
     label 'io_net'
     errorStrategy 'finish'
 
@@ -486,7 +486,7 @@ process DlBuildTaxtasticDB {
 }
 
 process BuildTaxtasticDB {
-    container "${container__taxtastic}"
+    container "${params.container__taxtastic}"
     label 'io_limited'
     errorStrategy 'finish'
 
@@ -503,7 +503,7 @@ process BuildTaxtasticDB {
 }
 
 process ConfirmSI {
-    container "${container__taxtastic}"
+    container "${params.container__taxtastic}"
     label 'io_mem'
 
     input:
@@ -524,7 +524,7 @@ process ConfirmSI {
 }
 
 process AlignRepoRecruits {
-    container "${container__infernal}"
+    container "${params.container__infernal}"
     label 'mem_veryhigh'
 
     input:
@@ -545,7 +545,7 @@ process AlignRepoRecruits {
 }
 
 process ConvertAlnToFasta {
-    container "${container__fastatools}"
+    container "${params.container__fastatools}"
     label 'io_limited'
     errorStrategy 'retry'
 
@@ -573,7 +573,7 @@ process ConvertAlnToFasta {
 }
 
 process ConvertAlnToPhy {
-    container "${container__fastatools}"
+    container "${params.container__fastatools}"
     label 'io_limited'
     errorStrategy 'finish'
 
@@ -601,7 +601,7 @@ process ConvertAlnToPhy {
 }
 
 process RaxmlTreeNG {
-    container "${container__raxmlng}"
+    container "${params.container__raxmlng}"
     label 'mem_veryhigh'
     errorStrategy 'finish'
 
@@ -633,7 +633,7 @@ process RaxmlTreeNG {
 }
 
 process RaxmlTree {
-    container "${container__raxml}"
+    container "${params.container__raxml}"
     label 'mem_veryhigh'
     errorStrategy 'retry'
 
@@ -656,7 +656,7 @@ process RaxmlTree {
 }
 
 process RaxmlTree_cleanupInfo {
-    container "${container__fastatools}"
+    container "${params.container__fastatools}"
     label 'io_limited'
     errorStrategy 'retry'
 
@@ -681,7 +681,7 @@ with open("RAxML_info.refpkg",'wt') as out_h:
 }
 
 process TaxtableForSI {
-    container "${container__taxtastic}"
+    container "${params.container__taxtastic}"
     label 'io_limited'
     errorStrategy 'finish'
 
@@ -700,7 +700,7 @@ process TaxtableForSI {
 }
 
 process ObtainCM {
-    container "${container__infernal}"
+    container "${params.container__infernal}"
     label 'io_net'
 
     output:
@@ -713,7 +713,7 @@ process ObtainCM {
 }
 
 process CombineRefpkg_ng {
-    container "${container__taxtastic}"
+    container "${params.container__taxtastic}"
     label 'io_mem'
 
     afterScript("rm -rf refpkg/*")
@@ -772,7 +772,7 @@ gzip refpkg.tar
 }
 
 process CombineRefpkg_og {
-    container "${container__pplacer}"
+    container "${params.container__pplacer}"
     label 'io_mem'
 
     afterScript("rm -rf refpkg/*")
@@ -808,7 +808,7 @@ process CombineRefpkg_og {
 }
 
 process AddRAxMLModel {
-    container "${container__taxtastic}"
+    container "${params.container__taxtastic}"
     label 'io_limited'
 
     input:
@@ -836,7 +836,7 @@ contents = json.loads(
 }
 
 process Dada2_convert_output {
-    container "${container__dada2pplacer}"
+    container "${params.container__dada2pplacer}"
     label 'io_mem'
     publishDir "${params.output}/sv/", mode: 'copy'
     errorStrategy 'retry'

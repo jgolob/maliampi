@@ -3,11 +3,11 @@
 //
 nextflow.enable.dsl=2
 
-container__dada2 = "quay.io/biocontainers/bioconductor-dada2:1.26.0--r42hc247a5b_0"
-container__fastcombineseqtab = "golob/dada2-fast-combineseqtab:0.5.0__1.12.0__BCW_0.3.1"
-container__dada2pplacer = "golob/dada2-pplacer:0.8.0__bcw_0.3.1A"
-container__goodsfilter = "golob/goodsfilter:0.1.6"
-container__fastqc = 'biocontainers/fastqc:v0.11.9_cv8'
+params.container__dada2 = "quay.io/biocontainers/bioconductor-dada2:1.26.0--r42hc247a5b_0"
+params.container__fastcombineseqtab = "golob/dada2-fast-combineseqtab:0.5.0__1.12.0__BCW_0.3.1"
+params.container__dada2pplacer = "golob/dada2-pplacer:0.8.0__bcw_0.3.1A"
+params.container__goodsfilter = "golob/goodsfilter:0.1.6"
+params.container__fastqc = 'biocontainers/fastqc:v0.11.9_cv8'
 
 // parameters for individual operation
 // Defaults for parameters
@@ -34,9 +34,10 @@ params.maxMismatch = 0
 params.minOverlap = 12
 
 workflow dada2_wf {
-    take: miseq_pe_ch
-    take: miseq_se_ch
-    take: pyro_ch
+    take:
+    miseq_pe_ch
+    miseq_se_ch
+    pyro_ch
 
     main:
     //
@@ -380,7 +381,7 @@ workflow dada2_wf {
 
 
 process dada2_ft {
-    container "${container__dada2}"
+    container "${params.container__dada2}"
     label 'io_mem'
     //errorStrategy "finish"
     errorStrategy "ignore"
@@ -410,7 +411,7 @@ process dada2_ft {
 }
 
 process dada2_ft_se {
-    container "${container__dada2}"
+    container "${params.container__dada2}"
     label 'io_mem'
     //errorStrategy "finish"
     errorStrategy "ignore"
@@ -439,7 +440,7 @@ process dada2_ft_se {
 }
 
 process dada2_ft_pyro {
-    container "${container__dada2}"
+    container "${params.container__dada2}"
     label 'io_mem'
     //errorStrategy "finish"
     errorStrategy "ignore"
@@ -468,7 +469,7 @@ process dada2_ft_pyro {
 }
 
 process dada2_derep {
-    container "${container__dada2}"
+    container "${params.container__dada2}"
     label 'io_mem'
     errorStrategy "finish"
 
@@ -490,7 +491,7 @@ process dada2_derep {
 }
 
 process dada2_derep_se {
-    container "${container__dada2}"
+    container "${params.container__dada2}"
     label 'io_mem'
     errorStrategy "finish"
 
@@ -510,7 +511,7 @@ process dada2_derep_se {
 }
 
 process dada2_derep_pyro {
-    container "${container__dada2}"
+    container "${params.container__dada2}"
     label 'io_mem'
     errorStrategy "finish"
 
@@ -530,7 +531,7 @@ process dada2_derep_pyro {
 }
 
 process dada2_learn_error {
-    container "${container__dada2}"
+    container "${params.container__dada2}"
     label 'multithread'
     errorStrategy "finish"
     publishDir "${params.output}/sv/errM/${batch}", mode: 'copy'
@@ -563,7 +564,7 @@ process dada2_learn_error {
 }
 
 process dada2_learn_error_pyro {
-    container "${container__dada2}"
+    container "${params.container__dada2}"
     label 'multithread'
     errorStrategy "finish"
     publishDir "${params.output}/sv/errM/${batch}", mode: 'copy'
@@ -597,7 +598,7 @@ process dada2_learn_error_pyro {
 }
 
 process dada2_derep_batches {
-    container "${container__dada2}"
+    container "${params.container__dada2}"
     label 'io_mem'
     errorStrategy "finish"
 
@@ -622,7 +623,7 @@ process dada2_derep_batches {
 }
 
 process dada2_derep_batches_pyro {
-    container "${container__dada2}"
+    container "${params.container__dada2}"
     label 'io_mem'
     errorStrategy "finish"
 
@@ -645,7 +646,7 @@ process dada2_derep_batches_pyro {
 }
 
 process dada2_dada {
-    container "${container__dada2}"
+    container "${params.container__dada2}"
     label 'multithread'
     errorStrategy "finish"
 
@@ -666,7 +667,7 @@ process dada2_dada {
 }
 
 process dada2_dada_pyro {
-    container "${container__dada2}"
+    container "${params.container__dada2}"
     label 'multithread'
     errorStrategy "finish"
 
@@ -688,7 +689,7 @@ process dada2_dada_pyro {
 
 
 process dada2_demultiplex_dada {
-    container "${container__dada2}"
+    container "${params.container__dada2}"
     label 'io_mem'
     errorStrategy "finish"
 
@@ -714,7 +715,7 @@ process dada2_demultiplex_dada {
 }
 
 process dada2_merge {
-    container "${container__dada2}"
+    container "${params.container__dada2}"
     label 'multithread'
     errorStrategy "finish"
 
@@ -745,7 +746,7 @@ process dada2_merge {
 }
 
 process dada2_seqtab_sp {
-    container "${container__dada2}"
+    container "${params.container__dada2}"
     label 'io_mem'
     errorStrategy "finish"
 
@@ -767,7 +768,7 @@ process dada2_seqtab_sp {
 }
 
 process dada2_seqtab_combine_batch {
-    container "${container__fastcombineseqtab}"
+    container "${params.container__fastcombineseqtab}"
     label 'io_mem'
     errorStrategy "finish"
 
@@ -788,7 +789,7 @@ process dada2_seqtab_combine_batch {
 }
 
 process dada2_seqtab_combine_all {
-    container "${container__fastcombineseqtab}"
+    container "${params.container__fastcombineseqtab}"
     label 'io_mem'
     errorStrategy "finish"
 
@@ -810,7 +811,7 @@ process dada2_seqtab_combine_all {
 
 
 process dada2_remove_bimera {
-    container "${container__dada2}"
+    container "${params.container__dada2}"
     label 'mem_veryhigh'
     errorStrategy "finish"
     publishDir "${params.output}/sv/", mode: 'copy'
@@ -839,7 +840,7 @@ process dada2_remove_bimera {
 }
 
 process Dada2_convert_output {
-    container "${container__dada2pplacer}"
+    container "${params.container__dada2pplacer}"
     label 'io_mem'
     publishDir "${params.output}/sv/", mode: 'copy'
     errorStrategy "finish"
@@ -867,7 +868,7 @@ process Dada2_convert_output {
 }
 
 process goods_filter_seqtab {
-    container "${container__goodsfilter}"
+    container "${params.container__goodsfilter}"
     label 'io_mem'
     publishDir "${params.output}/sv/", mode: 'copy'
     errorStrategy "finish"
@@ -898,7 +899,7 @@ process goods_filter_seqtab {
 }
 
 process FastQC_PostFT {
-    container "${container__fastqc}"
+    container "${params.container__fastqc}"
     label 'io_limited'
     errorStrategy 'ignore'
     publishDir "${params.output}/sv/fastqc/", mode: 'copy'
