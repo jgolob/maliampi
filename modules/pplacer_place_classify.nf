@@ -525,7 +525,7 @@ process Dada2_convert_output {
     container "${container__dada2pplacer}"
     label 'io_mem'
     publishDir "${params.output}/sv/", mode: 'copy'
-    errorStrategy "retry"
+    errorStrategy 'retry'
 
     input:
         file(final_seqtab_csv)
@@ -548,7 +548,7 @@ process Extract_Taxonomy {
     container "${container__dada2pplacer}"
     label 'io_mem'
     publishDir "${params.output}/classify", mode: 'copy'
-    errorStrategy "ignore"
+    errorStrategy 'ignore'
 
     input:
         file (weights_csv)

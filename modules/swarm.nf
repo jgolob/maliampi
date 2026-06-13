@@ -124,7 +124,7 @@ workflow swarm_wf {
 process MergePairs {
     container "${container__vsearch}"
     label 'io_limited'
-    errorStrategy "ignore"
+    errorStrategy 'ignore'
 
     input:
         tuple val(specimen), file(R1), file(R2)
@@ -145,7 +145,7 @@ process MergePairs {
 process FilterAndTrim {
     container "${container__vsearch}"
     label 'io_limited'
-    errorStrategy "ignore"
+    errorStrategy 'ignore'
 
     input:
         tuple val(specimen), file(R1)
@@ -170,7 +170,7 @@ process FilterAndTrim {
 process SpecimenDereplicate {
     container "${container__vsearch}"
     label 'multithread'
-    errorStrategy "ignore"
+    errorStrategy 'ignore'
 
     input:
         tuple val(specimen), file(R1)
@@ -263,7 +263,7 @@ with gzip.open('sp_dsv_count.csv.gz', 'wt') as sdc_h:
 process Swarm {
     container "${container__swarm}"
     label 'multithread'
-    errorStrategy "ignore"
+    errorStrategy 'ignore'
 
     input:
         path (R1)
@@ -313,7 +313,7 @@ with gzip.open("swarm_seeds.no_singleton.fasta.gz", 'wt') as out_h:
 process ChimeraRemoval {
     container "${container__vsearch}"
     label 'io_limited'
-    errorStrategy "ignore"
+    errorStrategy 'ignore'
     publishDir "${params.output}/sv/", mode: 'copy'
 
     input:
