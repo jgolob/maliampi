@@ -179,8 +179,8 @@ workflow pplacer_place_classify_wf {
 }
 
 process AlignSV {
-    container = "${container__infernal}"
-    label = 'mem_veryhigh'
+    container "${container__infernal}"
+    label 'mem_veryhigh'
 
     input:
         path sv_fasta_f
@@ -203,8 +203,8 @@ process AlignSV {
 
 
 process CombineAln_SV_refpkg {
-    container = "${container__easel}"
-    label = 'mem_veryhigh'
+    container "${container__easel}"
+    label 'mem_veryhigh'
 
     input:
         file sv_aln_sto_f 
@@ -222,8 +222,8 @@ process CombineAln_SV_refpkg {
 }
 
 process PplacerPlacement {
-    container = "${container__pplacer}"
-    label = 'mem_veryhigh'
+    container "${container__pplacer}"
+    label 'mem_veryhigh'
 
     publishDir "${params.output}/placement", mode: 'copy'
 
@@ -245,8 +245,8 @@ process PplacerPlacement {
 }
 
 process PplacerReduplicate {
-    container = "${container__pplacer}"
-    label = 'io_limited'
+    container "${container__pplacer}"
+    label 'io_limited'
 
     publishDir "${params.output}/placement", mode: 'copy'
 
@@ -266,8 +266,8 @@ process PplacerReduplicate {
 }
 
 process PplacerADCL {
-    container = "${container__pplacer}"
-    label = 'io_limited'
+    container "${container__pplacer}"
+    label 'io_limited'
 
     publishDir "${params.output}/placement", mode: 'copy'
 
@@ -284,8 +284,8 @@ process PplacerADCL {
 }
 
 process PplacerEDPL {
-    container = "${container__pplacer}"
-    label = 'io_limited'
+    container "${container__pplacer}"
+    label 'io_limited'
 
     publishDir "${params.output}/placement", mode: 'copy'
 
@@ -301,11 +301,11 @@ process PplacerEDPL {
 }
 
 process PplacerPCA {
-    container = "${container__pplacer}"
-    label = 'io_limited'
+    container "${container__pplacer}"
+    label 'io_limited'
     afterScript "rm -r refpkg/"
     publishDir "${params.output}/placement", mode: 'copy'
-    errorStrategy = 'ignore'
+    errorStrategy 'ignore'
 
     input:
         file refpkg_tgz_f
@@ -328,8 +328,8 @@ process PplacerPCA {
 }
 
 process PplacerAlphaDiversity {
-    container = "${container__pplacer}"
-    label = 'io_limited'
+    container "${container__pplacer}"
+    label 'io_limited'
 
     publishDir "${params.output}/placement", mode: 'copy'
 
@@ -348,8 +348,8 @@ process PplacerAlphaDiversity {
 }
 
 process PplacerKR {
-    container = "${container__pplacer}"
-    label = 'io_limited'
+    container "${container__pplacer}"
+    label 'io_limited'
     afterScript "rm -r refpkg/"
     publishDir "${params.output}/placement", mode: 'copy'
 
@@ -370,8 +370,8 @@ process PplacerKR {
 }
 
 process ClassifyDB_Prep {
-    container = "${container__pplacer}"
-    label = 'io_limited'
+    container "${container__pplacer}"
+    label 'io_limited'
     afterScript "rm -r refpkg/"
     cache = false
 
@@ -393,8 +393,8 @@ process ClassifyDB_Prep {
 }
 
 process ClassifySV {
-    container = "${container__pplacer}"
-    label = 'mem_veryhigh'
+    container "${container__pplacer}"
+    label 'mem_veryhigh'
     afterScript "rm -r refpkg/"
     cache = false
 
@@ -431,8 +431,8 @@ process ClassifySV {
 }
 
 process ClassifyMCC {
-    container = "${container__pplacer}"
-    label = 'io_limited'
+    container "${container__pplacer}"
+    label 'io_limited'
     cache = false
     publishDir "${params.output}/classify", mode: 'copy'
 
@@ -451,8 +451,8 @@ process ClassifyMCC {
 }
 
 process ClassifyTables {
-    container = "${container__pplacer}"
-    label = 'io_limited'
+    container "${container__pplacer}"
+    label 'io_limited'
     publishDir "${params.output}/classify", mode: 'copy'
 
     input:
@@ -473,8 +473,8 @@ process ClassifyTables {
 }
 
 process SharetableToMapWeight {
-    container = "${container__fastatools}"
-    label = 'io_limited'
+    container "${container__fastatools}"
+    label 'io_limited'
     publishDir "${params.output}/sv", mode: 'copy'
 
     input:
@@ -485,7 +485,7 @@ process SharetableToMapWeight {
         file ("sv_weights.csv")
 
 """
-#!/usr/bin/env python
+#!/usr/bin/env python3
 import csv
 
 sp_count = {}
@@ -558,7 +558,7 @@ process Extract_Taxonomy {
         file "sv_taxonomy.csv"
 
 """
-#!/usr/bin/env python
+#!/usr/bin/env python3
 import csv
 import pandas as pd
 import sqlite3
@@ -590,8 +590,8 @@ sv_classification.to_csv("sv_taxonomy.csv", index=False)
 }
 
 process ExtractRefpkg {
-    container = "${container__fastatools}"
-    label = 'io_limited'
+    container "${container__fastatools}"
+    label 'io_limited'
     
     input:
         file refpkg_tgz_f
@@ -606,7 +606,7 @@ process ExtractRefpkg {
         path 'refpkg.cm', emit: cm
 
 """
-#!/usr/bin/env python
+#!/usr/bin/env python3
 import tarfile
 import json
 import os

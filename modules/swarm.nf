@@ -3,6 +3,8 @@
 //    Useful particularly for newer illumina reads with faked binned qual scores :/
 //
 nextflow.enable.dsl=2
+// LEGACY — alternative ASV method (swarm). Not part of the supported
+// 5-stage flow (sv→place→classify→stats). Kept for reference; unmaintained.
 
 container__swarm = "quay.io/biocontainers/swarm:3.1.2--h9f5acd7_0"
 container__vsearch = "quay.io/biocontainers/vsearch:2.22.1--hf1761c0_0"
@@ -190,8 +192,8 @@ process SpecimenDereplicate {
 }
 
 process MakeDSVforSwarm {
-    container = "${container__fastatools}"
-    label = 'io_mem'
+    container "${container__fastatools}"
+    label 'io_mem'
     
     input:
         path specimen_fasta
@@ -201,7 +203,7 @@ process MakeDSVforSwarm {
         path 'sp_dsv_count.csv.gz', emit: sp_dsv_count
 
 """
-#!/usr/bin/env python
+#!/usr/bin/env python3
 import gzip
 import fastalite
 from collections import defaultdict
@@ -283,8 +285,8 @@ process Swarm {
 }
 
 process RemoveGlobalSingleton {
-    container = "${container__fastatools}"
-    label = 'io_mem'
+    container "${container__fastatools}"
+    label 'io_mem'
     
     input:
         path swarm_seeds_fasta
@@ -293,7 +295,7 @@ process RemoveGlobalSingleton {
         path "swarm_seeds.no_singleton.fasta.gz"
 
 """
-#!/usr/bin/env python
+#!/usr/bin/env python3
 import gzip
 import fastalite
 import re
@@ -330,8 +332,8 @@ process ChimeraRemoval {
 }
 
 process SwarmToASV {
-    container = "${container__fastatools}"
-    label = 'io_mem'
+    container "${container__fastatools}"
+    label 'io_mem'
     publishDir "${params.output}/sv/", mode: 'copy'
 
     input:
@@ -344,7 +346,7 @@ process SwarmToASV {
         path 'sp_asv_long.csv.gz', emit: sp_asv_long
 
 """
-#!/usr/bin/env python
+#!/usr/bin/env python3
 import gzip
 import fastalite
 import csv
@@ -407,8 +409,8 @@ print("Percentage Kept", (reads_kept) / (reads_kept + reads_filtered) * 100)
 }
 
 process ConvertOutputs {
-    container = "${container__fastatools}"
-    label = 'io_mem'
+    container "${container__fastatools}"
+    label 'io_mem'
     publishDir "${params.output}/sv/", mode: 'copy'
     
     input:
@@ -422,7 +424,7 @@ process ConvertOutputs {
         path 'swarm_sv.weights.csv', emit: weights
 
 """
-#!/usr/bin/env python
+#!/usr/bin/env python3
 import gzip
 import pandas as pd
 import fastalite

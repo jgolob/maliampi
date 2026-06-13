@@ -3,6 +3,8 @@
 //  generate new KRD between each specimen-jplace and a collection of prior specimen-jplace
 //  Do not repeat pairwise for old-old or new-new. just old-new pairs
 //
+// LEGACY — standalone interval KR-distance utility. Not wired into the
+// 5-stage flow. Kept for reference; unmaintained.
 nextflow.enable.dsl=2
 
 // Parameters
@@ -26,8 +28,8 @@ workflow {
 }
 
 process Gappa_KRD_1t1 {
-    container = "${container__gappa}"
-    label = 'io_limited'
+    container "${container__gappa}"
+    label 'io_limited'
 
     input:
         path new_jplace
@@ -44,8 +46,8 @@ process Gappa_KRD_1t1 {
 }
 
 process CombineKRDLong {
-    container = "${container__gappa}"
-    label = 'io_limited'
+    container "${container__gappa}"
+    label 'io_limited'
     publishDir "${params.output}/", mode: 'copy'
 
     input:

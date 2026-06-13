@@ -169,7 +169,7 @@ workflow make_refpkg_wf {
 
 process RefpkgSearchRepo {
     container "${container__vsearch}"
-    label = 'multithread'
+    label 'multithread'
 
     input:
         path(sv_fasta_f)
@@ -198,8 +198,8 @@ process RefpkgSearchRepo {
 }
 
 process CombinedRefFilter {
-    container = "${container__fastatools}"
-    label = 'io_limited'
+    container "${container__fastatools}"
+    label 'io_limited'
 
     input:
         path(repo_recruit_f)
@@ -213,7 +213,7 @@ process CombinedRefFilter {
 
 
 """
-#!/usr/bin/env python
+#!/usr/bin/env python3
 import fastalite
 import csv
 import sqlite3
@@ -402,8 +402,8 @@ with open('references_seq_info.csv', 'wt') as si_out:
 
 
 process FilterSeqInfo {
-    container = "${container__fastatools}"
-    label = 'io_limited'
+    container "${container__fastatools}"
+    label 'io_limited'
 
     input:
         file (repo_recruits_f)
@@ -413,7 +413,7 @@ process FilterSeqInfo {
         file('refpkg.seq_info.csv')
 
     """
-    #!/usr/bin/env python
+    #!/usr/bin/env python3
     import fastalite
     import csv
 
@@ -430,8 +430,8 @@ process FilterSeqInfo {
 }
 
 process RemoveDroppedRecruits{
-    container = "${container__fastatools}"
-    label = 'io_limited'
+    container "${container__fastatools}"
+    label 'io_limited'
 
     input:
         path (recruits_fasta)
@@ -441,7 +441,7 @@ process RemoveDroppedRecruits{
         path('refpkg_recruits.fasta')
     
     """
-    #!/usr/bin/env python
+    #!/usr/bin/env python3
     import fastalite
     import csv
 
@@ -462,9 +462,9 @@ process RemoveDroppedRecruits{
 }
 
 process DlBuildTaxtasticDB {
-    container = "${container__taxtastic}"
-    label = 'io_net'
-    errorStrategy = 'finish'
+    container "${container__taxtastic}"
+    label 'io_net'
+    errorStrategy 'finish'
 
     output:
         file "taxonomy.db"
@@ -482,9 +482,9 @@ process DlBuildTaxtasticDB {
 }
 
 process BuildTaxtasticDB {
-    container = "${container__taxtastic}"
-    label = 'io_limited'
-    errorStrategy = 'finish'
+    container "${container__taxtastic}"
+    label 'io_limited'
+    errorStrategy 'finish'
 
     input:
         file taxdump_zip_f
@@ -498,8 +498,8 @@ process BuildTaxtasticDB {
 }
 
 process ConfirmSI {
-    container = "${container__taxtastic}"
-    label = 'io_mem'
+    container "${container__taxtastic}"
+    label 'io_mem'
 
     input:
         file taxonomy_db_f
@@ -518,8 +518,8 @@ process ConfirmSI {
 }
 
 process AlignRepoRecruits {
-    container = "${container__infernal}"
-    label = 'mem_veryhigh'
+    container "${container__infernal}"
+    label 'mem_veryhigh'
 
     input:
         file repo_recruits_f
@@ -538,9 +538,9 @@ process AlignRepoRecruits {
 }
 
 process ConvertAlnToFasta {
-    container = "${container__fastatools}"
-    label = 'io_limited'
-    errorStrategy "retry"
+    container "${container__fastatools}"
+    label 'io_limited'
+    errorStrategy 'retry'
 
     input: 
         file recruits_aln_sto_f
@@ -549,7 +549,7 @@ process ConvertAlnToFasta {
         file "recruits.aln.fasta"
     
     """
-    #!/usr/bin/env python
+    #!/usr/bin/env python3
     from Bio import AlignIO
 
     with open('recruits.aln.fasta', 'wt') as out_h:
@@ -565,9 +565,9 @@ process ConvertAlnToFasta {
 }
 
 process ConvertAlnToPhy {
-    container = "${container__fastatools}"
-    label = 'io_limited'
-    errorStrategy "finish"
+    container "${container__fastatools}"
+    label 'io_limited'
+    errorStrategy 'finish'
 
     input: 
         file recruits_aln_sto_f
@@ -576,7 +576,7 @@ process ConvertAlnToPhy {
         file "recruits.aln.phy"
     
     """
-    #!/usr/bin/env python
+    #!/usr/bin/env python3
     from Bio import AlignIO
 
     with open('recruits.aln.phy', 'wt') as out_h:
@@ -592,9 +592,9 @@ process ConvertAlnToPhy {
 }
 
 process RaxmlTreeNG {
-    container = "${container__raxmlng}"
-    label = 'mem_veryhigh'
-    errorStrategy = 'finish'
+    container "${container__raxmlng}"
+    label 'mem_veryhigh'
+    errorStrategy 'finish'
 
     input:
         path recruits_aln_fasta_f
@@ -623,9 +623,9 @@ process RaxmlTreeNG {
 }
 
 process RaxmlTree {
-    container = "${container__raxml}"
-    label = 'mem_veryhigh'
-    errorStrategy = 'retry'
+    container "${container__raxml}"
+    label 'mem_veryhigh'
+    errorStrategy 'retry'
 
     input:
         file recruits_aln_fasta_f
@@ -645,9 +645,9 @@ process RaxmlTree {
 }
 
 process RaxmlTree_cleanupInfo {
-    container = "${container__fastatools}"
-    label = 'io_limited'
-    errorStrategy = 'retry'
+    container "${container__fastatools}"
+    label 'io_limited'
+    errorStrategy 'retry'
 
     input:
         file "RAxML_info.unclean.refpkg"
@@ -657,7 +657,7 @@ process RaxmlTree_cleanupInfo {
 
 
 """
-#!/usr/bin/env python
+#!/usr/bin/env python3
 with open("RAxML_info.refpkg",'wt') as out_h:
     with open("RAxML_info.unclean.refpkg", 'rt') as in_h:
         past_cruft = False
@@ -670,9 +670,9 @@ with open("RAxML_info.refpkg",'wt') as out_h:
 }
 
 process TaxtableForSI {
-    container = "${container__taxtastic}"
-    label = 'io_limited'
-    errorStrategy = 'finish'
+    container "${container__taxtastic}"
+    label 'io_limited'
+    errorStrategy 'finish'
 
     input:
         file taxonomy_db_f 
@@ -688,8 +688,8 @@ process TaxtableForSI {
 }
 
 process ObtainCM {
-    container = "${container__infernal}"
-    label = 'io_net'
+    container "${container__infernal}"
+    label 'io_net'
 
     output:
         file "SSU_rRNA_bacteria.cm"
@@ -700,8 +700,8 @@ process ObtainCM {
 }
 
 process CombineRefpkg_ng {
-    container = "${container__taxtastic}"
-    label = 'io_mem'
+    container "${container__taxtastic}"
+    label 'io_mem'
 
     afterScript("rm -rf refpkg/*")
     publishDir "${params.output}/refpkg/", mode: 'copy'
@@ -759,8 +759,8 @@ gzip refpkg.tar
 }
 
 process CombineRefpkg_og {
-    container = "${container__pplacer}"
-    label = 'io_mem'
+    container "${container__pplacer}"
+    label 'io_mem'
 
     afterScript("rm -rf refpkg/*")
     publishDir "${params.output}/refpkg/", mode: 'copy'
@@ -794,8 +794,8 @@ process CombineRefpkg_og {
 }
 
 process AddRAxMLModel {
-    container = "${container__taxtastic}"
-    label = 'io_limited'
+    container "${container__taxtastic}"
+    label 'io_limited'
 
     input:
         path "refpkg.tgz"
@@ -803,7 +803,7 @@ process AddRAxMLModel {
     output:
         path 'refpkg.tar.gz'
 """
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import tarfile
 import json
@@ -825,7 +825,7 @@ process Dada2_convert_output {
     container "${container__dada2pplacer}"
     label 'io_mem'
     publishDir "${params.output}/sv/", mode: 'copy'
-    errorStrategy "retry"
+    errorStrategy 'retry'
 
     input:
         file(final_seqtab_csv)

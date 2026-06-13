@@ -102,3 +102,11 @@ ENV/
 # testing stuff
 *working/
 *Audit
+
+# Nextflow runtime
+.nextflow/
+.nextflow.log*
+.nextflow.pid
+work/
+output/
+results/

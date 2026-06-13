@@ -225,7 +225,7 @@ process output_failed {
         file ("failed_specimens.csv")
 
     """
-    #!/usr/bin/env python
+    #!/usr/bin/env python3
     import csv
     import re
     specimens = re.sub(r'\\[|\\]', "", "${specimens}").split(',')
