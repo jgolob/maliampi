@@ -501,9 +501,7 @@ svl[['sv', 'sv_sp', 'count']].drop_duplicates().to_csv(
 //
 
 include { read_manifest } from './manifest'
-include { output_failed } from './preprocess' addParams (
-    output: params.output
-)
+include { output_failed } from './preprocess'
 include { preprocess_wf } from './preprocess'
 params.manifest = null
 // Function which prints help message text
