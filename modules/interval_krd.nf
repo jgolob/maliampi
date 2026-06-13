@@ -56,6 +56,7 @@ process CombineKRDLong {
     output:
         path "interval_krd_long.csv.gz"
     
+    script:
 """
 #!/usr/bin/env python3
 import csv

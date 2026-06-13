@@ -206,6 +206,7 @@ process MakeDSVforSwarm {
         path 'dsv.fasta.gz', emit: dsv_fasta
         path 'sp_dsv_count.csv.gz', emit: sp_dsv_count
 
+    script:
 """
 #!/usr/bin/env python3
 import gzip
@@ -299,6 +300,7 @@ process RemoveGlobalSingleton {
     output:
         path "swarm_seeds.no_singleton.fasta.gz"
 
+    script:
 """
 #!/usr/bin/env python3
 import gzip
@@ -351,6 +353,7 @@ process SwarmToASV {
         path 'swarm_ASV.fasta.gz', emit: asv_fasta
         path 'sp_asv_long.csv.gz', emit: sp_asv_long
 
+    script:
 """
 #!/usr/bin/env python3
 import gzip
@@ -429,6 +432,7 @@ process ConvertOutputs {
         path 'swarm_sv.map.csv', emit: map
         path 'swarm_sv.weights.csv', emit: weights
 
+    script:
 """
 #!/usr/bin/env python3
 import gzip

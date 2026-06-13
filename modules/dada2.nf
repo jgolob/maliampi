@@ -243,9 +243,9 @@ workflow dada2_wf {
     // Flatten things back out to one-specimen-per-row for the paired end reads
     dada2_demultiplex_dada.out
         .flatMap{
-            br -> 
-            fl = [];
-            br[2].eachWithIndex{ 
+            br ->
+            def fl = [];
+            br[2].eachWithIndex{
                 it, i ->  fl.add([
                     br[2][i], // specimen
                     br[1], // readnum
@@ -259,20 +259,17 @@ workflow dada2_wf {
         .flatMap()
         .groupTuple(by: [0])
         .map { spr ->
-            r1_idx = spr[1].indexOf('R1')
-            r2_idx = spr[1].indexOf('R2')
+            def r1_idx = spr[1].indexOf('R1')
+            def r2_idx = spr[1].indexOf('R2')
             [
                 spr[0],  // specimen
                 spr[3][0], // batch
                 file(spr[2][r1_idx]), // dada_1
                 file(spr[2][r2_idx]), // dada_2
             ]}
-        .tap {
-            dada2_demultiplex_dada_for_pe;
-            dada2_demultiplex_dada_for_se
-        }
+        .set { dada2_demultiplex_dada_split }
 
-        dada2_demultiplex_dada_for_pe
+        dada2_demultiplex_dada_split
             .join(dada2_derep.out)
             .map {
                 [
@@ -285,8 +282,8 @@ workflow dada2_wf {
                 ]
             }
             .set { dada2_dada_sp_ch }
-    
-    dada2_demultiplex_dada_for_se
+
+    dada2_demultiplex_dada_split
         .join(
             dada2_derep_se.out.mix(
                 dada2_derep_pyro.out
@@ -534,7 +531,7 @@ process dada2_learn_error {
     container "${params.container__dada2}"
     label 'multithread'
     errorStrategy "finish"
-    publishDir "${params.output}/sv/errM/${batch}", mode: 'copy'
+    publishDir { "${params.output}/sv/errM/${batch}" }, mode: 'copy'
 
     input:
         tuple val(batch_specimens), val(batch), file(reads), val(read_num)
@@ -567,7 +564,7 @@ process dada2_learn_error_pyro {
     container "${params.container__dada2}"
     label 'multithread'
     errorStrategy "finish"
-    publishDir "${params.output}/sv/errM/${batch}", mode: 'copy'
+    publishDir { "${params.output}/sv/errM/${batch}" }, mode: 'copy'
 
     input:
         tuple val(batch_specimens), val(batch), file(reads), val(read_num)

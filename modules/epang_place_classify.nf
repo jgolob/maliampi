@@ -38,7 +38,7 @@ params.container__gappa = 'quay.io/biocontainers/gappa:0.7.1--h9a82719_1'
 include { Dada2_convert_output } from './dada2'
 
 workflow epang_place_classify_wf {
-    input:
+    take:
         sv_fasta_f
         refpkg_tgz_f
         sv_long_f
@@ -180,8 +180,8 @@ workflow epang_place_classify_wf {
 
 }
 process AlignSV {
-    container = "${params.container__infernal}"
-    label = 'mem_veryhigh'
+    container "${params.container__infernal}"
+    label 'mem_veryhigh'
 
     input:
         path sv_fasta_f
@@ -205,8 +205,8 @@ process AlignSV {
 
 
 process CombineAln_SV_refpkg {
-    container = "${params.container__easel}"
-    label = 'mem_veryhigh'
+    container "${params.container__easel}"
+    label 'mem_veryhigh'
 
     input:
         file sv_aln_sto_f 
@@ -225,8 +225,8 @@ process CombineAln_SV_refpkg {
 }
 
 process ConvertAlnToFasta {
-    container = "${params.container__fastatools}"
-    label = 'io_limited'
+    container "${params.container__fastatools}"
+    label 'io_limited'
     errorStrategy "retry"
 
     input: 
@@ -253,8 +253,8 @@ process ConvertAlnToFasta {
 }
 
 process ExtractRefpkg {
-    container = "${params.container__fastatools}"
-    label = 'io_limited'
+    container "${params.container__fastatools}"
+    label 'io_limited'
     
     input:
         file refpkg_tgz_f
@@ -268,6 +268,7 @@ process ExtractRefpkg {
         path 'taxonomy.csv', emit: taxonomy
         path 'refpkg.cm', emit: cm
 
+    script:
 """
 #!/usr/bin/env python
 import tarfile
@@ -401,8 +402,8 @@ with open('taxonomy.csv', 'wt') as leaf_h:
 
 
 process EPAngPlacement {
-    container = "${params.container__epang}"
-    label = 'mem_veryhigh'
+    container "${params.container__epang}"
+    label 'mem_veryhigh'
     publishDir "${params.output}/placement", mode: 'copy'
     input:
         file refpkg_aln_fasta
@@ -430,8 +431,8 @@ process EPAngPlacement {
 
 
 process MakeEPAngTaxonomy {
-    container = "${params.container__fastatools}"
-    label = 'io_limited'
+    container "${params.container__fastatools}"
+    label 'io_limited'
     publishDir "${params.output}/refpkg", mode: 'copy'
 
     input:
@@ -441,6 +442,7 @@ process MakeEPAngTaxonomy {
     output:
         path 'epang_taxon_file.tsv'
 
+    script:
 """
 #!/usr/bin/env python
 import csv
@@ -483,8 +485,8 @@ with open('epang_taxon_file.tsv', 'wt') as tf_h:
 }
 
 process Gappa_Classify {
-    container = "${params.container__gappa}"
-    label = 'mem_veryhigh'
+    container "${params.container__gappa}"
+    label 'mem_veryhigh'
     publishDir "${params.output}/classify", mode: 'copy'
     errorStrategy 'ignore'
 
@@ -526,6 +528,7 @@ process Make_Wide_Tax_Table {
         path "tables/taxon_wide_ra.${want_rank}.csv", emit: ra
         path "tables/taxon_wide_nreads.${want_rank}.csv", emit: nreads
 
+    script:
 """
 #!/usr/bin/env python
 import pandas as pd
@@ -594,6 +597,7 @@ process Gappa_Extract_Taxonomy {
         path "sv_taxonomy.csv"
         path refpkg_taxtable
 
+    script:
 """
 #!/usr/bin/env python
 import pandas as pd
@@ -657,8 +661,8 @@ sv_taxonomy.to_csv('sv_taxonomy.csv', index=None)
 }
 
 process EDPL {
-    container = "${params.container__gappa}"
-    label = 'multithread'
+    container "${params.container__gappa}"
+    label 'multithread'
     publishDir "${params.output}/placement", mode: 'copy'
     errorStrategy 'ignore' 
 
@@ -681,8 +685,8 @@ process EDPL {
 }
 
 process MakeSplit {
-    container = "${params.container__fastatools}"
-    label = 'io_limited'
+    container "${params.container__fastatools}"
+    label 'io_limited'
     publishDir "${params.output}/sv", mode: 'copy'
 
     input:
@@ -690,6 +694,7 @@ process MakeSplit {
     output:
         path 'sv_multiplicity.csv'
 
+    script:
 """
 #!/usr/bin/env python
 import csv
@@ -709,8 +714,8 @@ with open('${sv_long_f}', 'rt') as in_h, open('sv_multiplicity.csv', 'wt') as ou
 }
 
 process GappaSplit {
-    container = "${params.container__gappa}"
-    label = 'multithread'
+    container "${params.container__gappa}"
+    label 'multithread'
     publishDir "${params.output}/placement/", mode: 'copy'
 
     input:
@@ -737,8 +742,8 @@ process GappaSplit {
 }
 
 process Gappa_KRD {
-    container = "${params.container__gappa}"
-    label = 'mem_veryhigh'
+    container "${params.container__gappa}"
+    label 'mem_veryhigh'
     publishDir "${params.output}/placement/", mode: 'copy'
     errorStrategy 'ignore'
 
@@ -763,8 +768,8 @@ process Gappa_KRD {
 }
 
 process Gappa_ePCA {
-    container = "${params.container__gappa}"
-    label = 'mem_veryhigh'
+    container "${params.container__gappa}"
+    label 'mem_veryhigh'
     publishDir "${params.output}/placement/", mode: 'copy'
     errorStrategy 'ignore'
 
@@ -791,8 +796,8 @@ process Gappa_ePCA {
 }
 
 process PplacerADCL {
-    container = "${params.container__pplacer}"
-    label = 'io_limited'
+    container "${params.container__pplacer}"
+    label 'io_limited'
 
     publishDir "${params.output}/placement", mode: 'copy'
 
@@ -810,8 +815,8 @@ process PplacerADCL {
 }
 
 process PplacerEDPL {
-    container = "${params.container__pplacer}"
-    label = 'io_limited'
+    container "${params.container__pplacer}"
+    label 'io_limited'
 
     publishDir "${params.output}/placement", mode: 'copy'
 
@@ -828,11 +833,11 @@ process PplacerEDPL {
 }
 
 process PplacerPCA {
-    container = "${params.container__pplacer}"
-    label = 'io_limited'
+    container "${params.container__pplacer}"
+    label 'io_limited'
     afterScript "rm -r refpkg/"
     publishDir "${params.output}/placement", mode: 'copy'
-    errorStrategy = 'ignore'
+    errorStrategy 'ignore'
 
     input:
         file refpkg_tgz_f
@@ -856,8 +861,8 @@ process PplacerPCA {
 }
 
 process PplacerAlphaDiversity {
-    container = "${params.container__pplacer}"
-    label = 'io_limited'
+    container "${params.container__pplacer}"
+    label 'io_limited'
 
     input:
         path jplace_f
@@ -873,8 +878,8 @@ process PplacerAlphaDiversity {
 }
 
 process CombineSpAd {
-    container = "${params.container__fastatools}"
-    label = 'io_limited'
+    container "${params.container__fastatools}"
+    label 'io_limited'
     publishDir "${params.output}/placement", mode: 'copy'
 
     input:
@@ -883,6 +888,7 @@ process CombineSpAd {
     output:
         path "alpha_diversity.csv.gz"
     
+    script:
 """
 #!/usr/bin/env python
 import csv
@@ -907,8 +913,8 @@ with gzip.open('alpha_diversity.csv.gz', 'wt') as out_h:
 
 
 process PplacerKR {
-    container = "${params.container__pplacer}"
-    label = 'io_limited'
+    container "${params.container__pplacer}"
+    label 'io_limited'
     afterScript "rm -r refpkg/"
     publishDir "${params.output}/placement", mode: 'copy'
 
@@ -930,10 +936,10 @@ process PplacerKR {
 }
 
 process ClassifyDB_Prep {
-    container = "${params.container__pplacer}"
-    label = 'io_limited'
+    container "${params.container__pplacer}"
+    label 'io_limited'
     afterScript "rm -r refpkg/"
-    cache = false
+    cache false
 
     input:
         file refpkg_tgz_f
@@ -954,10 +960,10 @@ process ClassifyDB_Prep {
 }
 
 process ClassifySV {
-    container = "${params.container__pplacer}"
-    label = 'mem_veryhigh'
+    container "${params.container__pplacer}"
+    label 'mem_veryhigh'
     afterScript "rm -r refpkg/"
-    cache = false
+    cache false
 
     input:
         file refpkg_tgz_f
@@ -993,9 +999,9 @@ process ClassifySV {
 }
 
 process ClassifyMCC {
-    container = "${params.container__pplacer}"
-    label = 'io_limited'
-    cache = false
+    container "${params.container__pplacer}"
+    label 'io_limited'
+    cache false
     publishDir "${params.output}/classify", mode: 'copy'
 
     input:
@@ -1014,8 +1020,8 @@ process ClassifyMCC {
 }
 
 process ClassifyTables {
-    container = "${params.container__pplacer}"
-    label = 'io_limited'
+    container "${params.container__pplacer}"
+    label 'io_limited'
     publishDir "${params.output}/classify", mode: 'copy'
 
     input:
@@ -1037,8 +1043,8 @@ process ClassifyTables {
 }
 
 process WeightMaptoLong {
-    container = "${params.container__fastatools}"
-    label = 'io_limited'
+    container "${params.container__fastatools}"
+    label 'io_limited'
     publishDir "${params.output}/sv", mode: 'copy'
 
     input:
@@ -1048,6 +1054,7 @@ process WeightMaptoLong {
     output:
         path ("sp_sv_long.csv")
 
+    script:
 """
 #!/usr/bin/env python
 import csv
@@ -1078,8 +1085,8 @@ with open('${weight}', 'rt') as w_h, open("sp_sv_long.csv", 'wt') as sv_long_h:
 }
 
 process SharetableToMapWeight {
-    container = "${params.container__fastatools}"
-    label = 'io_limited'
+    container "${params.container__fastatools}"
+    label 'io_limited'
     publishDir "${params.output}/sv", mode: 'copy'
 
     input:
@@ -1090,6 +1097,7 @@ process SharetableToMapWeight {
         path ("sv_weights.csv"), emit: sv_weights
         path ("sp_sv_long.csv"), emit: sp_sv_long
 
+    script:
 """
 #!/usr/bin/env python
 import csv
@@ -1158,6 +1166,7 @@ process Extract_Taxonomy {
     output:
         file "sv_taxonomy.csv"
 
+    script:
 """
 #!/usr/bin/env python
 import csv

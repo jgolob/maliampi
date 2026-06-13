@@ -33,7 +33,7 @@ params.container__easel = 'quay.io/biocontainers/easel:0.47--h516909a_0'
 
 
 workflow pplacer_place_classify_wf {
-    input:
+    take:
         sv_fasta_f
         refpkg_tgz_f
         sv_weights_f
@@ -226,6 +226,7 @@ process CombineAln_SV_refpkg {
 process PplacerPlacement {
     container "${params.container__pplacer}"
     label 'mem_veryhigh'
+    afterScript 'rm -rf refpkg/'
 
     publishDir "${params.output}/placement", mode: 'copy'
 
@@ -234,8 +235,7 @@ process PplacerPlacement {
         file refpkg_tgz_f
     output:
         file 'dedup.jplace'
-    
-    afterScript "rm -rf refpkg/"
+
     script:
     """
     mkdir -p refpkg/ &&
@@ -381,8 +381,8 @@ process PplacerKR {
 process ClassifyDB_Prep {
     container "${params.container__pplacer}"
     label 'io_limited'
-    afterScript "rm -r refpkg/"
-    cache = false
+    afterScript 'rm -r refpkg/'
+    cache false
 
     input:
         file refpkg_tgz_f
@@ -405,8 +405,8 @@ process ClassifyDB_Prep {
 process ClassifySV {
     container "${params.container__pplacer}"
     label 'mem_veryhigh'
-    afterScript "rm -r refpkg/"
-    cache = false
+    afterScript 'rm -r refpkg/'
+    cache false
 
     input:
         file refpkg_tgz_f
@@ -444,7 +444,7 @@ process ClassifySV {
 process ClassifyMCC {
     container "${params.container__pplacer}"
     label 'io_limited'
-    cache = false
+    cache false
     publishDir "${params.output}/classify", mode: 'copy'
 
     input:
@@ -497,6 +497,7 @@ process SharetableToMapWeight {
         file ("sv_sp_map.csv")
         file ("sv_weights.csv")
 
+    script:
 """
 #!/usr/bin/env python3
 import csv
@@ -571,6 +572,7 @@ process Extract_Taxonomy {
     output:
         file "sv_taxonomy.csv"
 
+    script:
 """
 #!/usr/bin/env python3
 import csv
@@ -619,6 +621,7 @@ process ExtractRefpkg {
         path 'taxonomy.csv', emit: taxonomy
         path 'refpkg.cm', emit: cm
 
+    script:
 """
 #!/usr/bin/env python3
 import tarfile

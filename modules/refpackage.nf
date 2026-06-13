@@ -18,7 +18,7 @@ params.container__raxml = "quay.io/biocontainers/raxml:8.2.4--h779adbc_4"
 params.rfam = false
 
 workflow make_refpkg_wf {
-    input:
+    take:
         sv_fasta_f
 
     main:
@@ -213,6 +213,7 @@ process CombinedRefFilter {
         path "references_seq_info.csv", emit: recruit_si
 
 
+    script:
 """
 #!/usr/bin/env python3
 import fastalite
@@ -468,12 +469,10 @@ process DlBuildTaxtasticDB {
     container "${params.container__taxtastic}"
     label 'io_net'
     errorStrategy 'finish'
+    afterScript 'rm -rf dl/'
 
     output:
         file "taxonomy.db"
-
-    afterScript "rm -rf dl/"
-
 
     script:
     """
@@ -667,6 +666,7 @@ process RaxmlTree_cleanupInfo {
         file "RAxML_info.refpkg"
 
 
+    script:
 """
 #!/usr/bin/env python3
 with open("RAxML_info.refpkg",'wt') as out_h:
@@ -732,6 +732,7 @@ process CombineRefpkg_ng {
     output:
         path "refpkg.tar.gz"
     
+    script:
 """
 taxit create --locus 16S \
 --package-name refpkg \
@@ -816,6 +817,7 @@ process AddRAxMLModel {
         path raxml_ng_model
     output:
         path 'refpkg.tar.gz'
+    script:
 """
 #!/usr/bin/env python3
 
