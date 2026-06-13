@@ -469,7 +469,7 @@ process DlBuildTaxtasticDB {
     container "${params.container__taxtastic}"
     label 'io_net'
     errorStrategy 'finish'
-    afterScript 'rm -rf dl/'
+    afterScript 'rm -rf dl/ || true'
 
     output:
         file "taxonomy.db"
@@ -716,7 +716,7 @@ process CombineRefpkg_ng {
     container "${params.container__taxtastic}"
     label 'io_mem'
 
-    afterScript("rm -rf refpkg/*")
+    afterScript 'rm -rf refpkg/* || true'
     publishDir "${params.output}/refpkg/", mode: 'copy'
 
     input:
@@ -776,7 +776,7 @@ process CombineRefpkg_og {
     container "${params.container__pplacer}"
     label 'io_mem'
 
-    afterScript("rm -rf refpkg/*")
+    afterScript 'rm -rf refpkg/* || true'
     publishDir "${params.output}/refpkg/", mode: 'copy'
 
     input:

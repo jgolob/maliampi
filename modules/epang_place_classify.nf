@@ -835,7 +835,7 @@ process PplacerEDPL {
 process PplacerPCA {
     container "${params.container__pplacer}"
     label 'io_limited'
-    afterScript "rm -r refpkg/"
+    afterScript 'rm -r refpkg/ || true'
     publishDir "${params.output}/placement", mode: 'copy'
     errorStrategy 'ignore'
 
@@ -915,7 +915,7 @@ with gzip.open('alpha_diversity.csv.gz', 'wt') as out_h:
 process PplacerKR {
     container "${params.container__pplacer}"
     label 'io_limited'
-    afterScript "rm -r refpkg/"
+    afterScript 'rm -r refpkg/ || true'
     publishDir "${params.output}/placement", mode: 'copy'
 
     input:
@@ -938,7 +938,7 @@ process PplacerKR {
 process ClassifyDB_Prep {
     container "${params.container__pplacer}"
     label 'io_limited'
-    afterScript "rm -r refpkg/"
+    afterScript 'rm -r refpkg/ || true'
     cache false
 
     input:
@@ -962,7 +962,7 @@ process ClassifyDB_Prep {
 process ClassifySV {
     container "${params.container__pplacer}"
     label 'mem_veryhigh'
-    afterScript "rm -r refpkg/"
+    afterScript 'rm -r refpkg/ || true'
     cache false
 
     input:

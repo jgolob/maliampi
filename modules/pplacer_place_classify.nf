@@ -226,7 +226,7 @@ process CombineAln_SV_refpkg {
 process PplacerPlacement {
     container "${params.container__pplacer}"
     label 'mem_veryhigh'
-    afterScript 'rm -rf refpkg/'
+    afterScript 'rm -rf refpkg/ || true'
 
     publishDir "${params.output}/placement", mode: 'copy'
 
@@ -309,7 +309,7 @@ process PplacerEDPL {
 process PplacerPCA {
     container "${params.container__pplacer}"
     label 'io_limited'
-    afterScript "rm -r refpkg/"
+    afterScript 'rm -r refpkg/ || true'
     publishDir "${params.output}/placement", mode: 'copy'
     errorStrategy 'ignore'
 
@@ -358,7 +358,7 @@ process PplacerAlphaDiversity {
 process PplacerKR {
     container "${params.container__pplacer}"
     label 'io_limited'
-    afterScript "rm -r refpkg/"
+    afterScript 'rm -r refpkg/ || true'
     publishDir "${params.output}/placement", mode: 'copy'
 
     input:
@@ -381,7 +381,7 @@ process PplacerKR {
 process ClassifyDB_Prep {
     container "${params.container__pplacer}"
     label 'io_limited'
-    afterScript 'rm -r refpkg/'
+    afterScript 'rm -r refpkg/ || true'
     cache false
 
     input:
@@ -405,7 +405,7 @@ process ClassifyDB_Prep {
 process ClassifySV {
     container "${params.container__pplacer}"
     label 'mem_veryhigh'
-    afterScript 'rm -r refpkg/'
+    afterScript 'rm -r refpkg/ || true'
     cache false
 
     input:
