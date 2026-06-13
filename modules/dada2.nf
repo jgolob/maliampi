@@ -390,6 +390,7 @@ process dada2_ft {
     
     output:
         tuple val(specimen), val(batch), file("${R1.getSimpleName()}.R1.dada2.ft.fq.gz"), file("${R2.getSimpleName()}.R2.dada2.ft.fq.gz")
+    script:
     """
     #!/usr/bin/env Rscript
     library('dada2'); 
@@ -419,6 +420,7 @@ process dada2_ft_se {
     
     output:
         tuple val(specimen), val(batch), file("${R1.getSimpleName()}.dada2.ft.fq.gz")
+    script:
     """
     #!/usr/bin/env Rscript
     library('dada2'); 
@@ -447,6 +449,7 @@ process dada2_ft_pyro {
     
     output:
         tuple val(specimen), val(batch), file("${R1.getSimpleName()}.dada2.ft.fq.gz")
+    script:
     """
     #!/usr/bin/env Rscript
     library('dada2'); 
@@ -475,6 +478,7 @@ process dada2_derep {
     output:
         tuple val(specimen), val(batch), file("${specimen}.R1.dada2.ft.derep.rds"), file("${specimen}.R2.dada2.ft.derep.rds")
     
+    script:
     """
     #!/usr/bin/env Rscript
     library('dada2');
@@ -496,6 +500,7 @@ process dada2_derep_se {
     output:
         tuple val(specimen), val(batch), file("${specimen}.dada2.ft.derep.rds")
     
+    script:
     """
     #!/usr/bin/env Rscript
     library('dada2');
@@ -515,6 +520,7 @@ process dada2_derep_pyro {
     output:
         tuple val(specimen), val(batch), file("${specimen}.dada2.ft.derep.rds")
     
+    script:
     """
     #!/usr/bin/env Rscript
     library('dada2');
@@ -535,6 +541,7 @@ process dada2_learn_error {
     output:
         tuple val(batch), val(read_num), file("${batch}.${read_num}.errM.rds"), file("${batch}.${read_num}.errM.csv")
 
+    script:
     """
     #!/usr/bin/env Rscript
     library('dada2');
@@ -567,6 +574,7 @@ process dada2_learn_error_pyro {
     output:
         tuple val(batch), val(read_num), file("${batch}.${read_num}.errM.rds"), file("${batch}.${read_num}.errM.csv")
 
+    script:
     """
     #!/usr/bin/env Rscript
     library('dada2');
@@ -599,6 +607,7 @@ process dada2_derep_batches {
     output:
         tuple val(batch), val(read_num), val(specimens), file("${batch}_${read_num}_derep.rds"), val(errM), val(dada_fns)
     
+    script:
     """
     #!/usr/bin/env Rscript
     library('dada2');
@@ -623,6 +632,7 @@ process dada2_derep_batches_pyro {
     output:
         tuple val(batch), val(read_num), val(specimens), file("${batch}_${read_num}_derep.rds"), val(errM), val(dada_fns)
     
+    script:
     """
     #!/usr/bin/env Rscript
     library('dada2');
@@ -644,6 +654,7 @@ process dada2_dada {
 
     output:
         tuple val(batch), val(read_num), val(specimens), file("${batch}_${read_num}_dada.rds"), val(dada_fns)
+    script:
     """
     #!/usr/bin/env Rscript
     library('dada2');
@@ -664,6 +675,7 @@ process dada2_dada_pyro {
 
     output:
         tuple val(batch), val(read_num), val(specimens), file("${batch}_${read_num}_dada.rds"), val(dada_fns)
+    script:
     """
     #!/usr/bin/env Rscript
     library('dada2');
@@ -686,6 +698,7 @@ process dada2_demultiplex_dada {
     output:
         tuple val(batch), val(read_num), val(specimens), file(dada_fns)
 
+    script:
     """
     #!/usr/bin/env Rscript
     library('dada2');
@@ -711,6 +724,7 @@ process dada2_merge {
     output:
         tuple val(batch), val(specimen), file("${specimen}.dada2.merged.rds")
     
+    script:
     """
     #!/usr/bin/env Rscript
     library('dada2');
@@ -741,6 +755,7 @@ process dada2_seqtab_sp {
     output:
         tuple val(batch), val(specimen), file("${specimen}.dada2.seqtab.rds")
 
+    script:
     """
     #!/usr/bin/env Rscript
     library('dada2');
@@ -762,6 +777,7 @@ process dada2_seqtab_combine_batch {
     output:
         file("${batch}.dada2.seqtabs.rds")
 
+    script:
     """
     set -e
 
@@ -782,6 +798,7 @@ process dada2_seqtab_combine_all {
     output:
         file("combined.dada2.seqtabs.rds")
 
+    script:
     """
     set -e
 
@@ -837,6 +854,7 @@ process Dada2_convert_output {
         path "dada2.specimen.sv.long.csv", emit: sv_long
         path "dada2.sv.shared.txt", emit: sharetable
 
+    script:
     """
     dada2-seqtab-to-pplacer \
     -s ${final_seqtab_csv} \
@@ -863,6 +881,7 @@ process goods_filter_seqtab {
         path "curves/*_collector.csv"
 
 
+    script:
     """
     set -e 
 
@@ -890,6 +909,7 @@ process FastQC_PostFT {
     output:
         tuple val(specimen), val(batch), val(read), path("PostFT__${specimen}__${read}_fastqc.html"), path("PostFT__${specimen}__${read}_fastqc.zip")
     
+    script:
     """
     set -e
 

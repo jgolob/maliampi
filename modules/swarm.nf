@@ -131,6 +131,7 @@ process MergePairs {
     
     output:
         tuple val(specimen), file("${specimen}.merged.fastq.gz")
+    script:
     """
     vsearch --fastq_mergepairs \
     ${R1} --reverse ${R2} \
@@ -152,6 +153,7 @@ process FilterAndTrim {
     
     output:
         tuple val(specimen), file("${specimen}.filtered.fasta.gz")
+    script:
     """
     vsearch --fastq_filter \
     ${R1} \
@@ -177,6 +179,7 @@ process SpecimenDereplicate {
     
     output:
         tuple val(specimen), file("${specimen}.derep.fasta.gz")
+    script:
     """
     vsearch --derep_fulllength \
     ${R1} \
@@ -271,6 +274,7 @@ process Swarm {
     output:
         path 'swarm_seeds.fasta.gz', emit: swarm_seeds_fasta
         path 'swarm_clusters.txt', emit: swarm_clusters
+    script:
     """
     zcat ${R1} | \
     swarm \
@@ -321,6 +325,7 @@ process ChimeraRemoval {
     
     output:
         file("swarm.seeds_nochimera.fasta.gz")
+    script:
     """
     vsearch --uchime3_denovo \
     ${R1} \

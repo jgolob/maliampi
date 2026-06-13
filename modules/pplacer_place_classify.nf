@@ -191,6 +191,7 @@ process AlignSV {
         path "sv.aln.scores"
         
     
+    script:
     """
     cmalign \
     --cpu ${task.cpus} --noprob --dnaout --mxsize ${params.cmalign_mxsize} \
@@ -214,6 +215,7 @@ process CombineAln_SV_refpkg {
     output:
         file "sv_refpkg.aln.sto"
     
+    script:
     """
     esl-alimerge --dna \
      -o sv_refpkg.aln.sto \
@@ -234,6 +236,7 @@ process PplacerPlacement {
         file 'dedup.jplace'
     
     afterScript "rm -rf refpkg/"
+    script:
     """
     mkdir -p refpkg/ &&
     tar xzvf ${refpkg_tgz_f} --no-overwrite-dir -C ./refpkg &&
@@ -256,6 +259,7 @@ process PplacerReduplicate {
     output:
         file 'redup.jplace.gz'
     
+    script:
     """
     guppy redup -m \
     -o /dev/stdout \
@@ -276,6 +280,7 @@ process PplacerADCL {
     output:
         file 'adcl.csv.gz'
     
+    script:
     """
     (echo name,adcl,weight && 
     guppy adcl --no-collapse ${dedup_jplace_f} -o /dev/stdout) | 
@@ -294,6 +299,7 @@ process PplacerEDPL {
     output:
         file 'edpl.csv.gz'
     
+    script:
     """
     (echo name,edpl && guppy edpl --csv ${dedup_jplace_f} -o /dev/stdout) | 
     gzip > edpl.csv.gz
@@ -319,6 +325,7 @@ process PplacerPCA {
         file 'pca/lpca.xml'
         file 'pca/lpca.trans'
     
+    script:
     """
     mkdir -p refpkg/ && mkdir -p pca/
     tar xzvf ${refpkg_tgz_f} --no-overwrite-dir -C refpkg/ &&
@@ -340,6 +347,7 @@ process PplacerAlphaDiversity {
         file 'alpha_diversity.csv.gz'
 
     
+    script:
     """
     guppy fpd --csv --include-pendant --chao-d 0,1,1.00001,2,3,4,5 \
     ${dedup_jplace_f}:${sv_map_f} |
@@ -361,6 +369,7 @@ process PplacerKR {
         file 'kr_distance.csv.gz'
 
     
+    script:
     """
     mkdir -p refpkg/
     tar xzvf ${refpkg_tgz_f} --no-overwrite-dir -C refpkg/
@@ -383,6 +392,7 @@ process ClassifyDB_Prep {
         file 'classify.prep.db'
     
 
+    script:
     """
     mkdir -p refpkg/
     tar xzvf ${refpkg_tgz_f} --no-overwrite-dir -C refpkg/
@@ -407,6 +417,7 @@ process ClassifySV {
     output:
         file 'classify.classified.db'
 
+    script:
     """
     mkdir -p refpkg/
     tar xzvf ${refpkg_tgz_f} --no-overwrite-dir -C refpkg/
@@ -443,6 +454,7 @@ process ClassifyMCC {
     output:
         file 'classify.mcc.db'
 
+    script:
     """
     multiclass_concat.py -k \
     --dedup-info ${sv_weights_f} ${classifyDB_classified}
@@ -461,6 +473,7 @@ process ClassifyTables {
     output:
         tuple val(rank), file("tables/by_specimen.${rank}.csv"), file("tables/by_taxon.${rank}.csv"), file("tables/tallies_wide.${rank}.csv")
 
+    script:
     """
     mkdir -p tables/
     classif_table.py ${classifyDB_mcc} \
@@ -535,6 +548,7 @@ process Dada2_convert_output {
         file "dada2.sv.map.csv"
         file "dada2.sv.weights.csv"
 
+    script:
     """
     dada2-seqtab-to-pplacer \
     -s ${final_seqtab_csv} \

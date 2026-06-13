@@ -182,6 +182,7 @@ process RefpkgSearchRepo {
         path "${repo_fasta}.vsearch.log", emit: log
         
 
+    script:
     """
     vsearch \
     --threads=${task.cpus} \
@@ -412,6 +413,7 @@ process FilterSeqInfo {
     output:
         file('refpkg.seq_info.csv')
 
+    script:
     """
     #!/usr/bin/env python3
     import fastalite
@@ -440,6 +442,7 @@ process RemoveDroppedRecruits{
     output:
         path('refpkg_recruits.fasta')
     
+    script:
     """
     #!/usr/bin/env python3
     import fastalite
@@ -472,6 +475,7 @@ process DlBuildTaxtasticDB {
     afterScript "rm -rf dl/"
 
 
+    script:
     """
     set -e
 
@@ -492,6 +496,7 @@ process BuildTaxtasticDB {
     output:
         file "taxonomy.db"
 
+    script:
     """
     taxit new_database taxonomy.db -z ${taxdump_zip_f}
     """
@@ -508,6 +513,7 @@ process ConfirmSI {
     output:
         file "${refpkg_si_f.baseName}.corr.csv"
     
+    script:
     """
     taxit update_taxids \
     ${refpkg_si_f} \
@@ -529,6 +535,7 @@ process AlignRepoRecruits {
         file "recruits.aln.sto"
         file "recruits.aln.scores" 
     
+    script:
     """
     cmalign \
     --cpu ${task.cpus} --noprob --dnaout --mxsize ${params.cmalign_mxsize} \
@@ -548,6 +555,7 @@ process ConvertAlnToFasta {
     output:
         file "recruits.aln.fasta"
     
+    script:
     """
     #!/usr/bin/env python3
     from Bio import AlignIO
@@ -575,6 +583,7 @@ process ConvertAlnToPhy {
     output:
         file "recruits.aln.phy"
     
+    script:
     """
     #!/usr/bin/env python3
     from Bio import AlignIO
@@ -604,6 +613,7 @@ process RaxmlTreeNG {
         path "refpkg.raxml.log", emit: log
         path "refpkg.raxml.bestModel", emit: model
     
+    script:
     """
     raxml-ng \
     --parse \
@@ -634,6 +644,7 @@ process RaxmlTree {
         file "RAxML_bestTree.refpkg"
         file "RAxML_info.refpkg"
     
+    script:
     """
     raxmlHPC-PTHREADS-AVX2 \
     -n refpkg \
@@ -680,6 +691,7 @@ process TaxtableForSI {
     output:
         file "refpkg.taxtable.csv"
 
+    script:
     """
     taxit taxtable ${taxonomy_db_f} \
     --seq-info ${refpkg_si_corr_f} \
@@ -694,6 +706,7 @@ process ObtainCM {
     output:
         file "SSU_rRNA_bacteria.cm"
     
+    script:
     """
     wget http://rfam.xfam.org/family/RF00177/cm -O SSU_rRNA_bacteria.cm 
     """
@@ -777,6 +790,7 @@ process CombineRefpkg_og {
     output:
         file "refpkg.tar.gz"
     
+    script:
     """
     taxit create --locus 16S \
     --package-name refpkg \
@@ -835,6 +849,7 @@ process Dada2_convert_output {
         file "dada2.sv.map.csv"
         file "dada2.sv.weights.csv"
 
+    script:
     """
     dada2-seqtab-to-pplacer \
     -s ${final_seqtab_csv} \

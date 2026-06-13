@@ -38,6 +38,7 @@ process Gappa_KRD_1t1 {
         path "v${new_jplace.name.replace('.jplace.gz', '')}.krd_long.csv"
 
     
+    script:
     """
     interval_krd.py \
     --new-jplace ${new_jplace} \

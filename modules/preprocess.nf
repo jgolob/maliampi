@@ -117,6 +117,7 @@ process FastQC_Raw {
     output:
         tuple val(specimen), val(batch), val(read), path("Raw__${specimen}__${read}_fastqc.html"), path("Raw__${specimen}__${read}_fastqc.zip")
     
+    script:
     """
     set -e
 
@@ -137,6 +138,7 @@ process TrimGalore {
     output:
     tuple val(specimen), val(batch), file("${specimen}.R1.tg.fastq.gz"), file("${specimen}.R2.tg.fastq.gz")
 
+    script:
     """
     set -e
 
@@ -169,6 +171,7 @@ process barcodecop {
     output:
     tuple val(specimen), val(batch), file("${R1.getSimpleName()}.bcc.fq.gz"), file("${R2.getSimpleName()}.bcc.fq.gz")
 
+    script:
     """
     set -e
 
@@ -196,6 +199,7 @@ process TrimGaloreSE {
     output:
     tuple val(specimen), val(batch), file("${specimen}.R1.tg.fastq.gz")
 
+    script:
     """
     set -e
 
@@ -224,6 +228,7 @@ process output_failed {
     output:
         file ("failed_specimens.csv")
 
+    script:
     """
     #!/usr/bin/env python3
     import csv
