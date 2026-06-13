@@ -23,7 +23,7 @@ jobs:
           sudo swapoff -a
           sudo rm -f /swapfile
           sudo apt clean
-          docker rmi $(docker image ls -aq)
+          docker rmi $(docker image ls -aq) || true
           df -h
       - name:  Run maliampi (full workflow)
         run: |
@@ -68,7 +68,7 @@ jobs:
           sudo swapoff -a
           sudo rm -f /swapfile
           sudo apt clean
-          docker rmi $(docker image ls -aq)
+          docker rmi $(docker image ls -aq) || true
           df -h
       - name:  Run maliampi-dada2 (dada2 workflow)
         run: |
@@ -99,7 +99,7 @@ jobs:
           sudo swapoff -a
           sudo rm -f /swapfile
           sudo apt clean
-          docker rmi $(docker image ls -aq)
+          docker rmi $(docker image ls -aq) || true
           df -h
       - name:  Run maliampi-swarm (swarm workflow)
         run: |
@@ -131,7 +131,7 @@ jobs:
           sudo swapoff -a
           sudo rm -f /swapfile
           sudo apt clean
-          docker rmi $(docker image ls -aq)
+          docker rmi $(docker image ls -aq) || true
           df -h
       - name:  Run maliampi-refpkg (Reference Package Workflow)
         run: |
@@ -159,7 +159,7 @@ jobs:
           sudo swapoff -a
           sudo rm -f /swapfile
           sudo apt clean
-          docker rmi $(docker image ls -aq)
+          docker rmi $(docker image ls -aq) || true
           df -h
       - name:  Run maliampi-pplacer (placement and classification)
         run: |
@@ -195,7 +195,7 @@ jobs:
           sudo swapoff -a
           sudo rm -f /swapfile
           sudo apt clean
-          docker rmi $(docker image ls -aq)
+          docker rmi $(docker image ls -aq) || true
           df -h          
       - name:  Run maliampi-epang (placement and classification)
         run: |
@@ -228,7 +228,7 @@ jobs:
           sudo swapoff -a
           sudo rm -f /swapfile
           sudo apt clean
-          docker rmi $(docker image ls -aq)
+          docker rmi $(docker image ls -aq) || true
           df -h          
       - name:  Run maliampi-epang-seqtable (placement and classification)
         run: |
@@ -261,7 +261,7 @@ jobs:
           sudo swapoff -a
           sudo rm -f /swapfile
           sudo apt clean
-          docker rmi $(docker image ls -aq)
+          docker rmi $(docker image ls -aq) || true
           df -h          
       - name:  Run maliampi-epang-sharetable (placement and classification)
         run: |
