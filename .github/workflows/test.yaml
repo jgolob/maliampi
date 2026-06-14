@@ -5,11 +5,15 @@ on: [push, pull_request]
 jobs:
 
   complete_workflow:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     env:
       NXF_ANSI_LOG: 0
     steps:
       - uses: actions/checkout@v1
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
       - name: Install Nextflow
         run: |
           wget -qO- get.nextflow.io | bash
@@ -19,7 +23,7 @@ jobs:
           sudo swapoff -a
           sudo rm -f /swapfile
           sudo apt clean
-          docker rmi $(docker image ls -aq)
+          docker rmi $(docker image ls -aq) || true
           df -h
       - name:  Run maliampi (full workflow)
         run: |
@@ -46,11 +50,15 @@ jobs:
          
 
   dada2_workflow:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     env:
       NXF_ANSI_LOG: 0
     steps:
       - uses: actions/checkout@v1
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
       - name: Install Nextflow
         run: |
           wget -qO- get.nextflow.io | bash
@@ -60,7 +68,7 @@ jobs:
           sudo swapoff -a
           sudo rm -f /swapfile
           sudo apt clean
-          docker rmi $(docker image ls -aq)
+          docker rmi $(docker image ls -aq) || true
           df -h
       - name:  Run maliampi-dada2 (dada2 workflow)
         run: |
@@ -73,11 +81,15 @@ jobs:
           [[ -s output/sv/dada2.sv.weights.csv ]]
 
   swarm_workflow:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     env:
       NXF_ANSI_LOG: 0
     steps:
       - uses: actions/checkout@v1
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
       - name: Install Nextflow
         run: |
           wget -qO- get.nextflow.io | bash
@@ -87,7 +99,7 @@ jobs:
           sudo swapoff -a
           sudo rm -f /swapfile
           sudo apt clean
-          docker rmi $(docker image ls -aq)
+          docker rmi $(docker image ls -aq) || true
           df -h
       - name:  Run maliampi-swarm (swarm workflow)
         run: |
@@ -101,11 +113,15 @@ jobs:
 
 
   refpkg_workflow:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     env:
       NXF_ANSI_LOG: 0
     steps:
       - uses: actions/checkout@v1
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
       - name: Install Nextflow
         run: |
           wget -qO- get.nextflow.io | bash
@@ -115,7 +131,7 @@ jobs:
           sudo swapoff -a
           sudo rm -f /swapfile
           sudo apt clean
-          docker rmi $(docker image ls -aq)
+          docker rmi $(docker image ls -aq) || true
           df -h
       - name:  Run maliampi-refpkg (Reference Package Workflow)
         run: |
@@ -125,11 +141,15 @@ jobs:
           [[ -s output/refpkg/refpkg.tar.gz ]]
 
   pplacer_place_classify_workflow:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     env:
       NXF_ANSI_LOG: 0
     steps:
       - uses: actions/checkout@v1
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
       - name: Install Nextflow
         run: |
           wget -qO- get.nextflow.io | bash
@@ -139,7 +159,7 @@ jobs:
           sudo swapoff -a
           sudo rm -f /swapfile
           sudo apt clean
-          docker rmi $(docker image ls -aq)
+          docker rmi $(docker image ls -aq) || true
           df -h
       - name:  Run maliampi-pplacer (placement and classification)
         run: |
@@ -157,11 +177,15 @@ jobs:
           [[ -s output/classify/sv_taxonomy.csv ]]
 
   epang_place_classify_weights_map_workflow:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     env:
       NXF_ANSI_LOG: 0
     steps:
       - uses: actions/checkout@v1
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
       - name: Install Nextflow
         run: |
           wget -qO- get.nextflow.io | bash
@@ -171,7 +195,7 @@ jobs:
           sudo swapoff -a
           sudo rm -f /swapfile
           sudo apt clean
-          docker rmi $(docker image ls -aq)
+          docker rmi $(docker image ls -aq) || true
           df -h          
       - name:  Run maliampi-epang (placement and classification)
         run: |
@@ -186,11 +210,15 @@ jobs:
           [[ -s output/classify/sv_taxonomy.csv ]]  
   
   epang_place_classify_seqtable_workflow:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     env:
       NXF_ANSI_LOG: 0
     steps:
       - uses: actions/checkout@v1
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
       - name: Install Nextflow
         run: |
           wget -qO- get.nextflow.io | bash
@@ -200,7 +228,7 @@ jobs:
           sudo swapoff -a
           sudo rm -f /swapfile
           sudo apt clean
-          docker rmi $(docker image ls -aq)
+          docker rmi $(docker image ls -aq) || true
           df -h          
       - name:  Run maliampi-epang-seqtable (placement and classification)
         run: |
@@ -215,11 +243,15 @@ jobs:
           [[ -s output_seqtable/classify/sv_taxonomy.csv ]]   
 
   epang_place_classify_sharetable_workflow:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     env:
       NXF_ANSI_LOG: 0
     steps:
       - uses: actions/checkout@v1
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
       - name: Install Nextflow
         run: |
           wget -qO- get.nextflow.io | bash
@@ -229,7 +261,7 @@ jobs:
           sudo swapoff -a
           sudo rm -f /swapfile
           sudo apt clean
-          docker rmi $(docker image ls -aq)
+          docker rmi $(docker image ls -aq) || true
           df -h          
       - name:  Run maliampi-epang-sharetable (placement and classification)
         run: |

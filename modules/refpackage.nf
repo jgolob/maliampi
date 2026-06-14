@@ -3,16 +3,16 @@
 //
 nextflow.enable.dsl=2
 
-container__vsearch = "quay.io/biocontainers/vsearch:2.22.1--hf1761c0_0"
-container__fastatools = "golob/fastatools:0.8.0A"
-container__pplacer = "golob/pplacer:1.1alpha19rc_BCW_0.3.1A"
-container__seqinfosync = "golob/seqinfo_taxonomy_sync:0.3.0"
-container__infernal = "quay.io/biocontainers/infernal:1.1.4--h779adbc_0"
-container__raxmlng = 'quay.io/biocontainers/raxml-ng:1.0.3--h32fcf60_0'
-container__dada2pplacer = "golob/dada2-pplacer:0.8.0__bcw_0.3.1A"
-container__taxtastic = "golob/taxtastic:0.9.5D"
+params.container__vsearch = "quay.io/biocontainers/vsearch:2.22.1--hf1761c0_0"
+params.container__fastatools = "golob/fastatools:0.8.0A"
+params.container__pplacer = "golob/pplacer:1.1alpha19rc_BCW_0.3.1A"
+params.container__seqinfosync = "golob/seqinfo_taxonomy_sync:0.3.0"
+params.container__infernal = "quay.io/biocontainers/infernal:1.1.4--h779adbc_0"
+params.container__raxmlng = 'quay.io/biocontainers/raxml-ng:1.0.3--h32fcf60_0'
+params.container__dada2pplacer = "golob/dada2-pplacer:0.8.0__bcw_0.3.1A"
+params.container__taxtastic = "golob/taxtastic:0.9.5D"
 
-container__raxml = "quay.io/biocontainers/raxml:8.2.4--h779adbc_4"
+params.container__raxml = "quay.io/biocontainers/raxml:8.2.4--h779adbc_4"
 
 // Default to use the in-project SSU_rRNA_bacteria.cm 
 params.rfam = false
@@ -168,8 +168,8 @@ workflow make_refpkg_wf {
 
 
 process RefpkgSearchRepo {
-    container "${container__vsearch}"
-    label = 'multithread'
+    container "${params.container__vsearch}"
+    label 'multithread'
 
     input:
         path(sv_fasta_f)
@@ -182,6 +182,7 @@ process RefpkgSearchRepo {
         path "${repo_fasta}.vsearch.log", emit: log
         
 
+    script:
     """
     vsearch \
     --threads=${task.cpus} \
@@ -198,8 +199,8 @@ process RefpkgSearchRepo {
 }
 
 process CombinedRefFilter {
-    container = "${container__fastatools}"
-    label = 'io_limited'
+    container "${params.container__fastatools}"
+    label 'io_limited'
 
     input:
         path(repo_recruit_f)
@@ -212,8 +213,9 @@ process CombinedRefFilter {
         path "references_seq_info.csv", emit: recruit_si
 
 
+    script:
 """
-#!/usr/bin/env python
+#!/usr/bin/env python3
 import fastalite
 import csv
 import sqlite3
@@ -402,8 +404,8 @@ with open('references_seq_info.csv', 'wt') as si_out:
 
 
 process FilterSeqInfo {
-    container = "${container__fastatools}"
-    label = 'io_limited'
+    container "${params.container__fastatools}"
+    label 'io_limited'
 
     input:
         file (repo_recruits_f)
@@ -412,8 +414,9 @@ process FilterSeqInfo {
     output:
         file('refpkg.seq_info.csv')
 
+    script:
     """
-    #!/usr/bin/env python
+    #!/usr/bin/env python3
     import fastalite
     import csv
 
@@ -430,8 +433,8 @@ process FilterSeqInfo {
 }
 
 process RemoveDroppedRecruits{
-    container = "${container__fastatools}"
-    label = 'io_limited'
+    container "${params.container__fastatools}"
+    label 'io_limited'
 
     input:
         path (recruits_fasta)
@@ -440,8 +443,9 @@ process RemoveDroppedRecruits{
     output:
         path('refpkg_recruits.fasta')
     
+    script:
     """
-    #!/usr/bin/env python
+    #!/usr/bin/env python3
     import fastalite
     import csv
 
@@ -462,16 +466,15 @@ process RemoveDroppedRecruits{
 }
 
 process DlBuildTaxtasticDB {
-    container = "${container__taxtastic}"
-    label = 'io_net'
-    errorStrategy = 'finish'
+    container "${params.container__taxtastic}"
+    label 'io_net'
+    errorStrategy 'finish'
+    afterScript 'rm -rf dl/ || true'
 
     output:
         file "taxonomy.db"
 
-    afterScript "rm -rf dl/"
-
-
+    script:
     """
     set -e
 
@@ -482,9 +485,9 @@ process DlBuildTaxtasticDB {
 }
 
 process BuildTaxtasticDB {
-    container = "${container__taxtastic}"
-    label = 'io_limited'
-    errorStrategy = 'finish'
+    container "${params.container__taxtastic}"
+    label 'io_limited'
+    errorStrategy 'finish'
 
     input:
         file taxdump_zip_f
@@ -492,14 +495,15 @@ process BuildTaxtasticDB {
     output:
         file "taxonomy.db"
 
+    script:
     """
     taxit new_database taxonomy.db -z ${taxdump_zip_f}
     """
 }
 
 process ConfirmSI {
-    container = "${container__taxtastic}"
-    label = 'io_mem'
+    container "${params.container__taxtastic}"
+    label 'io_mem'
 
     input:
         file taxonomy_db_f
@@ -508,6 +512,7 @@ process ConfirmSI {
     output:
         file "${refpkg_si_f.baseName}.corr.csv"
     
+    script:
     """
     taxit update_taxids \
     ${refpkg_si_f} \
@@ -518,8 +523,8 @@ process ConfirmSI {
 }
 
 process AlignRepoRecruits {
-    container = "${container__infernal}"
-    label = 'mem_veryhigh'
+    container "${params.container__infernal}"
+    label 'mem_veryhigh'
 
     input:
         file repo_recruits_f
@@ -529,6 +534,7 @@ process AlignRepoRecruits {
         file "recruits.aln.sto"
         file "recruits.aln.scores" 
     
+    script:
     """
     cmalign \
     --cpu ${task.cpus} --noprob --dnaout --mxsize ${params.cmalign_mxsize} \
@@ -538,9 +544,9 @@ process AlignRepoRecruits {
 }
 
 process ConvertAlnToFasta {
-    container = "${container__fastatools}"
-    label = 'io_limited'
-    errorStrategy "retry"
+    container "${params.container__fastatools}"
+    label 'io_limited'
+    errorStrategy 'retry'
 
     input: 
         file recruits_aln_sto_f
@@ -548,8 +554,9 @@ process ConvertAlnToFasta {
     output:
         file "recruits.aln.fasta"
     
+    script:
     """
-    #!/usr/bin/env python
+    #!/usr/bin/env python3
     from Bio import AlignIO
 
     with open('recruits.aln.fasta', 'wt') as out_h:
@@ -565,9 +572,9 @@ process ConvertAlnToFasta {
 }
 
 process ConvertAlnToPhy {
-    container = "${container__fastatools}"
-    label = 'io_limited'
-    errorStrategy "finish"
+    container "${params.container__fastatools}"
+    label 'io_limited'
+    errorStrategy 'finish'
 
     input: 
         file recruits_aln_sto_f
@@ -575,8 +582,9 @@ process ConvertAlnToPhy {
     output:
         file "recruits.aln.phy"
     
+    script:
     """
-    #!/usr/bin/env python
+    #!/usr/bin/env python3
     from Bio import AlignIO
 
     with open('recruits.aln.phy', 'wt') as out_h:
@@ -592,9 +600,9 @@ process ConvertAlnToPhy {
 }
 
 process RaxmlTreeNG {
-    container = "${container__raxmlng}"
-    label = 'mem_veryhigh'
-    errorStrategy = 'finish'
+    container "${params.container__raxmlng}"
+    label 'mem_veryhigh'
+    errorStrategy 'finish'
 
     input:
         path recruits_aln_fasta_f
@@ -604,6 +612,7 @@ process RaxmlTreeNG {
         path "refpkg.raxml.log", emit: log
         path "refpkg.raxml.bestModel", emit: model
     
+    script:
     """
     raxml-ng \
     --parse \
@@ -623,9 +632,9 @@ process RaxmlTreeNG {
 }
 
 process RaxmlTree {
-    container = "${container__raxml}"
-    label = 'mem_veryhigh'
-    errorStrategy = 'retry'
+    container "${params.container__raxml}"
+    label 'mem_veryhigh'
+    errorStrategy 'retry'
 
     input:
         file recruits_aln_fasta_f
@@ -634,6 +643,7 @@ process RaxmlTree {
         file "RAxML_bestTree.refpkg"
         file "RAxML_info.refpkg"
     
+    script:
     """
     raxmlHPC-PTHREADS-AVX2 \
     -n refpkg \
@@ -645,9 +655,9 @@ process RaxmlTree {
 }
 
 process RaxmlTree_cleanupInfo {
-    container = "${container__fastatools}"
-    label = 'io_limited'
-    errorStrategy = 'retry'
+    container "${params.container__fastatools}"
+    label 'io_limited'
+    errorStrategy 'retry'
 
     input:
         file "RAxML_info.unclean.refpkg"
@@ -656,8 +666,9 @@ process RaxmlTree_cleanupInfo {
         file "RAxML_info.refpkg"
 
 
+    script:
 """
-#!/usr/bin/env python
+#!/usr/bin/env python3
 with open("RAxML_info.refpkg",'wt') as out_h:
     with open("RAxML_info.unclean.refpkg", 'rt') as in_h:
         past_cruft = False
@@ -670,9 +681,9 @@ with open("RAxML_info.refpkg",'wt') as out_h:
 }
 
 process TaxtableForSI {
-    container = "${container__taxtastic}"
-    label = 'io_limited'
-    errorStrategy = 'finish'
+    container "${params.container__taxtastic}"
+    label 'io_limited'
+    errorStrategy 'finish'
 
     input:
         file taxonomy_db_f 
@@ -680,6 +691,7 @@ process TaxtableForSI {
     output:
         file "refpkg.taxtable.csv"
 
+    script:
     """
     taxit taxtable ${taxonomy_db_f} \
     --seq-info ${refpkg_si_corr_f} \
@@ -688,22 +700,23 @@ process TaxtableForSI {
 }
 
 process ObtainCM {
-    container = "${container__infernal}"
-    label = 'io_net'
+    container "${params.container__infernal}"
+    label 'io_net'
 
     output:
         file "SSU_rRNA_bacteria.cm"
     
+    script:
     """
     wget http://rfam.xfam.org/family/RF00177/cm -O SSU_rRNA_bacteria.cm 
     """
 }
 
 process CombineRefpkg_ng {
-    container = "${container__taxtastic}"
-    label = 'io_mem'
+    container "${params.container__taxtastic}"
+    label 'io_mem'
 
-    afterScript("rm -rf refpkg/*")
+    afterScript 'rm -rf refpkg/* || true'
     publishDir "${params.output}/refpkg/", mode: 'copy'
 
     input:
@@ -719,6 +732,7 @@ process CombineRefpkg_ng {
     output:
         path "refpkg.tar.gz"
     
+    script:
 """
 taxit create --locus 16S \
 --package-name refpkg \
@@ -759,10 +773,10 @@ gzip refpkg.tar
 }
 
 process CombineRefpkg_og {
-    container = "${container__pplacer}"
-    label = 'io_mem'
+    container "${params.container__pplacer}"
+    label 'io_mem'
 
-    afterScript("rm -rf refpkg/*")
+    afterScript 'rm -rf refpkg/* || true'
     publishDir "${params.output}/refpkg/", mode: 'copy'
 
     input:
@@ -777,6 +791,7 @@ process CombineRefpkg_og {
     output:
         file "refpkg.tar.gz"
     
+    script:
     """
     taxit create --locus 16S \
     --package-name refpkg \
@@ -794,16 +809,17 @@ process CombineRefpkg_og {
 }
 
 process AddRAxMLModel {
-    container = "${container__taxtastic}"
-    label = 'io_limited'
+    container "${params.container__taxtastic}"
+    label 'io_limited'
 
     input:
         path "refpkg.tgz"
         path raxml_ng_model
     output:
         path 'refpkg.tar.gz'
+    script:
 """
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import tarfile
 import json
@@ -822,10 +838,10 @@ contents = json.loads(
 }
 
 process Dada2_convert_output {
-    container "${container__dada2pplacer}"
+    container "${params.container__dada2pplacer}"
     label 'io_mem'
     publishDir "${params.output}/sv/", mode: 'copy'
-    errorStrategy "retry"
+    errorStrategy 'retry'
 
     input:
         file(final_seqtab_csv)
@@ -835,6 +851,7 @@ process Dada2_convert_output {
         file "dada2.sv.map.csv"
         file "dada2.sv.weights.csv"
 
+    script:
     """
     dada2-seqtab-to-pplacer \
     -s ${final_seqtab_csv} \

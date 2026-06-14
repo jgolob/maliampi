@@ -25,19 +25,17 @@ params.pp_seed = 1
 params.cmalign_mxsize = 2048
 
 // Containers!
-container__infernal = "quay.io/biocontainers/infernal:1.1.4--h779adbc_0"
-container__fastatools = "golob/fastatools:0.8.0A"
-container__pplacer = "golob/pplacer:1.1alpha19rc_BCW_0.3.1A"
-container__dada2pplacer = "golob/dada2-pplacer:0.8.0__bcw_0.3.1A"
-container__easel = 'quay.io/biocontainers/easel:0.47--h516909a_0'
-container__epang = "quay.io/biocontainers/epa-ng:0.3.8--h9a82719_1"
-container__gappa = 'quay.io/biocontainers/gappa:0.7.1--h9a82719_1'
+params.container__infernal = "quay.io/biocontainers/infernal:1.1.4--h779adbc_0"
+params.container__fastatools = "golob/fastatools:0.8.0A"
+params.container__pplacer = "golob/pplacer:1.1alpha19rc_BCW_0.3.1A"
+params.container__dada2pplacer = "golob/dada2-pplacer:0.8.0__bcw_0.3.1A"
+params.container__easel = 'quay.io/biocontainers/easel:0.47--h516909a_0'
+params.container__epang = "quay.io/biocontainers/epa-ng:0.3.8--h9a82719_1"
+params.container__gappa = 'quay.io/biocontainers/gappa:0.7.1--h9a82719_1'
 
 
 // includes
-include { Dada2_convert_output } from './dada2' params (
-    output: params.output
-)
+include { Dada2_convert_output } from './dada2'
 
 workflow epang_place_classify_wf {
     take:
@@ -182,8 +180,8 @@ workflow epang_place_classify_wf {
 
 }
 process AlignSV {
-    container = "${container__infernal}"
-    label = 'mem_veryhigh'
+    container "${params.container__infernal}"
+    label 'mem_veryhigh'
 
     input:
         path sv_fasta_f
@@ -194,6 +192,7 @@ process AlignSV {
         path "sv.aln.scores"
         
     
+    script:
     """
     cmalign \
     --cpu ${task.cpus} --noprob --dnaout --mxsize ${params.cmalign_mxsize} \
@@ -206,8 +205,8 @@ process AlignSV {
 
 
 process CombineAln_SV_refpkg {
-    container = "${container__easel}"
-    label = 'mem_veryhigh'
+    container "${params.container__easel}"
+    label 'mem_veryhigh'
 
     input:
         file sv_aln_sto_f 
@@ -217,6 +216,7 @@ process CombineAln_SV_refpkg {
     output:
         file "sv_refpkg.aln.sto"
     
+    script:
     """
     esl-alimerge --dna \
      -o sv_refpkg.aln.sto \
@@ -225,8 +225,8 @@ process CombineAln_SV_refpkg {
 }
 
 process ConvertAlnToFasta {
-    container = "${container__fastatools}"
-    label = 'io_limited'
+    container "${params.container__fastatools}"
+    label 'io_limited'
     errorStrategy "retry"
 
     input: 
@@ -235,6 +235,7 @@ process ConvertAlnToFasta {
     output:
         file "combined.aln.fasta"
     
+    script:
     """
     #!/usr/bin/env python
     from Bio import AlignIO
@@ -252,8 +253,8 @@ process ConvertAlnToFasta {
 }
 
 process ExtractRefpkg {
-    container = "${container__fastatools}"
-    label = 'io_limited'
+    container "${params.container__fastatools}"
+    label 'io_limited'
     
     input:
         file refpkg_tgz_f
@@ -267,6 +268,7 @@ process ExtractRefpkg {
         path 'taxonomy.csv', emit: taxonomy
         path 'refpkg.cm', emit: cm
 
+    script:
 """
 #!/usr/bin/env python
 import tarfile
@@ -400,8 +402,8 @@ with open('taxonomy.csv', 'wt') as leaf_h:
 
 
 process EPAngPlacement {
-    container = "${container__epang}"
-    label = 'mem_veryhigh'
+    container "${params.container__epang}"
+    label 'mem_veryhigh'
     publishDir "${params.output}/placement", mode: 'copy'
     input:
         file refpkg_aln_fasta
@@ -411,6 +413,7 @@ process EPAngPlacement {
 
     output:
         file 'dedup.jplace'
+    script:
     """
     set -e
 
@@ -428,8 +431,8 @@ process EPAngPlacement {
 
 
 process MakeEPAngTaxonomy {
-    container = "${container__fastatools}"
-    label = 'io_limited'
+    container "${params.container__fastatools}"
+    label 'io_limited'
     publishDir "${params.output}/refpkg", mode: 'copy'
 
     input:
@@ -439,6 +442,7 @@ process MakeEPAngTaxonomy {
     output:
         path 'epang_taxon_file.tsv'
 
+    script:
 """
 #!/usr/bin/env python
 import csv
@@ -481,8 +485,8 @@ with open('epang_taxon_file.tsv', 'wt') as tf_h:
 }
 
 process Gappa_Classify {
-    container = "${container__gappa}"
-    label = 'mem_veryhigh'
+    container "${params.container__gappa}"
+    label 'mem_veryhigh'
     publishDir "${params.output}/classify", mode: 'copy'
     errorStrategy 'ignore'
 
@@ -493,6 +497,7 @@ process Gappa_Classify {
     output:
         path 'per_query.tsv'
 
+    script:
     """
     set -e
 
@@ -509,7 +514,7 @@ process Gappa_Classify {
 }
 
 process Make_Wide_Tax_Table {
-    container "${container__dada2pplacer}"
+    container "${params.container__dada2pplacer}"
     label 'io_mem'
     publishDir "${params.output}/classify", mode: 'copy'
     //errorStrategy "ignore"
@@ -523,6 +528,7 @@ process Make_Wide_Tax_Table {
         path "tables/taxon_wide_ra.${want_rank}.csv", emit: ra
         path "tables/taxon_wide_nreads.${want_rank}.csv", emit: nreads
 
+    script:
 """
 #!/usr/bin/env python
 import pandas as pd
@@ -578,7 +584,7 @@ sp_tax_wide_nreads.to_csv("tables/taxon_wide_nreads.${want_rank}.csv")
 }
 
 process Gappa_Extract_Taxonomy {
-    container "${container__dada2pplacer}"
+    container "${params.container__dada2pplacer}"
     label 'io_mem'
     publishDir "${params.output}/classify", mode: 'copy'
     //errorStrategy "ignore"
@@ -591,6 +597,7 @@ process Gappa_Extract_Taxonomy {
         path "sv_taxonomy.csv"
         path refpkg_taxtable
 
+    script:
 """
 #!/usr/bin/env python
 import pandas as pd
@@ -654,8 +661,8 @@ sv_taxonomy.to_csv('sv_taxonomy.csv', index=None)
 }
 
 process EDPL {
-    container = "${container__gappa}"
-    label = 'multithread'
+    container "${params.container__gappa}"
+    label 'multithread'
     publishDir "${params.output}/placement", mode: 'copy'
     errorStrategy 'ignore' 
 
@@ -665,6 +672,7 @@ process EDPL {
     output:
         path 'edpl_list.csv'
 
+    script:
     """
     set -e
 
@@ -677,8 +685,8 @@ process EDPL {
 }
 
 process MakeSplit {
-    container = "${container__fastatools}"
-    label = 'io_limited'
+    container "${params.container__fastatools}"
+    label 'io_limited'
     publishDir "${params.output}/sv", mode: 'copy'
 
     input:
@@ -686,6 +694,7 @@ process MakeSplit {
     output:
         path 'sv_multiplicity.csv'
 
+    script:
 """
 #!/usr/bin/env python
 import csv
@@ -705,8 +714,8 @@ with open('${sv_long_f}', 'rt') as in_h, open('sv_multiplicity.csv', 'wt') as ou
 }
 
 process GappaSplit {
-    container = "${container__gappa}"
-    label = 'multithread'
+    container "${params.container__gappa}"
+    label 'multithread'
     publishDir "${params.output}/placement/", mode: 'copy'
 
     input:
@@ -716,6 +725,7 @@ process GappaSplit {
     output:
         path 'specimen_jplace/*.jplace.gz'
 
+    script:
     """
     set -e
 
@@ -732,8 +742,8 @@ process GappaSplit {
 }
 
 process Gappa_KRD {
-    container = "${container__gappa}"
-    label = 'mem_veryhigh'
+    container "${params.container__gappa}"
+    label 'mem_veryhigh'
     publishDir "${params.output}/placement/", mode: 'copy'
     errorStrategy 'ignore'
 
@@ -743,6 +753,7 @@ process Gappa_KRD {
     output:
         path 'krd/krd_matrix.csv.gz'
 
+    script:
     """
     set -e
 
@@ -757,8 +768,8 @@ process Gappa_KRD {
 }
 
 process Gappa_ePCA {
-    container = "${container__gappa}"
-    label = 'mem_veryhigh'
+    container "${params.container__gappa}"
+    label 'mem_veryhigh'
     publishDir "${params.output}/placement/", mode: 'copy'
     errorStrategy 'ignore'
 
@@ -769,6 +780,7 @@ process Gappa_ePCA {
         path 'ePCA/projection.csv'
         path 'ePCA/transformation.csv'
 
+    script:
     """
     set -e
 
@@ -784,8 +796,8 @@ process Gappa_ePCA {
 }
 
 process PplacerADCL {
-    container = "${container__pplacer}"
-    label = 'io_limited'
+    container "${params.container__pplacer}"
+    label 'io_limited'
 
     publishDir "${params.output}/placement", mode: 'copy'
 
@@ -794,6 +806,7 @@ process PplacerADCL {
     output:
         file 'adcl.csv.gz'
     
+    script:
     """
     (echo name,adcl,weight && 
     guppy adcl --no-collapse ${dedup_jplace_f} -o /dev/stdout) | 
@@ -802,8 +815,8 @@ process PplacerADCL {
 }
 
 process PplacerEDPL {
-    container = "${container__pplacer}"
-    label = 'io_limited'
+    container "${params.container__pplacer}"
+    label 'io_limited'
 
     publishDir "${params.output}/placement", mode: 'copy'
 
@@ -812,6 +825,7 @@ process PplacerEDPL {
     output:
         file 'edpl.csv.gz'
     
+    script:
     """
     (echo name,edpl && guppy edpl --csv ${dedup_jplace_f} -o /dev/stdout) | 
     gzip > edpl.csv.gz
@@ -819,11 +833,11 @@ process PplacerEDPL {
 }
 
 process PplacerPCA {
-    container = "${container__pplacer}"
-    label = 'io_limited'
-    afterScript "rm -r refpkg/"
+    container "${params.container__pplacer}"
+    label 'io_limited'
+    afterScript 'rm -r refpkg/ || true'
     publishDir "${params.output}/placement", mode: 'copy'
-    errorStrategy = 'ignore'
+    errorStrategy 'ignore'
 
     input:
         file refpkg_tgz_f
@@ -837,6 +851,7 @@ process PplacerPCA {
         file 'pca/lpca.xml'
         file 'pca/lpca.trans'
     
+    script:
     """
     mkdir -p refpkg/ && mkdir -p pca/
     tar xzvf ${refpkg_tgz_f} --no-overwrite-dir -C refpkg/ &&
@@ -846,8 +861,8 @@ process PplacerPCA {
 }
 
 process PplacerAlphaDiversity {
-    container = "${container__pplacer}"
-    label = 'io_limited'
+    container "${params.container__pplacer}"
+    label 'io_limited'
 
     input:
         path jplace_f
@@ -855,6 +870,7 @@ process PplacerAlphaDiversity {
         path "${jplace_f.getBaseName()}.ad.csv"
 
     
+    script:
     """
     guppy fpd --csv --include-pendant --chao-d 0,1,1.00001,2,3,4,5 \
     ${jplace_f} > ${jplace_f.getBaseName()}.ad.csv
@@ -862,8 +878,8 @@ process PplacerAlphaDiversity {
 }
 
 process CombineSpAd {
-    container = "${container__fastatools}"
-    label = 'io_limited'
+    container "${params.container__fastatools}"
+    label 'io_limited'
     publishDir "${params.output}/placement", mode: 'copy'
 
     input:
@@ -872,6 +888,7 @@ process CombineSpAd {
     output:
         path "alpha_diversity.csv.gz"
     
+    script:
 """
 #!/usr/bin/env python
 import csv
@@ -896,9 +913,9 @@ with gzip.open('alpha_diversity.csv.gz', 'wt') as out_h:
 
 
 process PplacerKR {
-    container = "${container__pplacer}"
-    label = 'io_limited'
-    afterScript "rm -r refpkg/"
+    container "${params.container__pplacer}"
+    label 'io_limited'
+    afterScript 'rm -r refpkg/ || true'
     publishDir "${params.output}/placement", mode: 'copy'
 
     input:
@@ -909,6 +926,7 @@ process PplacerKR {
         file 'kr_distance.csv.gz'
 
     
+    script:
     """
     mkdir -p refpkg/
     tar xzvf ${refpkg_tgz_f} --no-overwrite-dir -C refpkg/
@@ -918,10 +936,10 @@ process PplacerKR {
 }
 
 process ClassifyDB_Prep {
-    container = "${container__pplacer}"
-    label = 'io_limited'
-    afterScript "rm -r refpkg/"
-    cache = false
+    container "${params.container__pplacer}"
+    label 'io_limited'
+    afterScript 'rm -r refpkg/ || true'
+    cache false
 
     input:
         file refpkg_tgz_f
@@ -931,6 +949,7 @@ process ClassifyDB_Prep {
         file 'classify.prep.db'
     
 
+    script:
     """
     mkdir -p refpkg/
     tar xzvf ${refpkg_tgz_f} --no-overwrite-dir -C refpkg/
@@ -941,10 +960,10 @@ process ClassifyDB_Prep {
 }
 
 process ClassifySV {
-    container = "${container__pplacer}"
-    label = 'mem_veryhigh'
-    afterScript "rm -r refpkg/"
-    cache = false
+    container "${params.container__pplacer}"
+    label 'mem_veryhigh'
+    afterScript 'rm -r refpkg/ || true'
+    cache false
 
     input:
         file refpkg_tgz_f
@@ -955,6 +974,7 @@ process ClassifySV {
     output:
         file 'classify.classified.db'
 
+    script:
     """
     mkdir -p refpkg/
     tar xzvf ${refpkg_tgz_f} --no-overwrite-dir -C refpkg/
@@ -979,9 +999,9 @@ process ClassifySV {
 }
 
 process ClassifyMCC {
-    container = "${container__pplacer}"
-    label = 'io_limited'
-    cache = false
+    container "${params.container__pplacer}"
+    label 'io_limited'
+    cache false
     publishDir "${params.output}/classify", mode: 'copy'
 
     input:
@@ -991,6 +1011,7 @@ process ClassifyMCC {
     output:
         file 'classify.mcc.db'
 
+    script:
     """
     multiclass_concat.py -k \
     --dedup-info ${sv_weights_f} ${classifyDB_classified}
@@ -999,8 +1020,8 @@ process ClassifyMCC {
 }
 
 process ClassifyTables {
-    container = "${container__pplacer}"
-    label = 'io_limited'
+    container "${params.container__pplacer}"
+    label 'io_limited'
     publishDir "${params.output}/classify", mode: 'copy'
 
     input:
@@ -1009,6 +1030,7 @@ process ClassifyTables {
     output:
         tuple val(rank), file("tables/by_specimen.${rank}.csv"), file("tables/by_taxon.${rank}.csv"), file("tables/tallies_wide.${rank}.csv")
 
+    script:
     """
     mkdir -p tables/
     classif_table.py ${classifyDB_mcc} \
@@ -1021,8 +1043,8 @@ process ClassifyTables {
 }
 
 process WeightMaptoLong {
-    container = "${container__fastatools}"
-    label = 'io_limited'
+    container "${params.container__fastatools}"
+    label 'io_limited'
     publishDir "${params.output}/sv", mode: 'copy'
 
     input:
@@ -1032,6 +1054,7 @@ process WeightMaptoLong {
     output:
         path ("sp_sv_long.csv")
 
+    script:
 """
 #!/usr/bin/env python
 import csv
@@ -1062,8 +1085,8 @@ with open('${weight}', 'rt') as w_h, open("sp_sv_long.csv", 'wt') as sv_long_h:
 }
 
 process SharetableToMapWeight {
-    container = "${container__fastatools}"
-    label = 'io_limited'
+    container "${params.container__fastatools}"
+    label 'io_limited'
     publishDir "${params.output}/sv", mode: 'copy'
 
     input:
@@ -1074,6 +1097,7 @@ process SharetableToMapWeight {
         path ("sv_weights.csv"), emit: sv_weights
         path ("sp_sv_long.csv"), emit: sp_sv_long
 
+    script:
 """
 #!/usr/bin/env python
 import csv
@@ -1130,7 +1154,7 @@ with open("sp_sv_long.csv", 'wt') as svl_h:
 
 
 process Extract_Taxonomy {
-    container "${container__dada2pplacer}"
+    container "${params.container__dada2pplacer}"
     label 'io_mem'
     publishDir "${params.output}/classify", mode: 'copy'
     errorStrategy "ignore"
@@ -1142,6 +1166,7 @@ process Extract_Taxonomy {
     output:
         file "sv_taxonomy.csv"
 
+    script:
 """
 #!/usr/bin/env python
 import csv

@@ -25,11 +25,11 @@ params.pp_seed = 1
 params.cmalign_mxsize = 8196
 
 // Containers!
-container__infernal = "quay.io/biocontainers/infernal:1.1.4--h779adbc_0"
-container__fastatools = "golob/fastatools:0.8.0A"
-container__pplacer = "golob/pplacer:1.1alpha19rc_BCW_0.3.1A"
-container__dada2pplacer = "golob/dada2-pplacer:0.8.0__bcw_0.3.1A"
-container__easel = 'quay.io/biocontainers/easel:0.47--h516909a_0'
+params.container__infernal = "quay.io/biocontainers/infernal:1.1.4--h779adbc_0"
+params.container__fastatools = "golob/fastatools:0.8.0A"
+params.container__pplacer = "golob/pplacer:1.1alpha19rc_BCW_0.3.1A"
+params.container__dada2pplacer = "golob/dada2-pplacer:0.8.0__bcw_0.3.1A"
+params.container__easel = 'quay.io/biocontainers/easel:0.47--h516909a_0'
 
 
 workflow pplacer_place_classify_wf {
@@ -179,8 +179,8 @@ workflow pplacer_place_classify_wf {
 }
 
 process AlignSV {
-    container = "${container__infernal}"
-    label = 'mem_veryhigh'
+    container "${params.container__infernal}"
+    label 'mem_veryhigh'
 
     input:
         path sv_fasta_f
@@ -191,6 +191,7 @@ process AlignSV {
         path "sv.aln.scores"
         
     
+    script:
     """
     cmalign \
     --cpu ${task.cpus} --noprob --dnaout --mxsize ${params.cmalign_mxsize} \
@@ -203,8 +204,8 @@ process AlignSV {
 
 
 process CombineAln_SV_refpkg {
-    container = "${container__easel}"
-    label = 'mem_veryhigh'
+    container "${params.container__easel}"
+    label 'mem_veryhigh'
 
     input:
         file sv_aln_sto_f 
@@ -214,6 +215,7 @@ process CombineAln_SV_refpkg {
     output:
         file "sv_refpkg.aln.sto"
     
+    script:
     """
     esl-alimerge --dna \
      -o sv_refpkg.aln.sto \
@@ -222,8 +224,9 @@ process CombineAln_SV_refpkg {
 }
 
 process PplacerPlacement {
-    container = "${container__pplacer}"
-    label = 'mem_veryhigh'
+    container "${params.container__pplacer}"
+    label 'mem_veryhigh'
+    afterScript 'rm -rf refpkg/ || true'
 
     publishDir "${params.output}/placement", mode: 'copy'
 
@@ -232,8 +235,8 @@ process PplacerPlacement {
         file refpkg_tgz_f
     output:
         file 'dedup.jplace'
-    
-    afterScript "rm -rf refpkg/"
+
+    script:
     """
     mkdir -p refpkg/ &&
     tar xzvf ${refpkg_tgz_f} --no-overwrite-dir -C ./refpkg &&
@@ -245,8 +248,8 @@ process PplacerPlacement {
 }
 
 process PplacerReduplicate {
-    container = "${container__pplacer}"
-    label = 'io_limited'
+    container "${params.container__pplacer}"
+    label 'io_limited'
 
     publishDir "${params.output}/placement", mode: 'copy'
 
@@ -256,6 +259,7 @@ process PplacerReduplicate {
     output:
         file 'redup.jplace.gz'
     
+    script:
     """
     guppy redup -m \
     -o /dev/stdout \
@@ -266,8 +270,8 @@ process PplacerReduplicate {
 }
 
 process PplacerADCL {
-    container = "${container__pplacer}"
-    label = 'io_limited'
+    container "${params.container__pplacer}"
+    label 'io_limited'
 
     publishDir "${params.output}/placement", mode: 'copy'
 
@@ -276,6 +280,7 @@ process PplacerADCL {
     output:
         file 'adcl.csv.gz'
     
+    script:
     """
     (echo name,adcl,weight && 
     guppy adcl --no-collapse ${dedup_jplace_f} -o /dev/stdout) | 
@@ -284,8 +289,8 @@ process PplacerADCL {
 }
 
 process PplacerEDPL {
-    container = "${container__pplacer}"
-    label = 'io_limited'
+    container "${params.container__pplacer}"
+    label 'io_limited'
 
     publishDir "${params.output}/placement", mode: 'copy'
 
@@ -294,6 +299,7 @@ process PplacerEDPL {
     output:
         file 'edpl.csv.gz'
     
+    script:
     """
     (echo name,edpl && guppy edpl --csv ${dedup_jplace_f} -o /dev/stdout) | 
     gzip > edpl.csv.gz
@@ -301,11 +307,11 @@ process PplacerEDPL {
 }
 
 process PplacerPCA {
-    container = "${container__pplacer}"
-    label = 'io_limited'
-    afterScript "rm -r refpkg/"
+    container "${params.container__pplacer}"
+    label 'io_limited'
+    afterScript 'rm -r refpkg/ || true'
     publishDir "${params.output}/placement", mode: 'copy'
-    errorStrategy = 'ignore'
+    errorStrategy 'ignore'
 
     input:
         file refpkg_tgz_f
@@ -319,6 +325,7 @@ process PplacerPCA {
         file 'pca/lpca.xml'
         file 'pca/lpca.trans'
     
+    script:
     """
     mkdir -p refpkg/ && mkdir -p pca/
     tar xzvf ${refpkg_tgz_f} --no-overwrite-dir -C refpkg/ &&
@@ -328,8 +335,8 @@ process PplacerPCA {
 }
 
 process PplacerAlphaDiversity {
-    container = "${container__pplacer}"
-    label = 'io_limited'
+    container "${params.container__pplacer}"
+    label 'io_limited'
 
     publishDir "${params.output}/placement", mode: 'copy'
 
@@ -340,6 +347,7 @@ process PplacerAlphaDiversity {
         file 'alpha_diversity.csv.gz'
 
     
+    script:
     """
     guppy fpd --csv --include-pendant --chao-d 0,1,1.00001,2,3,4,5 \
     ${dedup_jplace_f}:${sv_map_f} |
@@ -348,9 +356,9 @@ process PplacerAlphaDiversity {
 }
 
 process PplacerKR {
-    container = "${container__pplacer}"
-    label = 'io_limited'
-    afterScript "rm -r refpkg/"
+    container "${params.container__pplacer}"
+    label 'io_limited'
+    afterScript 'rm -r refpkg/ || true'
     publishDir "${params.output}/placement", mode: 'copy'
 
     input:
@@ -361,6 +369,7 @@ process PplacerKR {
         file 'kr_distance.csv.gz'
 
     
+    script:
     """
     mkdir -p refpkg/
     tar xzvf ${refpkg_tgz_f} --no-overwrite-dir -C refpkg/
@@ -370,10 +379,10 @@ process PplacerKR {
 }
 
 process ClassifyDB_Prep {
-    container = "${container__pplacer}"
-    label = 'io_limited'
-    afterScript "rm -r refpkg/"
-    cache = false
+    container "${params.container__pplacer}"
+    label 'io_limited'
+    afterScript 'rm -r refpkg/ || true'
+    cache false
 
     input:
         file refpkg_tgz_f
@@ -383,6 +392,7 @@ process ClassifyDB_Prep {
         file 'classify.prep.db'
     
 
+    script:
     """
     mkdir -p refpkg/
     tar xzvf ${refpkg_tgz_f} --no-overwrite-dir -C refpkg/
@@ -393,10 +403,10 @@ process ClassifyDB_Prep {
 }
 
 process ClassifySV {
-    container = "${container__pplacer}"
-    label = 'mem_veryhigh'
-    afterScript "rm -r refpkg/"
-    cache = false
+    container "${params.container__pplacer}"
+    label 'mem_veryhigh'
+    afterScript 'rm -r refpkg/ || true'
+    cache false
 
     input:
         file refpkg_tgz_f
@@ -407,6 +417,7 @@ process ClassifySV {
     output:
         file 'classify.classified.db'
 
+    script:
     """
     mkdir -p refpkg/
     tar xzvf ${refpkg_tgz_f} --no-overwrite-dir -C refpkg/
@@ -431,9 +442,9 @@ process ClassifySV {
 }
 
 process ClassifyMCC {
-    container = "${container__pplacer}"
-    label = 'io_limited'
-    cache = false
+    container "${params.container__pplacer}"
+    label 'io_limited'
+    cache false
     publishDir "${params.output}/classify", mode: 'copy'
 
     input:
@@ -443,6 +454,7 @@ process ClassifyMCC {
     output:
         file 'classify.mcc.db'
 
+    script:
     """
     multiclass_concat.py -k \
     --dedup-info ${sv_weights_f} ${classifyDB_classified}
@@ -451,8 +463,8 @@ process ClassifyMCC {
 }
 
 process ClassifyTables {
-    container = "${container__pplacer}"
-    label = 'io_limited'
+    container "${params.container__pplacer}"
+    label 'io_limited'
     publishDir "${params.output}/classify", mode: 'copy'
 
     input:
@@ -461,6 +473,7 @@ process ClassifyTables {
     output:
         tuple val(rank), file("tables/by_specimen.${rank}.csv"), file("tables/by_taxon.${rank}.csv"), file("tables/tallies_wide.${rank}.csv")
 
+    script:
     """
     mkdir -p tables/
     classif_table.py ${classifyDB_mcc} \
@@ -473,8 +486,8 @@ process ClassifyTables {
 }
 
 process SharetableToMapWeight {
-    container = "${container__fastatools}"
-    label = 'io_limited'
+    container "${params.container__fastatools}"
+    label 'io_limited'
     publishDir "${params.output}/sv", mode: 'copy'
 
     input:
@@ -484,8 +497,9 @@ process SharetableToMapWeight {
         file ("sv_sp_map.csv")
         file ("sv_weights.csv")
 
+    script:
 """
-#!/usr/bin/env python
+#!/usr/bin/env python3
 import csv
 
 sp_count = {}
@@ -522,10 +536,10 @@ with open("sv_weights.csv", "w") as weights_h:
 }
 
 process Dada2_convert_output {
-    container "${container__dada2pplacer}"
+    container "${params.container__dada2pplacer}"
     label 'io_mem'
     publishDir "${params.output}/sv/", mode: 'copy'
-    errorStrategy "retry"
+    errorStrategy 'retry'
 
     input:
         file(final_seqtab_csv)
@@ -535,6 +549,7 @@ process Dada2_convert_output {
         file "dada2.sv.map.csv"
         file "dada2.sv.weights.csv"
 
+    script:
     """
     dada2-seqtab-to-pplacer \
     -s ${final_seqtab_csv} \
@@ -545,10 +560,10 @@ process Dada2_convert_output {
 }
 
 process Extract_Taxonomy {
-    container "${container__dada2pplacer}"
+    container "${params.container__dada2pplacer}"
     label 'io_mem'
     publishDir "${params.output}/classify", mode: 'copy'
-    errorStrategy "ignore"
+    errorStrategy 'ignore'
 
     input:
         file (weights_csv)
@@ -557,8 +572,9 @@ process Extract_Taxonomy {
     output:
         file "sv_taxonomy.csv"
 
+    script:
 """
-#!/usr/bin/env python
+#!/usr/bin/env python3
 import csv
 import pandas as pd
 import sqlite3
@@ -590,8 +606,8 @@ sv_classification.to_csv("sv_taxonomy.csv", index=False)
 }
 
 process ExtractRefpkg {
-    container = "${container__fastatools}"
-    label = 'io_limited'
+    container "${params.container__fastatools}"
+    label 'io_limited'
     
     input:
         file refpkg_tgz_f
@@ -605,8 +621,9 @@ process ExtractRefpkg {
         path 'taxonomy.csv', emit: taxonomy
         path 'refpkg.cm', emit: cm
 
+    script:
 """
-#!/usr/bin/env python
+#!/usr/bin/env python3
 import tarfile
 import json
 import os

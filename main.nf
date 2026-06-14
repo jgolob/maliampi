@@ -133,66 +133,11 @@ def helpMessage() {
 
 // Modules
 include { read_manifest } from './modules/manifest'
-include { output_failed } from './modules/preprocess' params (
-    output: params.output
-)
+include { output_failed } from './modules/preprocess'
 include { preprocess_wf } from './modules/preprocess'
-include { dada2_wf } from './modules/dada2' params (
-    output: params.output,
-    trimLeft: params.trimLeft,
-    maxN: params.maxN,
-    maxEE: params.maxEE,
-    truncLenF: params.truncLenF,
-    truncLenR: params.truncLenR,
-    truncQ: params.truncQ,
-    errM_maxConsist: params.errM_maxConsist,
-    errM_randomize: params.errM_randomize,
-    errM_nbases: params.errM_nbases,
-    chimera_method: params.chimera_method,
-    goods_convergence: params.goods_convergence,
-    min_sv_prev: params.min_sv_prev,
-    goods_min_reads :params.goods_min_reads
-)
-
-include { make_refpkg_wf } from './modules/refpackage' params (
-    output: params.output,
-    repo_fasta: params.repo_fasta,
-    repo_si: params.repo_si,
-    repo_min_id: params.repo_min_id,
-    repo_max_accepts: params.repo_max_accepts,
-    cmalign_mxsize: params.cmalign_mxsize,
-    taxdmp: params.taxdmp,
-    email: params.email,
-
-    raxmlng_model: params.raxmlng_model,
-    raxmlng_parsimony_trees: params.raxmlng_parsimony_trees,
-    raxmlng_random_trees: params.raxmlng_random_trees,
-    raxmlng_bootstrap_cutoff: params.raxmlng_bootstrap_cutoff,
-    raxmlng_seed: params.raxmlng_seed,
-
-    raxml_model: params.raxml_model,
-    raxml_parsiomony_seed: params.raxml_parsiomony_seed,
-    raxml: params.raxml
-
-)
-
-include { epang_place_classify_wf } from './modules/epang_place_classify' params (
-    output: params.output,
-    cmalign_mxsize: params.cmalign_mxsize,
-    // Placer
-    pplacer_prior_lower: params.pplacer_prior_lower,
-    // Classifier
-    pp_classifer: params.pp_classifer,
-    pp_likelihood_cutoff: params.pp_likelihood_cutoff,
-    pp_bayes_cutoff: params.pp_bayes_cutoff,
-    pp_multiclass_min: params.pp_multiclass_min,
-    pp_bootstrap_cutoff: params.pp_bootstrap_cutoff,
-    pp_bootstrap_extension_cutoff: params.pp_bootstrap_extension_cutoff,
-    pp_nbc_boot: params.pp_nbc_boot,
-    pp_nbc_target_rank: params.pp_nbc_target_rank,
-    pp_nbc_word_length: params.pp_nbc_word_length,
-    pp_seed: params.pp_seed,
-)
+include { dada2_wf } from './modules/dada2'
+include { make_refpkg_wf } from './modules/refpackage'
+include { epang_place_classify_wf } from './modules/epang_place_classify'
 
 // STEP 0: Read manifest and verify files.
 

@@ -1,11 +1,12 @@
-container__barcodecop = "golob/barcodecop:0.5__bc_1"
-container__trimgalore = 'quay.io/biocontainers/trim-galore:0.6.6--0'
-container__fastqc = 'biocontainers/fastqc:v0.11.9_cv8'
+params.container__barcodecop = "golob/barcodecop:0.5__bc_1"
+params.container__trimgalore = 'quay.io/biocontainers/trim-galore:0.6.6--0'
+params.container__fastqc = 'biocontainers/fastqc:v0.11.9_cv8'
 
 workflow preprocess_wf {
-    take: indexed_ch
-    take: paired_ch
-    take: unpaired_ch
+    take:
+    indexed_ch
+    paired_ch
+    unpaired_ch
 
     main:
 
@@ -106,7 +107,7 @@ workflow preprocess_wf {
 
 // Processes
 process FastQC_Raw {
-    container "${container__fastqc}"
+    container "${params.container__fastqc}"
     label 'io_limited'
     errorStrategy 'ignore'
     publishDir "${params.output}/sv/fastqc/", mode: 'copy'
@@ -117,6 +118,7 @@ process FastQC_Raw {
     output:
         tuple val(specimen), val(batch), val(read), path("Raw__${specimen}__${read}_fastqc.html"), path("Raw__${specimen}__${read}_fastqc.zip")
     
+    script:
     """
     set -e
 
@@ -127,7 +129,7 @@ process FastQC_Raw {
 
 // Use trim_galore to handle adapters / etc
 process TrimGalore {
-    container "${container__trimgalore}"
+    container "${params.container__trimgalore}"
     label 'io_limited'
     errorStrategy 'ignore'
 
@@ -137,6 +139,7 @@ process TrimGalore {
     output:
     tuple val(specimen), val(batch), file("${specimen}.R1.tg.fastq.gz"), file("${specimen}.R2.tg.fastq.gz")
 
+    script:
     """
     set -e
 
@@ -159,7 +162,7 @@ process TrimGalore {
 
 // Use barcodecop to verify demultiplex
 process barcodecop {
-    container "${container__barcodecop}"
+    container "${params.container__barcodecop}"
     label 'io_limited'
     errorStrategy "ignore"
 
@@ -169,6 +172,7 @@ process barcodecop {
     output:
     tuple val(specimen), val(batch), file("${R1.getSimpleName()}.bcc.fq.gz"), file("${R2.getSimpleName()}.bcc.fq.gz")
 
+    script:
     """
     set -e
 
@@ -186,7 +190,7 @@ process barcodecop {
 }
 
 process TrimGaloreSE {
-    container "${container__trimgalore}"
+    container "${params.container__trimgalore}"
     label 'io_limited'
     errorStrategy 'ignore'
 
@@ -196,6 +200,7 @@ process TrimGaloreSE {
     output:
     tuple val(specimen), val(batch), file("${specimen}.R1.tg.fastq.gz")
 
+    script:
     """
     set -e
 
@@ -214,7 +219,7 @@ process TrimGaloreSE {
 
 
 process output_failed {
-    container "${container__barcodecop}"
+    container "${params.container__barcodecop}"
     label 'io_limited'
     publishDir "${params.output}/sv/", mode: 'copy'
     errorStrategy 'retry'
@@ -224,8 +229,9 @@ process output_failed {
     output:
         file ("failed_specimens.csv")
 
+    script:
     """
-    #!/usr/bin/env python
+    #!/usr/bin/env python3
     import csv
     import re
     specimens = re.sub(r'\\[|\\]', "", "${specimens}").split(',')

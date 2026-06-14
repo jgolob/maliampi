@@ -3,11 +3,11 @@
 //
 nextflow.enable.dsl=2
 
-container__dada2 = "quay.io/biocontainers/bioconductor-dada2:1.26.0--r42hc247a5b_0"
-container__fastcombineseqtab = "golob/dada2-fast-combineseqtab:0.5.0__1.12.0__BCW_0.3.1"
-container__dada2pplacer = "golob/dada2-pplacer:0.8.0__bcw_0.3.1A"
-container__goodsfilter = "golob/goodsfilter:0.1.6"
-container__fastqc = 'biocontainers/fastqc:v0.11.9_cv8'
+params.container__dada2 = "quay.io/biocontainers/bioconductor-dada2:1.26.0--r42hc247a5b_0"
+params.container__fastcombineseqtab = "golob/dada2-fast-combineseqtab:0.5.0__1.12.0__BCW_0.3.1"
+params.container__dada2pplacer = "golob/dada2-pplacer:0.8.0__bcw_0.3.1A"
+params.container__goodsfilter = "golob/goodsfilter:0.1.6"
+params.container__fastqc = 'biocontainers/fastqc:v0.11.9_cv8'
 
 // parameters for individual operation
 // Defaults for parameters
@@ -34,9 +34,10 @@ params.maxMismatch = 0
 params.minOverlap = 12
 
 workflow dada2_wf {
-    take: miseq_pe_ch
-    take: miseq_se_ch
-    take: pyro_ch
+    take:
+    miseq_pe_ch
+    miseq_se_ch
+    pyro_ch
 
     main:
     //
@@ -242,9 +243,9 @@ workflow dada2_wf {
     // Flatten things back out to one-specimen-per-row for the paired end reads
     dada2_demultiplex_dada.out
         .flatMap{
-            br -> 
-            fl = [];
-            br[2].eachWithIndex{ 
+            br ->
+            def fl = [];
+            br[2].eachWithIndex{
                 it, i ->  fl.add([
                     br[2][i], // specimen
                     br[1], // readnum
@@ -258,20 +259,17 @@ workflow dada2_wf {
         .flatMap()
         .groupTuple(by: [0])
         .map { spr ->
-            r1_idx = spr[1].indexOf('R1')
-            r2_idx = spr[1].indexOf('R2')
+            def r1_idx = spr[1].indexOf('R1')
+            def r2_idx = spr[1].indexOf('R2')
             [
                 spr[0],  // specimen
                 spr[3][0], // batch
                 file(spr[2][r1_idx]), // dada_1
                 file(spr[2][r2_idx]), // dada_2
             ]}
-        .tap {
-            dada2_demultiplex_dada_for_pe;
-            dada2_demultiplex_dada_for_se
-        }
+        .set { dada2_demultiplex_dada_split }
 
-        dada2_demultiplex_dada_for_pe
+        dada2_demultiplex_dada_split
             .join(dada2_derep.out)
             .map {
                 [
@@ -284,8 +282,8 @@ workflow dada2_wf {
                 ]
             }
             .set { dada2_dada_sp_ch }
-    
-    dada2_demultiplex_dada_for_se
+
+    dada2_demultiplex_dada_split
         .join(
             dada2_derep_se.out.mix(
                 dada2_derep_pyro.out
@@ -380,7 +378,7 @@ workflow dada2_wf {
 
 
 process dada2_ft {
-    container "${container__dada2}"
+    container "${params.container__dada2}"
     label 'io_mem'
     //errorStrategy "finish"
     errorStrategy "ignore"
@@ -390,6 +388,7 @@ process dada2_ft {
     
     output:
         tuple val(specimen), val(batch), file("${R1.getSimpleName()}.R1.dada2.ft.fq.gz"), file("${R2.getSimpleName()}.R2.dada2.ft.fq.gz")
+    script:
     """
     #!/usr/bin/env Rscript
     library('dada2'); 
@@ -409,7 +408,7 @@ process dada2_ft {
 }
 
 process dada2_ft_se {
-    container "${container__dada2}"
+    container "${params.container__dada2}"
     label 'io_mem'
     //errorStrategy "finish"
     errorStrategy "ignore"
@@ -419,6 +418,7 @@ process dada2_ft_se {
     
     output:
         tuple val(specimen), val(batch), file("${R1.getSimpleName()}.dada2.ft.fq.gz")
+    script:
     """
     #!/usr/bin/env Rscript
     library('dada2'); 
@@ -437,7 +437,7 @@ process dada2_ft_se {
 }
 
 process dada2_ft_pyro {
-    container "${container__dada2}"
+    container "${params.container__dada2}"
     label 'io_mem'
     //errorStrategy "finish"
     errorStrategy "ignore"
@@ -447,6 +447,7 @@ process dada2_ft_pyro {
     
     output:
         tuple val(specimen), val(batch), file("${R1.getSimpleName()}.dada2.ft.fq.gz")
+    script:
     """
     #!/usr/bin/env Rscript
     library('dada2'); 
@@ -465,7 +466,7 @@ process dada2_ft_pyro {
 }
 
 process dada2_derep {
-    container "${container__dada2}"
+    container "${params.container__dada2}"
     label 'io_mem'
     errorStrategy "finish"
 
@@ -475,6 +476,7 @@ process dada2_derep {
     output:
         tuple val(specimen), val(batch), file("${specimen}.R1.dada2.ft.derep.rds"), file("${specimen}.R2.dada2.ft.derep.rds")
     
+    script:
     """
     #!/usr/bin/env Rscript
     library('dada2');
@@ -486,7 +488,7 @@ process dada2_derep {
 }
 
 process dada2_derep_se {
-    container "${container__dada2}"
+    container "${params.container__dada2}"
     label 'io_mem'
     errorStrategy "finish"
 
@@ -496,6 +498,7 @@ process dada2_derep_se {
     output:
         tuple val(specimen), val(batch), file("${specimen}.dada2.ft.derep.rds")
     
+    script:
     """
     #!/usr/bin/env Rscript
     library('dada2');
@@ -505,7 +508,7 @@ process dada2_derep_se {
 }
 
 process dada2_derep_pyro {
-    container "${container__dada2}"
+    container "${params.container__dada2}"
     label 'io_mem'
     errorStrategy "finish"
 
@@ -515,6 +518,7 @@ process dada2_derep_pyro {
     output:
         tuple val(specimen), val(batch), file("${specimen}.dada2.ft.derep.rds")
     
+    script:
     """
     #!/usr/bin/env Rscript
     library('dada2');
@@ -524,10 +528,10 @@ process dada2_derep_pyro {
 }
 
 process dada2_learn_error {
-    container "${container__dada2}"
+    container "${params.container__dada2}"
     label 'multithread'
     errorStrategy "finish"
-    publishDir "${params.output}/sv/errM/${batch}", mode: 'copy'
+    publishDir { "${params.output}/sv/errM/${batch}" }, mode: 'copy'
 
     input:
         tuple val(batch_specimens), val(batch), file(reads), val(read_num)
@@ -535,6 +539,7 @@ process dada2_learn_error {
     output:
         tuple val(batch), val(read_num), file("${batch}.${read_num}.errM.rds"), file("${batch}.${read_num}.errM.csv")
 
+    script:
     """
     #!/usr/bin/env Rscript
     library('dada2');
@@ -556,10 +561,10 @@ process dada2_learn_error {
 }
 
 process dada2_learn_error_pyro {
-    container "${container__dada2}"
+    container "${params.container__dada2}"
     label 'multithread'
     errorStrategy "finish"
-    publishDir "${params.output}/sv/errM/${batch}", mode: 'copy'
+    publishDir { "${params.output}/sv/errM/${batch}" }, mode: 'copy'
 
     input:
         tuple val(batch_specimens), val(batch), file(reads), val(read_num)
@@ -567,6 +572,7 @@ process dada2_learn_error_pyro {
     output:
         tuple val(batch), val(read_num), file("${batch}.${read_num}.errM.rds"), file("${batch}.${read_num}.errM.csv")
 
+    script:
     """
     #!/usr/bin/env Rscript
     library('dada2');
@@ -589,7 +595,7 @@ process dada2_learn_error_pyro {
 }
 
 process dada2_derep_batches {
-    container "${container__dada2}"
+    container "${params.container__dada2}"
     label 'io_mem'
     errorStrategy "finish"
 
@@ -599,6 +605,7 @@ process dada2_derep_batches {
     output:
         tuple val(batch), val(read_num), val(specimens), file("${batch}_${read_num}_derep.rds"), val(errM), val(dada_fns)
     
+    script:
     """
     #!/usr/bin/env Rscript
     library('dada2');
@@ -613,7 +620,7 @@ process dada2_derep_batches {
 }
 
 process dada2_derep_batches_pyro {
-    container "${container__dada2}"
+    container "${params.container__dada2}"
     label 'io_mem'
     errorStrategy "finish"
 
@@ -623,6 +630,7 @@ process dada2_derep_batches_pyro {
     output:
         tuple val(batch), val(read_num), val(specimens), file("${batch}_${read_num}_derep.rds"), val(errM), val(dada_fns)
     
+    script:
     """
     #!/usr/bin/env Rscript
     library('dada2');
@@ -635,7 +643,7 @@ process dada2_derep_batches_pyro {
 }
 
 process dada2_dada {
-    container "${container__dada2}"
+    container "${params.container__dada2}"
     label 'multithread'
     errorStrategy "finish"
 
@@ -644,6 +652,7 @@ process dada2_dada {
 
     output:
         tuple val(batch), val(read_num), val(specimens), file("${batch}_${read_num}_dada.rds"), val(dada_fns)
+    script:
     """
     #!/usr/bin/env Rscript
     library('dada2');
@@ -655,7 +664,7 @@ process dada2_dada {
 }
 
 process dada2_dada_pyro {
-    container "${container__dada2}"
+    container "${params.container__dada2}"
     label 'multithread'
     errorStrategy "finish"
 
@@ -664,6 +673,7 @@ process dada2_dada_pyro {
 
     output:
         tuple val(batch), val(read_num), val(specimens), file("${batch}_${read_num}_dada.rds"), val(dada_fns)
+    script:
     """
     #!/usr/bin/env Rscript
     library('dada2');
@@ -676,7 +686,7 @@ process dada2_dada_pyro {
 
 
 process dada2_demultiplex_dada {
-    container "${container__dada2}"
+    container "${params.container__dada2}"
     label 'io_mem'
     errorStrategy "finish"
 
@@ -686,6 +696,7 @@ process dada2_demultiplex_dada {
     output:
         tuple val(batch), val(read_num), val(specimens), file(dada_fns)
 
+    script:
     """
     #!/usr/bin/env Rscript
     library('dada2');
@@ -701,7 +712,7 @@ process dada2_demultiplex_dada {
 }
 
 process dada2_merge {
-    container "${container__dada2}"
+    container "${params.container__dada2}"
     label 'multithread'
     errorStrategy "finish"
 
@@ -711,6 +722,7 @@ process dada2_merge {
     output:
         tuple val(batch), val(specimen), file("${specimen}.dada2.merged.rds")
     
+    script:
     """
     #!/usr/bin/env Rscript
     library('dada2');
@@ -731,7 +743,7 @@ process dada2_merge {
 }
 
 process dada2_seqtab_sp {
-    container "${container__dada2}"
+    container "${params.container__dada2}"
     label 'io_mem'
     errorStrategy "finish"
 
@@ -741,6 +753,7 @@ process dada2_seqtab_sp {
     output:
         tuple val(batch), val(specimen), file("${specimen}.dada2.seqtab.rds")
 
+    script:
     """
     #!/usr/bin/env Rscript
     library('dada2');
@@ -752,7 +765,7 @@ process dada2_seqtab_sp {
 }
 
 process dada2_seqtab_combine_batch {
-    container "${container__fastcombineseqtab}"
+    container "${params.container__fastcombineseqtab}"
     label 'io_mem'
     errorStrategy "finish"
 
@@ -762,6 +775,7 @@ process dada2_seqtab_combine_batch {
     output:
         file("${batch}.dada2.seqtabs.rds")
 
+    script:
     """
     set -e
 
@@ -772,7 +786,7 @@ process dada2_seqtab_combine_batch {
 }
 
 process dada2_seqtab_combine_all {
-    container "${container__fastcombineseqtab}"
+    container "${params.container__fastcombineseqtab}"
     label 'io_mem'
     errorStrategy "finish"
 
@@ -782,6 +796,7 @@ process dada2_seqtab_combine_all {
     output:
         file("combined.dada2.seqtabs.rds")
 
+    script:
     """
     set -e
 
@@ -793,7 +808,7 @@ process dada2_seqtab_combine_all {
 
 
 process dada2_remove_bimera {
-    container "${container__dada2}"
+    container "${params.container__dada2}"
     label 'mem_veryhigh'
     errorStrategy "finish"
     publishDir "${params.output}/sv/", mode: 'copy'
@@ -822,7 +837,7 @@ process dada2_remove_bimera {
 }
 
 process Dada2_convert_output {
-    container "${container__dada2pplacer}"
+    container "${params.container__dada2pplacer}"
     label 'io_mem'
     publishDir "${params.output}/sv/", mode: 'copy'
     errorStrategy "finish"
@@ -837,6 +852,7 @@ process Dada2_convert_output {
         path "dada2.specimen.sv.long.csv", emit: sv_long
         path "dada2.sv.shared.txt", emit: sharetable
 
+    script:
     """
     dada2-seqtab-to-pplacer \
     -s ${final_seqtab_csv} \
@@ -849,7 +865,7 @@ process Dada2_convert_output {
 }
 
 process goods_filter_seqtab {
-    container "${container__goodsfilter}"
+    container "${params.container__goodsfilter}"
     label 'io_mem'
     publishDir "${params.output}/sv/", mode: 'copy'
     errorStrategy "finish"
@@ -863,6 +879,7 @@ process goods_filter_seqtab {
         path "curves/*_collector.csv"
 
 
+    script:
     """
     set -e 
 
@@ -879,7 +896,7 @@ process goods_filter_seqtab {
 }
 
 process FastQC_PostFT {
-    container "${container__fastqc}"
+    container "${params.container__fastqc}"
     label 'io_limited'
     errorStrategy 'ignore'
     publishDir "${params.output}/sv/fastqc/", mode: 'copy'
@@ -890,6 +907,7 @@ process FastQC_PostFT {
     output:
         tuple val(specimen), val(batch), val(read), path("PostFT__${specimen}__${read}_fastqc.html"), path("PostFT__${specimen}__${read}_fastqc.zip")
     
+    script:
     """
     set -e
 
@@ -904,9 +922,7 @@ process FastQC_PostFT {
 //
 
 include { read_manifest } from './manifest'
-include { output_failed } from './preprocess' params (
-    output: params.output
-)
+include { output_failed } from './preprocess'
 include { preprocess_wf } from './preprocess'
 
 // Function which prints help message text

@@ -3,10 +3,12 @@
 //    Useful particularly for newer illumina reads with faked binned qual scores :/
 //
 nextflow.enable.dsl=2
+// LEGACY — alternative ASV method (swarm). Not part of the supported
+// 5-stage flow (sv→place→classify→stats). Kept for reference; unmaintained.
 
-container__swarm = "quay.io/biocontainers/swarm:3.1.2--h9f5acd7_0"
-container__vsearch = "quay.io/biocontainers/vsearch:2.22.1--hf1761c0_0"
-container__fastatools = "golob/fastatools:0.8.5A"
+params.container__swarm = "quay.io/biocontainers/swarm:3.1.2--h9f5acd7_0"
+params.container__vsearch = "quay.io/biocontainers/vsearch:2.22.1--hf1761c0_0"
+params.container__fastatools = "golob/fastatools:0.8.5A"
 
 
 
@@ -30,9 +32,10 @@ params.chimera_method = 'consensus'
 
 workflow swarm_wf {
     // These should be preprocessed through TrimGalore, etc
-    take: miseq_pe_ch
-    take: miseq_se_ch
-    take: pyro_ch
+    take:
+    miseq_pe_ch
+    miseq_se_ch
+    pyro_ch
 
     main:
     //
@@ -120,15 +123,16 @@ workflow swarm_wf {
 }
 
 process MergePairs {
-    container "${container__vsearch}"
+    container "${params.container__vsearch}"
     label 'io_limited'
-    errorStrategy "ignore"
+    errorStrategy 'ignore'
 
     input:
         tuple val(specimen), file(R1), file(R2)
     
     output:
         tuple val(specimen), file("${specimen}.merged.fastq.gz")
+    script:
     """
     vsearch --fastq_mergepairs \
     ${R1} --reverse ${R2} \
@@ -141,15 +145,16 @@ process MergePairs {
 }
 
 process FilterAndTrim {
-    container "${container__vsearch}"
+    container "${params.container__vsearch}"
     label 'io_limited'
-    errorStrategy "ignore"
+    errorStrategy 'ignore'
 
     input:
         tuple val(specimen), file(R1)
     
     output:
         tuple val(specimen), file("${specimen}.filtered.fasta.gz")
+    script:
     """
     vsearch --fastq_filter \
     ${R1} \
@@ -166,15 +171,16 @@ process FilterAndTrim {
 }
 
 process SpecimenDereplicate {
-    container "${container__vsearch}"
+    container "${params.container__vsearch}"
     label 'multithread'
-    errorStrategy "ignore"
+    errorStrategy 'ignore'
 
     input:
         tuple val(specimen), file(R1)
     
     output:
         tuple val(specimen), file("${specimen}.derep.fasta.gz")
+    script:
     """
     vsearch --derep_fulllength \
     ${R1} \
@@ -190,8 +196,8 @@ process SpecimenDereplicate {
 }
 
 process MakeDSVforSwarm {
-    container = "${container__fastatools}"
-    label = 'io_mem'
+    container "${params.container__fastatools}"
+    label 'io_mem'
     
     input:
         path specimen_fasta
@@ -200,8 +206,9 @@ process MakeDSVforSwarm {
         path 'dsv.fasta.gz', emit: dsv_fasta
         path 'sp_dsv_count.csv.gz', emit: sp_dsv_count
 
+    script:
 """
-#!/usr/bin/env python
+#!/usr/bin/env python3
 import gzip
 import fastalite
 from collections import defaultdict
@@ -259,9 +266,9 @@ with gzip.open('sp_dsv_count.csv.gz', 'wt') as sdc_h:
 }
 
 process Swarm {
-    container "${container__swarm}"
+    container "${params.container__swarm}"
     label 'multithread'
-    errorStrategy "ignore"
+    errorStrategy 'ignore'
 
     input:
         path (R1)
@@ -269,6 +276,7 @@ process Swarm {
     output:
         path 'swarm_seeds.fasta.gz', emit: swarm_seeds_fasta
         path 'swarm_clusters.txt', emit: swarm_clusters
+    script:
     """
     zcat ${R1} | \
     swarm \
@@ -283,8 +291,8 @@ process Swarm {
 }
 
 process RemoveGlobalSingleton {
-    container = "${container__fastatools}"
-    label = 'io_mem'
+    container "${params.container__fastatools}"
+    label 'io_mem'
     
     input:
         path swarm_seeds_fasta
@@ -292,8 +300,9 @@ process RemoveGlobalSingleton {
     output:
         path "swarm_seeds.no_singleton.fasta.gz"
 
+    script:
 """
-#!/usr/bin/env python
+#!/usr/bin/env python3
 import gzip
 import fastalite
 import re
@@ -309,9 +318,9 @@ with gzip.open("swarm_seeds.no_singleton.fasta.gz", 'wt') as out_h:
 }
 
 process ChimeraRemoval {
-    container "${container__vsearch}"
+    container "${params.container__vsearch}"
     label 'io_limited'
-    errorStrategy "ignore"
+    errorStrategy 'ignore'
     publishDir "${params.output}/sv/", mode: 'copy'
 
     input:
@@ -319,6 +328,7 @@ process ChimeraRemoval {
     
     output:
         file("swarm.seeds_nochimera.fasta.gz")
+    script:
     """
     vsearch --uchime3_denovo \
     ${R1} \
@@ -330,8 +340,8 @@ process ChimeraRemoval {
 }
 
 process SwarmToASV {
-    container = "${container__fastatools}"
-    label = 'io_mem'
+    container "${params.container__fastatools}"
+    label 'io_mem'
     publishDir "${params.output}/sv/", mode: 'copy'
 
     input:
@@ -343,8 +353,9 @@ process SwarmToASV {
         path 'swarm_ASV.fasta.gz', emit: asv_fasta
         path 'sp_asv_long.csv.gz', emit: sp_asv_long
 
+    script:
 """
-#!/usr/bin/env python
+#!/usr/bin/env python3
 import gzip
 import fastalite
 import csv
@@ -407,8 +418,8 @@ print("Percentage Kept", (reads_kept) / (reads_kept + reads_filtered) * 100)
 }
 
 process ConvertOutputs {
-    container = "${container__fastatools}"
-    label = 'io_mem'
+    container "${params.container__fastatools}"
+    label 'io_mem'
     publishDir "${params.output}/sv/", mode: 'copy'
     
     input:
@@ -421,8 +432,9 @@ process ConvertOutputs {
         path 'swarm_sv.map.csv', emit: map
         path 'swarm_sv.weights.csv', emit: weights
 
+    script:
 """
-#!/usr/bin/env python
+#!/usr/bin/env python3
 import gzip
 import pandas as pd
 import fastalite
@@ -499,9 +511,7 @@ svl[['sv', 'sv_sp', 'count']].drop_duplicates().to_csv(
 //
 
 include { read_manifest } from './manifest'
-include { output_failed } from './preprocess' params (
-    output: params.output
-)
+include { output_failed } from './preprocess'
 include { preprocess_wf } from './preprocess'
 params.manifest = null
 // Function which prints help message text
