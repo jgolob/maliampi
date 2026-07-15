@@ -14,9 +14,16 @@ from .aggregate import (
 )
 from .combine import combine_seqtabs
 from .export import export_legacy
+from .goods import write_goods_outputs
 from .importers import import_legacy_sv
 from .refpkg import validate_sv_registry, write_sv_registry
 from .sv import filter_sv_artifact, read_sv_h5ad, sequence_hash, write_sv_h5ad
+from .swarm import (
+    combine_dsv_registries,
+    filter_swarm_seeds,
+    finalize_swarm_h5ad,
+    prepare_specimen_dsv,
+)
 
 
 def combine_seqtabs_main() -> None:
@@ -169,3 +176,81 @@ def registry_validate_main() -> None:
     parser.add_argument("registry_parquet")
     args = parser.parse_args()
     print(json.dumps(validate_sv_registry(args.sv_h5ad, args.registry_parquet), sort_keys=True))
+
+
+def goods_filter_main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("input_h5ad")
+    parser.add_argument("output_h5ad")
+    parser.add_argument("--convergence-parquet", default="goods.convergence.parquet")
+    parser.add_argument("--curves-parquet", default="goods.curves.parquet")
+    parser.add_argument("--convergence-delta", type=float, default=0.0001)
+    parser.add_argument("--min-reads", type=int, default=30)
+    parser.add_argument("--min-prevalence", type=int, default=2)
+    parser.add_argument("--seed", type=int, default=1)
+    parser.add_argument("--keep-nonconverged", action="store_true")
+    args = parser.parse_args()
+    write_goods_outputs(
+        args.input_h5ad,
+        args.output_h5ad,
+        args.convergence_parquet,
+        args.curves_parquet,
+        convergence_delta=args.convergence_delta,
+        min_reads=args.min_reads,
+        min_prevalence=args.min_prevalence,
+        seed=args.seed,
+        keep_nonconverged=args.keep_nonconverged,
+    )
+
+
+def swarm_specimen_main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("derep_fasta")
+    parser.add_argument("output_registry")
+    parser.add_argument("--specimen", required=True)
+    parser.add_argument("--batch", required=True)
+    args = parser.parse_args()
+    prepare_specimen_dsv(
+        args.derep_fasta,
+        args.output_registry,
+        specimen=args.specimen,
+        batch=args.batch,
+    )
+
+
+def swarm_combine_main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--output-fasta", required=True)
+    parser.add_argument("--output-registry", required=True)
+    parser.add_argument("registries", nargs="+")
+    args = parser.parse_args()
+    combine_dsv_registries(args.registries, args.output_fasta, args.output_registry)
+
+
+def swarm_filter_seeds_main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("input_fasta")
+    parser.add_argument("output_fasta")
+    args = parser.parse_args()
+    filter_swarm_seeds(args.input_fasta, args.output_fasta)
+
+
+def swarm_finalize_main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("registry_parquet")
+    parser.add_argument("clusters")
+    parser.add_argument("nonchimera_fasta")
+    parser.add_argument("output_h5ad")
+    parser.add_argument("stats_parquet")
+    parser.add_argument("--project-id", required=True)
+    parser.add_argument("--dataset-id", required=True)
+    args = parser.parse_args()
+    finalize_swarm_h5ad(
+        args.registry_parquet,
+        args.clusters,
+        args.nonchimera_fasta,
+        args.output_h5ad,
+        args.stats_parquet,
+        project_id=args.project_id,
+        dataset_id=args.dataset_id,
+    )

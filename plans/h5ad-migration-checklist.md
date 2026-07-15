@@ -30,11 +30,11 @@ external-tool boundaries; they must not remain internal SV abundance contracts.
 
 ## Legacy and cleanup
 
-- [ ] Swarm uses H5AD internally.
-- [ ] Both legacy placement monoliths use H5AD internally or are explicitly retired.
-- [ ] Good's filter process, parameters, image, and code are removed.
+- [x] Swarm uses H5AD internally as a supported standalone workflow.
+- [x] Both legacy placement/classification monoliths are retired.
+- [x] Good's filter is incorporated as an opt-in sparse-H5AD standalone workflow.
 - [ ] Retired DADA2 conversion processes and custom image parameters are removed.
-- [ ] `container__fastatools`, `container__dada2pplacer`, and other superseded helpers are gone.
+- [x] `container__fastatools`, `container__dada2pplacer`, and other superseded helpers are gone.
 - [ ] `vendor/` and duplicate imported Docker directories are removed only after replacement review.
 
 ## Verification sequence

@@ -6,7 +6,7 @@
     1) Make sequence variants (with dada2)
     2) create (vs load) a reference package
     3) Place SV on the reference package
-    4) Classify the SV using the placements + reference package
+    4) Derive taxonomy, phylotypes, and placement statistics
 */
 nextflow.enable.dsl=2
 
@@ -34,11 +34,6 @@ params.errM_randomize = 'TRUE'
 params.errM_nbases = '1e8'
 params.chimera_method = 'consensus'
 
-// Good's filtering
-params.goods_convergence = 0.0001
-params.min_sv_prev = 2
-params.goods_min_reads = 30
-
 // Refpkg
 params.repo_min_id = 0.8
 params.repo_max_accepts = 10
@@ -55,20 +50,6 @@ params.taxdmp = false
 
 // pplacer place
 params.pplacer_prior_lower = 0.01
-
-// pplacer classify
-params.pp_classifer = 'hybrid2'
-params.pp_likelihood_cutoff = 0.9
-params.pp_bayes_cutoff = 1.0
-params.pp_multiclass_min = 0.2
-params.pp_bootstrap_cutoff = 0.8
-params.pp_bootstrap_extension_cutoff = 0.4
-params.pp_nbc_boot = 100
-params.pp_nbc_target_rank = 'genus'
-params.pp_nbc_word_length = 8
-params.pp_seed = 1
-
-
 
 // Function which prints help message text
 def helpMessage() {
@@ -88,15 +69,23 @@ def helpMessage() {
                                     batch: sequencing / library batch. Should be filename safe
                                     I1: forward index file (for checking demultiplexing)
                                     I2: reverse index file
-        --repo_fasta          Repository of 16S rRNA genes.
-        --repo_si             Information about the 16S rRNA genes.
-        --email               Email (for NCBI)
+        --project_id          Stable project identity for every observation
+        --dataset_id          Stable dataset identity for this SV artifact
+        One reference source:
+          --refpkg            Existing reference package, or
+          --repo_fasta        Repository of 16S rRNA genes
+          --repo_si           Information about the reference sequences
+          --email             Contact address for refpkg construction
     Options:
       Common to all:
         --output              Directory to place outputs (default invocation dir)
                                 Maliampi will create a directory structure under this directory
         -w                    Working directory. Defaults to `./work`
         -resume                 Attempt to restart from a prior run, only completely changed steps
+        --sv_only              Stop after canonical SV H5AD generation
+        --skip_taxonomy        Do not generate taxonomy artifacts
+        --skip_phylotypes      Do not generate phylotype artifacts
+        --skip_stats           Do not generate placement statistics
 
     SV-DADA2 options:
         --trimLeft              How far to trim on the left (default = 0)
@@ -123,17 +112,9 @@ def helpMessage() {
         --raxmlng_seed              Random seed for RAxML-ng (default = 12345)
         --taxdmp                    (Optional) taxdmp.zip from the repository
 
-    Placement / Classification Options (defaults generally fine):
-        --pp_classifer                  pplacer classifer (default = 'hybrid2')
-        --pp_likelihood_cutoff          (default = 0.9)
-        --pp_bayes_cutoff               (default = 1.0)
-        --pp_multiclass_min             (default = 0.2)
-        --pp_bootstrap_cutoff           (default = 0.8)
-        --pp_bootstrap_extension_cutoff (default = 0.4)
-        --pp_nbc_boot                   (default = 100)
-        --pp_nbc_target_rank            (default = 'genus')
-        --pp_nbc_word_length            (default = 8)
-        --pp_seed                       (default = 1)
+    Placement Options:
+        --placer                        Placement engine: epang (default) or pplacer
+        --legacy_redup                  Emit legacy pplacer-reduplicated output
     """.stripIndent()
 }
 
@@ -155,8 +136,9 @@ workflow {
     if (
         params.help || 
         (params.manifest == null) ||
-        (!params.sv_only && params.refpkg == null && (params.repo_fasta == null || params.repo_si == null || params.email == null)) ||
-        (!params.sv_only && !params.skip_phylotypes && params.dataset_id == null)
+        (params.project_id == null) ||
+        (params.dataset_id == null) ||
+        (!params.sv_only && params.refpkg == null && (params.repo_fasta == null || params.repo_si == null || params.email == null))
     ){
         // Invoke the function above which prints the help message
         helpMessage()

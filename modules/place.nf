@@ -112,31 +112,6 @@ process PplacerPlacement {
     """
 }
 
-process MakeSplit {
-    container "${params.container__maliampi_tools}"
-    label 'maliampi_tools'
-    label 'io_limited'
-
-    input:
-    path sv_long
-
-    output:
-    path 'sv_multiplicity.csv', emit: multiplicity
-
-    script:
-    """
-    python3 - <<'PY'
-    import csv
-
-    with open('${sv_long}', newline='') as in_h, open('sv_multiplicity.csv', 'w', newline='') as out_h:
-        rows = csv.DictReader(in_h)
-        writer = csv.writer(out_h)
-        for row in rows:
-            writer.writerow((row['sv'], row['specimen'], row['count']))
-    PY
-    """
-}
-
 process GappaSplit {
     container "${params.container__gappa}"
     label 'multithread'

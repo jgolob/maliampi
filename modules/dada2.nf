@@ -776,8 +776,8 @@ process dada2_seqtab_combine_batch {
     """
     set -e
 
-    maliampi-combine-seqtabs --project-id ${params.dataset_id ?: 'unknown'} \
-      --dataset-id ${params.dataset_id ?: 'unknown'} \
+    maliampi-combine-seqtabs --project-id ${params.project_id} \
+      --dataset-id ${params.dataset_id} \
       --output-h5ad ${batch}.pre-chimera.h5ad \
       --output-rds ${batch}.dada2.seqtabs.rds ${sp_seqtabs_rds}
     """
@@ -800,8 +800,8 @@ process dada2_seqtab_combine_all {
     """
     set -e
 
-    maliampi-combine-seqtabs --project-id ${params.dataset_id ?: 'unknown'} \
-      --dataset-id ${params.dataset_id ?: 'unknown'} \
+    maliampi-combine-seqtabs --project-id ${params.project_id} \
+      --dataset-id ${params.dataset_id} \
       --output-h5ad combined.pre-chimera.h5ad \
       --output-rds combined.dada2.seqtabs.rds ${seqtabs_rds}
     """
@@ -887,6 +887,8 @@ def helpMessage() {
                                     batch: sequencing / library batch. Should be filename safe
                                     I1: forward index file (for checking demultiplexing)
                                     I2: reverse index file
+        --project_id          Stable project identity for every observation
+        --dataset_id          Stable dataset identity for this SV artifact
     Options:
       Common to all:
         --output              Directory to place outputs (default invocation dir)
@@ -908,7 +910,7 @@ def helpMessage() {
 }
 
 workflow {
-    if (params.manifest == null) {
+    if (params.help || params.manifest == null || params.project_id == null || params.dataset_id == null) {
         helpMessage()
         exit 0
     }

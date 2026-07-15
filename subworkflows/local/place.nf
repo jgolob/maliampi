@@ -2,7 +2,7 @@ nextflow.enable.dsl=2
 
 include { ValidateRefpkg } from '../../modules/refpkg_validate'
 include { ExtractRefpkg } from '../../modules/refpkg_utils'
-include { AlignSV; CombineAln_SV_refpkg; ConvertAlnToFasta; EPAngPlacement; PplacerPlacement; MakeSplit; GappaSplit; PlacementIdentity } from '../../modules/place'
+include { AlignSV; CombineAln_SV_refpkg; ConvertAlnToFasta; EPAngPlacement; PplacerPlacement; GappaSplit; PlacementIdentity } from '../../modules/place'
 include { PplacerReduplicate } from '../../modules/conversion'
 include { ExportSvPlacementInputs; ValidateSvRegistry } from '../../modules/sv_h5ad'
 

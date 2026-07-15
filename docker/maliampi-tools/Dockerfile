@@ -7,6 +7,11 @@ COPY pyproject.toml uv.lock README.md LICENSE.txt ./
 COPY src ./src
 RUN uv sync --frozen --no-dev --no-editable
 
+FROM builder AS test
+
+COPY tests/python ./tests/python
+RUN uv sync --frozen --extra dev --no-editable && uv run pytest tests/python
+
 FROM python:3.11-slim-bookworm
 
 WORKDIR /app
