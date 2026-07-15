@@ -3,13 +3,12 @@
 //
 nextflow.enable.dsl=2
 
+include { WriteSvRegistry } from './sv_h5ad'
+
 params.container__vsearch = "quay.io/biocontainers/vsearch:2.22.1--hf1761c0_0"
-params.container__fastatools = "golob/fastatools:0.8.0A"
 params.container__pplacer = "golob/pplacer:1.1alpha19rc_BCW_0.3.1A"
-params.container__seqinfosync = "golob/seqinfo_taxonomy_sync:0.3.0"
 params.container__infernal = "quay.io/biocontainers/infernal:1.1.4--h779adbc_0"
 params.container__raxmlng = 'quay.io/biocontainers/raxml-ng:1.0.3--h32fcf60_0'
-params.container__dada2pplacer = "golob/dada2-pplacer:0.8.0__bcw_0.3.1A"
 params.container__taxtastic = "golob/taxtastic:0.9.5D"
 
 params.container__raxml = "quay.io/biocontainers/raxml:8.2.4--h779adbc_4"
@@ -20,6 +19,7 @@ params.rfam = false
 workflow make_refpkg_wf {
     take:
         sv_fasta_f
+        sv_registry
 
     main:
     //
@@ -142,7 +142,8 @@ workflow make_refpkg_wf {
             TaxtableForSI.out,
             CombinedRefFilter.out.recruit_si,
             cm_f,
-            RaxmlTreeNG.out.model
+            RaxmlTreeNG.out.model,
+            sv_registry
         )
         refpkg_tgz = CombineRefpkg_ng.out
 
@@ -157,6 +158,7 @@ workflow make_refpkg_wf {
             TaxtableForSI.out,
             CombinedRefFilter.out.recruit_si,
             cm_f,
+            sv_registry,
         )
         refpkg_tgz = CombineRefpkg_og.out
     }
@@ -199,7 +201,8 @@ process RefpkgSearchRepo {
 }
 
 process CombinedRefFilter {
-    container "${params.container__fastatools}"
+    container "${params.container__maliampi_tools}"
+    label 'maliampi_tools'
     label 'io_limited'
 
     input:
@@ -404,7 +407,8 @@ with open('references_seq_info.csv', 'wt') as si_out:
 
 
 process FilterSeqInfo {
-    container "${params.container__fastatools}"
+    container "${params.container__maliampi_tools}"
+    label 'maliampi_tools'
     label 'io_limited'
 
     input:
@@ -433,7 +437,8 @@ process FilterSeqInfo {
 }
 
 process RemoveDroppedRecruits{
-    container "${params.container__fastatools}"
+    container "${params.container__maliampi_tools}"
+    label 'maliampi_tools'
     label 'io_limited'
 
     input:
@@ -479,7 +484,7 @@ process DlBuildTaxtasticDB {
     set -e
 
     mkdir -p dl/ && \
-    taxit new_database taxonomy.db -u ftp://ftp.ncbi.nlm.nih.gov/pub/taxonomy/taxdmp.zip -p dl/
+    taxit new_database taxonomy.db --unknown-action warn -u ftp://ftp.ncbi.nlm.nih.gov/pub/taxonomy/taxdmp.zip -p dl/
     """
 
 }
@@ -497,7 +502,7 @@ process BuildTaxtasticDB {
 
     script:
     """
-    taxit new_database taxonomy.db -z ${taxdump_zip_f}
+    taxit new_database taxonomy.db --unknown-action warn -z ${taxdump_zip_f}
     """
 }
 
@@ -544,7 +549,8 @@ process AlignRepoRecruits {
 }
 
 process ConvertAlnToFasta {
-    container "${params.container__fastatools}"
+    container "${params.container__maliampi_tools}"
+    label 'maliampi_tools'
     label 'io_limited'
     errorStrategy 'retry'
 
@@ -572,7 +578,8 @@ process ConvertAlnToFasta {
 }
 
 process ConvertAlnToPhy {
-    container "${params.container__fastatools}"
+    container "${params.container__maliampi_tools}"
+    label 'maliampi_tools'
     label 'io_limited'
     errorStrategy 'finish'
 
@@ -655,7 +662,8 @@ process RaxmlTree {
 }
 
 process RaxmlTree_cleanupInfo {
-    container "${params.container__fastatools}"
+    container "${params.container__maliampi_tools}"
+    label 'maliampi_tools'
     label 'io_limited'
     errorStrategy 'retry'
 
@@ -728,6 +736,7 @@ process CombineRefpkg_ng {
         path refpkg_si_corr_f
         path refpkg_cm
         path raxmlng_model
+        path sv_registry
     
     output:
         path "refpkg.tar.gz"
@@ -746,6 +755,7 @@ taxit create --locus 16S \
 --profile ${refpkg_cm}
 
 cp ${raxmlng_model} refpkg/raxmlng.model.raw
+cp ${sv_registry} refpkg/sv_registry.parquet
 python << ENDPYTHON
 import json
 import hashlib
@@ -773,7 +783,8 @@ gzip refpkg.tar
 }
 
 process CombineRefpkg_og {
-    container "${params.container__pplacer}"
+    // This step creates the archive with taxit; it does not invoke pplacer.
+    container "${params.container__taxtastic}"
     label 'io_mem'
 
     afterScript 'rm -rf refpkg/* || true'
@@ -787,6 +798,7 @@ process CombineRefpkg_og {
         file refpkg_tt_f
         file refpkg_si_corr_f
         file refpkg_cm
+        file sv_registry
     
     output:
         file "refpkg.tar.gz"
@@ -803,6 +815,7 @@ process CombineRefpkg_og {
     --taxonomy ${refpkg_tt_f} \
     --seq-info ${refpkg_si_corr_f} \
     --profile ${refpkg_cm} && \
+    cp ${sv_registry} refpkg/sv_registry.parquet && \
     ls -l refpkg/ && \
     tar czvf refpkg.tar.gz  -C refpkg/ .
     """
@@ -835,30 +848,6 @@ contents = json.loads(
 
 """
 
-}
-
-process Dada2_convert_output {
-    container "${params.container__dada2pplacer}"
-    label 'io_mem'
-    publishDir "${params.output}/sv/", mode: 'copy'
-    errorStrategy 'retry'
-
-    input:
-        file(final_seqtab_csv)
-
-    output:
-        file "dada2.sv.fasta"
-        file "dada2.sv.map.csv"
-        file "dada2.sv.weights.csv"
-
-    script:
-    """
-    dada2-seqtab-to-pplacer \
-    -s ${final_seqtab_csv} \
-    -f dada2.sv.fasta \
-    -m dada2.sv.map.csv \
-    -w dada2.sv.weights.csv \
-    """
 }
 
 //
@@ -952,20 +941,11 @@ workflow {
         exit 0
     }
 
-    if (params.sv_fasta != null) {
+    if (params.sv_fasta != null && params.sv_h5ad != null) {
+        WriteSvRegistry(file(params.sv_h5ad))
         make_refpkg_wf(
-            file(params.sv_fasta)
-        )
-    }
-    else if (
-        params.seqtable != null
-    ) {
-        Dada2_convert_output(file(params.seqtable))
-        sv_fasta_f = Dada2_convert_output.out[0]
-        map_f = Dada2_convert_output.out[1]
-        weights_f = Dada2_convert_output.out[2]
-        make_refpkg_wf(
-            sv_fasta_f
+            file(params.sv_fasta),
+            WriteSvRegistry.out.registry,
         )
     }
     else {

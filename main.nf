@@ -13,6 +13,12 @@ nextflow.enable.dsl=2
 // Defaults for parameters
 params.help = false
 params.sv_only = false
+params.skip_taxonomy = false
+params.skip_stats = false
+params.skip_phylotypes = false
+params.placer = 'epang'
+params.legacy_redup = false
+params.refpkg = null
 // common
 params.output = '.'
 
@@ -132,12 +138,14 @@ def helpMessage() {
 }
 
 // Modules
-include { read_manifest } from './modules/manifest'
-include { output_failed } from './modules/preprocess'
-include { preprocess_wf } from './modules/preprocess'
-include { dada2_wf } from './modules/dada2'
 include { make_refpkg_wf } from './modules/refpackage'
-include { epang_place_classify_wf } from './modules/epang_place_classify'
+include { sv } from './subworkflows/local/sv'
+include { place } from './subworkflows/local/place'
+include { taxonomy } from './subworkflows/local/taxonomy'
+include { stats } from './subworkflows/local/stats'
+include { phylotypes } from './subworkflows/local/phylotypes'
+include { effective_phylotype_thresholds } from './subworkflows/local/phylotypes'
+include { WriteSvRegistry } from './modules/sv_h5ad'
 
 // STEP 0: Read manifest and verify files.
 
@@ -147,9 +155,8 @@ workflow {
     if (
         params.help || 
         (params.manifest == null) ||
-        (params.repo_fasta == null) ||
-        (params.repo_si == null) ||
-        (params.email == null)
+        (!params.sv_only && params.refpkg == null && (params.repo_fasta == null || params.repo_si == null || params.email == null)) ||
+        (!params.sv_only && !params.skip_phylotypes && params.dataset_id == null)
     ){
         // Invoke the function above which prints the help message
         helpMessage()
@@ -162,63 +169,56 @@ workflow {
     //  Step 0: Load manifest and preprocess
     //
 
-    // Load manifest!
-    manifest = read_manifest(
-        Channel.from(
-            file(params.manifest)
-        )
-    )
-    // manifest.valid_paired_indexed contains indexed paired reads
-    // manifest.valid_paired contains pairs verified to exist but without index.
+    sv(channel.fromPath(params.manifest, checkIfExists: true))
 
-    // Preprocess
-    preprocess_wf(
-        manifest.valid_paired_indexed,
-        manifest.valid_paired,
-        manifest.valid_unpaired
-    )        
-    // preprocess_wf.out.valid is the reads that survived the preprocessing steps.
-    // preprocess_wf.out.empty are the reads that ended up empty with preprocessing
+    if (!params.sv_only) {
+        //
+        //  STEP 2: Reference package
+        //
 
-    //
-    // Step 1: DADA2 to make sequence variants.
-    //
-
-    dada2_wf(
-        preprocess_wf.out.miseq_pe,
-        preprocess_wf.out.miseq_se,
-        preprocess_wf.out.pyro
-    )
-
-    //
-    // Report specimens that failed at any step of making SVs
-    //
-
-    output_failed(            
-        manifest.other.map { [it.specimen, 'failed at manifest'] }.mix(
-        preprocess_wf.out.empty.map{ [it[0], 'preprocessing'] }).mix(
-        dada2_wf.out.failures)
-        .toList()
-        .transpose()
-        .toList()
-    )
-
-    //
-    //  STEP 2: Reference package
-    //
-
-    make_refpkg_wf(
-        dada2_wf.out.sv_fasta
-    )
+        if (params.refpkg != null) {
+            refpkg = channel.fromPath(params.refpkg, checkIfExists: true)
+        } else {
+            WriteSvRegistry(sv.out.sv_h5ad)
+            make_refpkg_wf(sv.out.sv_fasta, WriteSvRegistry.out.registry)
+            refpkg = make_refpkg_wf.out.refpkg_tgz
+        }
 
     //
     // STEP 3. Place and Classify
     //
-    epang_place_classify_wf(
-        dada2_wf.out.sv_fasta,
-        make_refpkg_wf.out.refpkg_tgz,
-        dada2_wf.out.sv_long
-    )
+        place(
+            sv.out.sv_h5ad,
+            refpkg,
+            params.placer,
+            params.legacy_redup,
+        )
+
+        if (!params.skip_taxonomy) {
+        // Taxonomy validates the same immutable source package independently.
+        // Do not feed it placement's multi-output validation process channel.
+            taxonomy(place.out.dedup_jplace, refpkg, sv.out.sv_h5ad, place.out.placement_identity)
+        }
+        if (!params.skip_stats) {
+            stats(place.out.dedup_jplace, place.out.specimen_jplaces)
+        }
+        if (!params.skip_phylotypes) {
+        def thresholds = effective_phylotype_thresholds(
+            params.phylotype_thresholds,
+            params.phylotype_add_thresholds,
+            params.phylotype_distance,
+            params.phylotype_kr_thresholds,
+        )
+            phylotypes(
+                place.out.dedup_jplace,
+                sv.out.sv_h5ad,
+                place.out.placement_identity,
+                params.dataset_id,
+                thresholds,
+                params.phylotype_distance,
+                params.phylotype_lwr_overlap,
+            )
+        }
+    }
     
 }
-
