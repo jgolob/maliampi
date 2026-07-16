@@ -32,20 +32,16 @@ docker build --platform linux/amd64 \
 ## CI and GHCR
 
 `.github/workflows/container.yaml` builds and tests the AMD64 helper image on
-relevant pull requests, `master` changes, and `pre-v*` milestone tags without
-publishing. Its Docker
+relevant pull requests and on `master` changes without publishing. Its Docker
 `test` target runs the Python suite inside the image; the runtime image then
 receives CLI smoke checks.
 
-GHCR publication is disabled by default. To enable approved releases, a
-repository administrator must create the `container-release` environment,
-restrict it to protected `tools-v*` tags, require reviewers, and set repository
-variable `CONTAINER_RELEASE_ENABLED=true`.
-
-An approved `tools-vX.Y.Z` tag publishes
-`ghcr.io/jgolob/maliampi-tools:X.Y.Z` and `sha-<commit>`, including SBOM and
-provenance attestations. A `pre-vX.Y.Z` tag is validation-only and cannot
-publish. No floating `latest` or `edge` tag is published.
+A `vX.Y.Z` tag runs the same build-and-validate job and then publishes. It
+pushes `ghcr.io/jgolob/maliampi-tools:X.Y.Z`, `sha-<commit>`, and the floating
+`latest` tag — including SBOM and provenance attestations — and creates a GitHub
+Release `vX.Y.Z` with auto-generated notes that link the published image tags.
+Publication requires no manual gating; a `workflow_dispatch` run with
+`publish: true` and an explicit `version` is available as a manual escape hatch.
 
 ## Verified smoke path
 
@@ -53,4 +49,5 @@ The bundled minimal data has been exercised through the helper image, standalone
 Good's, standalone Swarm, DADA2 SV inference, refpkg construction, EPA-ng,
 taxonomy, phylotypes, and stats. See `maliampi-practice-data/` for the fixture
 inputs. Docker/Nextflow execution remains an explicit operational action; CI
-validation does not publish images or run a remote release.
+validation on pull requests and `master` does not publish images. Only a
+`vX.Y.Z` tag publishes and cuts a release.

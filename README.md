@@ -130,8 +130,7 @@ path and commands for reproducing it.
 ### Helper-image releases
 
 The container workflow validates an AMD64 `maliampi-tools` build on relevant
-pull requests and `master` changes without publishing. GHCR publication is
-disabled by default and requires the protected `container-release` GitHub
-Environment plus the repository variable `CONTAINER_RELEASE_ENABLED=true`.
-Published images are immutable version and commit-SHA tags; no floating
-`latest` tag is used. See [the container policy](docker/README.md).
+pull requests and `master` changes without publishing. Pushing a `vX.Y.Z` tag
+runs the same validation and then publishes the image to GHCR — version,
+commit-SHA, and floating `latest` tags — and cuts a matching GitHub Release. See
+[the container policy](docker/README.md).

@@ -9,18 +9,15 @@ on:
       - "uv.lock"
       - "src/**"
   push:
+    # No path filter here: a v* release tag must always trigger, even when the
+    # tagged commit does not touch these paths. GitHub applies push `paths` to
+    # tag pushes too, which would otherwise silently skip a release.
     branches: [master]
-    tags: ["pre-v*", "tools-v*"]
-    paths:
-      - ".github/workflows/container.yaml"
-      - "docker/maliampi-tools/**"
-      - "pyproject.toml"
-      - "uv.lock"
-      - "src/**"
+    tags: ["v*"]
   workflow_dispatch:
     inputs:
       publish:
-        description: Publish a reviewed image through the protected release environment
+        description: Publish the image and cut a GitHub Release
         required: true
         default: false
         type: boolean
@@ -70,16 +67,14 @@ jobs:
           docker run --rm maliampi-tools:ci maliampi-swarm-finalize --help
 
   release:
-    name: Publish reviewed GHCR release
+    name: Publish GHCR image and cut GitHub Release
     needs: validate
     if: >-
-      (startsWith(github.ref, 'refs/tags/tools-v') ||
-      (github.event_name == 'workflow_dispatch' && inputs.publish)) &&
-      vars.CONTAINER_RELEASE_ENABLED == 'true'
+      startsWith(github.ref, 'refs/tags/v') ||
+      (github.event_name == 'workflow_dispatch' && inputs.publish)
     runs-on: ubuntu-22.04
-    environment: container-release
     permissions:
-      contents: read
+      contents: write
       packages: write
       attestations: write
       id-token: write
@@ -95,7 +90,7 @@ jobs:
           if [ "$EVENT_NAME" = workflow_dispatch ]; then
             version="$INPUT_VERSION"
           else
-            version="${REF_NAME#tools-v}"
+            version="${REF_NAME#v}"
           fi
           case "$version" in
             ''|*[!0-9.]*|.*|*.)
@@ -117,6 +112,7 @@ jobs:
           tags: |
             type=raw,value=${{ steps.version.outputs.version }}
             type=raw,value=sha-${{ github.sha }}
+            type=raw,value=latest
           labels: |
             org.opencontainers.image.title=maliampi-tools
             org.opencontainers.image.description=Sparse SV artifact and workflow helpers for MaliAmPi
@@ -132,3 +128,15 @@ jobs:
           cache-to: type=gha,mode=max
           provenance: mode=max
           sbom: true
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: v${{ steps.version.outputs.version }}
+          generate_release_notes: true
+          body: |
+            Published helper image:
+
+            - `${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version }}`
+            - `${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:sha-${{ github.sha }}`
+            - `${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest`
