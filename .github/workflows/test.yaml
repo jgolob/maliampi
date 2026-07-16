@@ -34,6 +34,6 @@ jobs:
           test -f modules/swarm.nf
       - name: Reject retired live references
         run: |
-          ! grep -R -n -E 'epang_place_classify|pplacer_place_classify|golob/fastatools|golob/dada2-pplacer|golob/goodsfilter|pp_classifer' \
+          ! grep -R -n -E '[e]pang_place_classify|[p]placer_place_classify|golob/[f]astatools|golob/[d]ada2-pplacer|golob/[g]oodsfilter|pp_classi[f]er' \
             --include='*.nf' --include='*.config' --include='*.yaml' --include='*.yml' --include='*.md' \
             . --exclude-dir=.git --exclude-dir=plans

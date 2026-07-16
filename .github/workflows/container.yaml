@@ -10,7 +10,7 @@ on:
       - "src/**"
   push:
     branches: [master]
-    tags: ["tools-v*"]
+    tags: ["pre-v*", "tools-v*"]
     paths:
       - ".github/workflows/container.yaml"
       - "docker/maliampi-tools/**"

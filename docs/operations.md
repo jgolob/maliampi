@@ -32,7 +32,8 @@ docker build --platform linux/amd64 \
 ## CI and GHCR
 
 `.github/workflows/container.yaml` builds and tests the AMD64 helper image on
-relevant pull requests and `master` changes without publishing. Its Docker
+relevant pull requests, `master` changes, and `pre-v*` milestone tags without
+publishing. Its Docker
 `test` target runs the Python suite inside the image; the runtime image then
 receives CLI smoke checks.
 
@@ -43,7 +44,8 @@ variable `CONTAINER_RELEASE_ENABLED=true`.
 
 An approved `tools-vX.Y.Z` tag publishes
 `ghcr.io/jgolob/maliampi-tools:X.Y.Z` and `sha-<commit>`, including SBOM and
-provenance attestations. No floating `latest` or `edge` tag is published.
+provenance attestations. A `pre-vX.Y.Z` tag is validation-only and cannot
+publish. No floating `latest` or `edge` tag is published.
 
 ## Verified smoke path
 

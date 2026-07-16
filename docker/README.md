@@ -18,7 +18,7 @@ No retired helper repository or legacy custom image is a source of truth.
 ## CI and releases
 
 `.github/workflows/container.yaml` builds the AMD64 helper image on pull
-requests and changes to `master`, but does not publish it. It imports the image
+requests, changes to `master`, and `pre-v*` milestone tags, but does not publish it. It imports the image
 locally and verifies the installed H5AD, RDS, Good's, and Swarm command
 interfaces. Its Dockerfile `test` target also runs the full Python test suite
 inside the AMD64 build before the runtime image is accepted.
@@ -32,4 +32,5 @@ Publishing to GHCR is deliberately disabled until a repository administrator:
 After that, a protected `tools-vX.Y.Z` tag or an approved manual dispatch can
 publish `ghcr.io/jgolob/maliampi-tools:X.Y.Z` and a content-addressed
 `sha-<commit>` tag. Releases include build provenance and an SBOM. There is no
-automatic `latest` or `edge` tag.
+automatic `latest` or `edge` tag. A `pre-vX.Y.Z` tag is a validation milestone
+only; it cannot publish an image.
