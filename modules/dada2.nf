@@ -3,12 +3,9 @@
 //
 nextflow.enable.dsl=2
 
-params.container__dada2 = "quay.io/biocontainers/bioconductor-dada2:1.26.0--r42hc247a5b_0"
-params.container__fastcombineseqtab = "golob/dada2-fast-combineseqtab:0.5.0__1.12.0__BCW_0.3.1"
-params.container__dada2pplacer = "golob/dada2-pplacer:0.8.0__bcw_0.3.1A"
-params.container__goodsfilter = "golob/goodsfilter:0.1.6"
-params.container__fastqc = 'biocontainers/fastqc:v0.11.9_cv8'
+include { FinalizeSvH5ad } from './sv_h5ad'
 
+params.container__dada2 = "quay.io/biocontainers/bioconductor-dada2:1.26.0--r42hc247a5b_0"
 // parameters for individual operation
 // Defaults for parameters
 
@@ -245,11 +242,19 @@ workflow dada2_wf {
         .flatMap{
             br ->
             def fl = [];
+            // Nextflow represents a single `file(dada_fns)` output as a Path,
+            // but a multi-specimen batch as a collection of Paths.  Normalize
+            // before indexing so a one-specimen batch does not index into the
+            // Path itself (which yields path components such as `Users`).
+            def dada_files = br[3] instanceof List ? br[3] : [br[3]]
+            if (br[2].size() != dada_files.size()) {
+                error "DADA2 demultiplex output count does not match specimens for batch ${br[0]} ${br[1]}"
+            }
             br[2].eachWithIndex{
                 it, i ->  fl.add([
                     br[2][i], // specimen
                     br[1], // readnum
-                    br[3][i], // dada file
+                    dada_files[i], // dada file
                     br[0] // batch
                 ])
             }
@@ -264,8 +269,8 @@ workflow dada2_wf {
             [
                 spr[0],  // specimen
                 spr[3][0], // batch
-                file(spr[2][r1_idx]), // dada_1
-                file(spr[2][r2_idx]), // dada_2
+                spr[2][r1_idx], // dada_1
+                spr[2][r2_idx], // dada_2
             ]}
         .set { dada2_demultiplex_dada_split }
 
@@ -320,7 +325,7 @@ workflow dada2_wf {
     // STEP 8. Combine seqtabs
     //
     // Do this by batch to help with massive data sets
-    dada2_seqtab_combine_batch(    
+    dada2_seqtab_combine_batch(
         dada2_seqtab_sp.out
             .groupTuple(by: 0)
             .map{[
@@ -339,24 +344,9 @@ workflow dada2_wf {
     // STEP 8. Remove chimera on combined seqtab
     //
     dada2_remove_bimera(
-        dada2_seqtab_combine_all.out.map{ file(it) }
+        dada2_seqtab_combine_all.out.rds
     )
-
-    //
-    // STEP 9. Filter using Good's coverage
-    //goods_filter_seqtab(
-    //    dada2_remove_bimera.out[0].map{ file(it) }
-    //)
-
-    //
-    // STEP 10. Transform output to be pplacer and mothur style
-    //
-    Dada2_convert_output(
-        dada2_remove_bimera.out[0].map{ file(it) }
-    )
-    //Dada2_convert_output(
-    //    goods_filter_seqtab.out[0].map{ file(it) }
-    //)
+    FinalizeSvH5ad(dada2_seqtab_combine_all.out.pre_chimera, dada2_remove_bimera.out.retained_sequences)
 
     //
     // STEP 11. Collect all the failures
@@ -366,12 +356,7 @@ workflow dada2_wf {
     .set{ failures }
 
     emit:
-       sv_fasta         = Dada2_convert_output.out[0] 
-       sv_map           = Dada2_convert_output.out[1]
-       sv_weights       = Dada2_convert_output.out[2]
-       sv_long          = Dada2_convert_output.out[3]
-       sv_sharetable    = Dada2_convert_output.out[4]
-       sv_table         = dada2_remove_bimera.out[0]
+       sv_h5ad          = FinalizeSvH5ad.out.sv_h5ad
        failures         = failures
     // */
 }
@@ -705,9 +690,20 @@ process dada2_demultiplex_dada {
         gsub('(\\\\[|\\\\])', "", "${dada_fns}"),
         ", "));
     print(dada_names);
-    sapply(1:length(dadaResult), function(i) {
-        saveRDS(dadaResult[i], dada_names[i]);
-    });
+    if (length(dada_names) == 1L) {
+        # dada() returns a single S4 `dada` object when the batch has one
+        # specimen, rather than a list of objects.  Do not iterate over its
+        # slots: persist that object under the sole specimen filename.
+        saveRDS(dadaResult, dada_names[[1]]);
+    } else {
+        if (!is.list(dadaResult) || length(dadaResult) != length(dada_names)) {
+            stop(sprintf(
+                "Expected %d per-specimen DADA2 results; received %d",
+                length(dada_names), length(dadaResult)
+            ));
+        }
+        Map(saveRDS, dadaResult, dada_names);
+    }
     """
 }
 
@@ -765,7 +761,8 @@ process dada2_seqtab_sp {
 }
 
 process dada2_seqtab_combine_batch {
-    container "${params.container__fastcombineseqtab}"
+    container "${params.container__maliampi_tools}"
+    label 'maliampi_tools'
     label 'io_mem'
     errorStrategy "finish"
 
@@ -779,14 +776,16 @@ process dada2_seqtab_combine_batch {
     """
     set -e
 
-    combine_seqtab \
-    --rds ${batch}.dada2.seqtabs.rds \
-    --seqtabs ${sp_seqtabs_rds}
+    maliampi-combine-seqtabs --project-id ${params.project_id} \
+      --dataset-id ${params.dataset_id} \
+      --output-h5ad ${batch}.pre-chimera.h5ad \
+      --output-rds ${batch}.dada2.seqtabs.rds ${sp_seqtabs_rds}
     """
 }
 
 process dada2_seqtab_combine_all {
-    container "${params.container__fastcombineseqtab}"
+    container "${params.container__maliampi_tools}"
+    label 'maliampi_tools'
     label 'io_mem'
     errorStrategy "finish"
 
@@ -794,15 +793,17 @@ process dada2_seqtab_combine_all {
         file(seqtabs_rds)
 
     output:
-        file("combined.dada2.seqtabs.rds")
+        path "combined.pre-chimera.h5ad", emit: pre_chimera
+        path "combined.dada2.seqtabs.rds", emit: rds
 
     script:
     """
     set -e
 
-    combine_seqtab \
-    --rds combined.dada2.seqtabs.rds \
-    --seqtabs ${seqtabs_rds}
+    maliampi-combine-seqtabs --project-id ${params.project_id} \
+      --dataset-id ${params.dataset_id} \
+      --output-h5ad combined.pre-chimera.h5ad \
+      --output-rds combined.dada2.seqtabs.rds ${seqtabs_rds}
     """
 }
 
@@ -817,8 +818,8 @@ process dada2_remove_bimera {
         file(combined_seqtab)
 
     output:
-        file("dada2.combined.seqtabs.nochimera.csv")
-        file("dada2.combined.seqtabs.nochimera.rds")
+        path "retained_sequences.txt", emit: retained_sequences
+        path "chimera_stats.tsv", emit: chimera_stats
 
     script:
     """
@@ -830,68 +831,9 @@ process dada2_remove_bimera {
         method = '${params.chimera_method}',
         multithread = ${task.cpus}
     );
-    saveRDS(seqtab_nochim, 'dada2.combined.seqtabs.nochimera.rds'); 
-    write.csv(seqtab_nochim, 'dada2.combined.seqtabs.nochimera.csv', na='');
-    print((sum(seqtab) - sum(seqtab_nochim)) / sum(seqtab));
-    """
-}
-
-process Dada2_convert_output {
-    container "${params.container__dada2pplacer}"
-    label 'io_mem'
-    publishDir "${params.output}/sv/", mode: 'copy'
-    errorStrategy "finish"
-
-    input:
-        path (final_seqtab_csv)
-
-    output:
-        path "dada2.sv.fasta", emit: sv_fasta
-        path "dada2.sv.map.csv", emit: sv_map
-        path "dada2.sv.weights.csv", emit: sv_weights
-        path "dada2.specimen.sv.long.csv", emit: sv_long
-        path "dada2.sv.shared.txt", emit: sharetable
-
-    script:
-    """
-    dada2-seqtab-to-pplacer \
-    -s ${final_seqtab_csv} \
-    -f dada2.sv.fasta \
-    -m dada2.sv.map.csv \
-    -w dada2.sv.weights.csv \
-    -L dada2.specimen.sv.long.csv \
-    -t dada2.sv.shared.txt
-    """
-}
-
-process goods_filter_seqtab {
-    container "${params.container__goodsfilter}"
-    label 'io_mem'
-    publishDir "${params.output}/sv/", mode: 'copy'
-    errorStrategy "finish"
-
-    input:
-        file(seqtab_csv)
-
-    output:
-        file "${seqtab_csv.getSimpleName()}.goodsfiltered.csv"
-        file "${seqtab_csv.getSimpleName()}.goods_converged.csv"
-        path "curves/*_collector.csv"
-
-
-    script:
-    """
-    set -e 
-
-
-    goodsfilter \
-    --seqtable ${seqtab_csv} \
-    --seqtable_filtered ${seqtab_csv.getSimpleName()}.goodsfiltered.csv \
-    --converged_file ${seqtab_csv.getSimpleName()}.goods_converged.csv \
-    --iteration_cutoff ${params.goods_convergence} \
-    --min_prev ${params.min_sv_prev} \
-    --min_reads ${params.goods_min_reads} \
-    --curves_path curves/
+    writeLines(colnames(seqtab_nochim), 'retained_sequences.txt');
+    write.table(data.frame(pre=sum(seqtab), retained=sum(seqtab_nochim), removed=sum(seqtab)-sum(seqtab_nochim)),
+      'chimera_stats.tsv', sep='\\t', quote=FALSE, row.names=FALSE);
     """
 }
 
@@ -945,6 +887,8 @@ def helpMessage() {
                                     batch: sequencing / library batch. Should be filename safe
                                     I1: forward index file (for checking demultiplexing)
                                     I2: reverse index file
+        --project_id          Stable project identity for every observation
+        --dataset_id          Stable dataset identity for this SV artifact
     Options:
       Common to all:
         --output              Directory to place outputs (default invocation dir)
@@ -966,7 +910,7 @@ def helpMessage() {
 }
 
 workflow {
-    if (params.manifest == null) {
+    if (params.help || params.manifest == null || params.project_id == null || params.dataset_id == null) {
         helpMessage()
         exit 0
     }

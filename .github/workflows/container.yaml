@@ -1,0 +1,142 @@
+name: Build maliampi-tools container
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/container.yaml"
+      - "docker/maliampi-tools/**"
+      - "pyproject.toml"
+      - "uv.lock"
+      - "src/**"
+  push:
+    # No path filter here: a v* release tag must always trigger, even when the
+    # tagged commit does not touch these paths. GitHub applies push `paths` to
+    # tag pushes too, which would otherwise silently skip a release.
+    branches: [master]
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish the image and cut a GitHub Release
+        required: true
+        default: false
+        type: boolean
+      version:
+        description: Version without a leading v, required when publishing manually
+        required: false
+        type: string
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository_owner }}/maliampi-tools
+
+jobs:
+  validate:
+    name: Build and validate AMD64 helper image
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Run helper test target in the image build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/maliampi-tools/Dockerfile
+          target: test
+          platforms: linux/amd64
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/maliampi-tools/Dockerfile
+          platforms: linux/amd64
+          load: true
+          push: false
+          tags: maliampi-tools:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Verify installed helper interfaces
+        run: |
+          docker run --rm maliampi-tools:ci python -c 'import anndata, rds2py, scipy'
+          docker run --rm maliampi-tools:ci maliampi-combine-seqtabs --help
+          docker run --rm maliampi-tools:ci maliampi-goods-filter --help
+          docker run --rm maliampi-tools:ci maliampi-swarm-finalize --help
+
+  release:
+    name: Publish GHCR image and cut GitHub Release
+    needs: validate
+    if: >-
+      startsWith(github.ref, 'refs/tags/v') ||
+      (github.event_name == 'workflow_dispatch' && inputs.publish)
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+      packages: write
+      attestations: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Resolve release version
+        id: version
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          if [ "$EVENT_NAME" = workflow_dispatch ]; then
+            version="$INPUT_VERSION"
+          else
+            version="${REF_NAME#v}"
+          fi
+          case "$version" in
+            ''|*[!0-9.]*|.*|*.)
+              echo "Release version must be numeric dotted form, such as 0.2.0" >&2
+              exit 1
+              ;;
+          esac
+          printf 'version=%s\n' "$version" >> "$GITHUB_OUTPUT"
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/metadata-action@v5
+        id: metadata
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=${{ steps.version.outputs.version }}
+            type=raw,value=sha-${{ github.sha }}
+            type=raw,value=latest
+          labels: |
+            org.opencontainers.image.title=maliampi-tools
+            org.opencontainers.image.description=Sparse SV artifact and workflow helpers for MaliAmPi
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/maliampi-tools/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.metadata.outputs.tags }}
+          labels: ${{ steps.metadata.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          provenance: mode=max
+          sbom: true
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: v${{ steps.version.outputs.version }}
+          generate_release_notes: true
+          body: |
+            Published helper image:
+
+            - `${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version }}`
+            - `${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:sha-${{ github.sha }}`
+            - `${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest`

@@ -1,0 +1,65 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "maliampi-tools"
+version = "0.1.0"
+description = "Sparse SV artifact and workflow helpers for MaliAmPi"
+readme = "README.md"
+requires-python = ">=3.11,<3.12"
+license = { file = "LICENSE.txt" }
+authors = [{ name = "MaliAmPi contributors" }]
+dependencies = [
+  "anndata>=0.12",
+  "barcodecop==0.5.1",
+  "biopython>=1.86",
+  "numpy>=2.0",
+  "pandas>=2.2",
+  "pyarrow>=18",
+  "rds2py>=0.10.5",
+  "scipy>=1.14",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.3",
+  "ruff==0.15.21",
+  "ty==0.0.59",
+]
+
+[project.scripts]
+maliampi-combine-seqtabs = "maliampi_tools.cli:combine_seqtabs_main"
+maliampi-sv-filter = "maliampi_tools.cli:filter_main"
+maliampi-sv-validate = "maliampi_tools.cli:validate_main"
+maliampi-sv-export = "maliampi_tools.cli:export_main"
+maliampi-aggregate = "maliampi_tools.cli:aggregate_main"
+maliampi-phylotype-mapping = "maliampi_tools.cli:phylotype_mapping_main"
+maliampi-taxonomy-mapping = "maliampi_tools.cli:taxonomy_mapping_main"
+maliampi-taxonomy-aggregate = "maliampi_tools.cli:taxonomy_aggregate_main"
+maliampi-sv-import = "maliampi_tools.cli:import_legacy_main"
+maliampi-refpkg-registry = "maliampi_tools.cli:registry_write_main"
+maliampi-refpkg-validate = "maliampi_tools.cli:registry_validate_main"
+maliampi-goods-filter = "maliampi_tools.cli:goods_filter_main"
+maliampi-swarm-specimen = "maliampi_tools.cli:swarm_specimen_main"
+maliampi-swarm-combine = "maliampi_tools.cli:swarm_combine_main"
+maliampi-swarm-filter-seeds = "maliampi_tools.cli:swarm_filter_seeds_main"
+maliampi-swarm-finalize = "maliampi_tools.cli:swarm_finalize_main"
+dada2-seqtab-to-pplacer = "maliampi_tools.cli:export_main"
+dada2-seqtab-to-sharefile = "maliampi_tools.cli:export_main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/maliampi_tools"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests/python"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
+
+[tool.ty.environment]
+python-version = "3.11"

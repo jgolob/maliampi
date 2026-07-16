@@ -1,7 +1,3 @@
-params.container__barcodecop = "golob/barcodecop:0.5__bc_1"
-params.container__trimgalore = 'quay.io/biocontainers/trim-galore:0.6.6--0'
-params.container__fastqc = 'biocontainers/fastqc:v0.11.9_cv8'
-
 workflow preprocess_wf {
     take:
     indexed_ch
@@ -162,7 +158,8 @@ process TrimGalore {
 
 // Use barcodecop to verify demultiplex
 process barcodecop {
-    container "${params.container__barcodecop}"
+    container "${params.container__maliampi_tools}"
+    label 'maliampi_tools'
     label 'io_limited'
     errorStrategy "ignore"
 
@@ -219,7 +216,8 @@ process TrimGaloreSE {
 
 
 process output_failed {
-    container "${params.container__barcodecop}"
+    container "${params.container__maliampi_tools}"
+    label 'maliampi_tools'
     label 'io_limited'
     publishDir "${params.output}/sv/", mode: 'copy'
     errorStrategy 'retry'

@@ -110,3 +110,7 @@ ENV/
 work/
 output/
 results/
+
+# uv and sparse artifact runtime
+.venv/
+*.h5ad
