@@ -1,6 +1,31 @@
+params.help = false
+params.dedup_jplace = null
+params.specimen_jplaces = null
+params.output = '.'
+
 nextflow.enable.dsl=2
 
 include { GappaEDPL; GappaKRD; GappaEPCA } from '../../modules/stats'
+
+def helpMessage() {
+    log.info """
+    ─────────────────────────────────────
+    maliampi / stats
+    ─────────────────────────────────────
+    Compute placement statistics: EDPL, KR distance, and edge PCA.
+
+    Usage:
+      nextflow run jgolob/maliampi/subworkflows/local/stats.nf [options]
+
+    Required:
+      --dedup_jplace      Deduplicated jplace file from placement
+      --specimen_jplaces  Per-specimen jplace files (glob or directory path ending in /)
+
+    Options:
+      --output            Output directory (default: .)
+      --help              Show this help message
+    """.stripIndent()
+}
 
 workflow stats {
     take:
@@ -20,9 +45,16 @@ workflow stats {
     epca_transformation = GappaEPCA.out.transformation
 }
 
-workflow stats_entry {
-    if (params.dedup_jplace == null || params.specimen_jplaces == null) {
-        error 'stats requires --dedup_jplace and --specimen_jplaces (a glob or directory)'
+workflow {
+    if (params.help || params.dedup_jplace == null || params.specimen_jplaces == null) {
+        helpMessage()
+        if (!params.help) {
+            def missing = []
+            if (params.dedup_jplace == null) missing << '--dedup_jplace'
+            if (params.specimen_jplaces == null) missing << '--specimen_jplaces'
+            error "Missing required parameter(s): ${missing.join(', ')}"
+        }
+        return
     }
     def specimen_glob = params.specimen_jplaces.endsWith('/') ? "${params.specimen_jplaces}*.jplace*" : params.specimen_jplaces
     stats(

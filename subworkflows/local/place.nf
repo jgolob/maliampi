@@ -1,10 +1,41 @@
 nextflow.enable.dsl=2
 
+params.help = false
+params.sv_h5ad = null
+params.refpkg = null
+params.placer = 'epang'
+params.legacy_redup = false
+params.epang_chunk_size = 5000
+params.output = '.'
+
 include { ValidateRefpkg } from '../../modules/refpkg_validate'
 include { ExtractRefpkg } from '../../modules/refpkg_utils'
-include { AlignSV; CombineAln_SV_refpkg; ConvertAlnToFasta; EPAngPlacement; PplacerPlacement; GappaSplit; PlacementIdentity } from '../../modules/place'
+include { AlignSV; CombineAln_SV_refpkg; ConvertAlnToFasta; EPAngSplit; EPAngPlaceChunk; MergeJplace; PplacerPlacement; GappaSplit; PlacementIdentity } from '../../modules/place'
 include { PplacerReduplicate } from '../../modules/conversion'
 include { ExportSvPlacementInputs; ValidateSvRegistry } from '../../modules/sv_h5ad'
+
+def helpMessage() {
+    log.info """
+    ─────────────────────────────────────
+    maliampi / place
+    ─────────────────────────────────────
+    Place sequence variants onto a reference phylogeny.
+
+    Usage:
+      nextflow run jgolob/maliampi/subworkflows/local/place.nf [options]
+
+    Required:
+      --sv_h5ad       H5AD file with sequence variants
+      --refpkg        Reference package (.tar.gz)
+
+    Options:
+      --placer        Placement engine: epang (default) or pplacer
+      --legacy_redup      Emit legacy pplacer-reduplicated jplace (default: false)
+      --epang_chunk_size  Query sequences per EPA-ng chunk (default: 5000)
+      --output            Output directory (default: .)
+      --help              Show this help message
+    """.stripIndent()
+}
 
 workflow place {
     take:
@@ -29,13 +60,20 @@ workflow place {
 
     if (placer == 'epang') {
         ConvertAlnToFasta(CombineAln_SV_refpkg.out.stockholm)
-        EPAngPlacement(
-            ExtractRefpkg.out.ref_aln_fasta,
-            ConvertAlnToFasta.out.fasta,
-            ExtractRefpkg.out.model,
-            ExtractRefpkg.out.tree,
+        EPAngSplit(ExtractRefpkg.out.ref_aln_fasta, ConvertAlnToFasta.out.fasta)
+        // Scatter query sequences into chunks for parallel placement
+        query_chunks = EPAngSplit.out.query.splitFasta(
+            by: params.epang_chunk_size as int, file: true
         )
-        dedup_jplace = EPAngPlacement.out.dedup_jplace
+        EPAngSplit.out.reference
+            .combine(query_chunks)
+            .combine(ExtractRefpkg.out.model)
+            .combine(ExtractRefpkg.out.tree)
+            .set { placement_inputs }
+        // placement_inputs is now [reference, chunk, model, tree] per chunk
+        EPAngPlaceChunk(placement_inputs)
+        MergeJplace(EPAngPlaceChunk.out.jplace.collect())
+        dedup_jplace = MergeJplace.out.dedup_jplace
     } else {
         PplacerPlacement(CombineAln_SV_refpkg.out.stockholm, ValidateRefpkg.out.refpkg)
         dedup_jplace = PplacerPlacement.out.dedup_jplace
@@ -56,16 +94,21 @@ workflow place {
     redup_jplace = legacy_redup ? PplacerReduplicate.out.redup_jplace : channel.empty()
 }
 
-workflow place_entry {
-    if (params.sv_h5ad == null || params.refpkg == null) {
-        error 'place requires --sv_h5ad and --refpkg'
+workflow {
+    if (params.help || params.sv_h5ad == null || params.refpkg == null) {
+        helpMessage()
+        if (!params.help) {
+            def missing = []
+            if (params.sv_h5ad == null) missing << '--sv_h5ad'
+            if (params.refpkg == null) missing << '--refpkg'
+            error "Missing required parameter(s): ${missing.join(', ')}"
+        }
+        return
     }
-    def placer = params.placer ?: 'epang'
-    def legacy_redup = params.legacy_redup ?: false
     place(
         channel.fromPath(params.sv_h5ad, checkIfExists: true),
         channel.fromPath(params.refpkg, checkIfExists: true),
-        placer,
-        legacy_redup,
+        params.placer,
+        params.legacy_redup,
     )
 }

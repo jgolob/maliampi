@@ -24,7 +24,7 @@ process FinalizeSvH5ad {
 process ExportSvPlacementInputs {
     container "${params.container__maliampi_tools}"
     label 'maliampi_tools'
-    label 'io_limited'
+    label 'io_mem'
 
     input:
     path sv_h5ad
@@ -73,6 +73,11 @@ process ValidateSvRegistry {
 
     script:
     """
-    maliampi-refpkg-validate ${sv_h5ad} ${sv_registry} > sv_registry.validation.json
+    if [ -s "${sv_registry}" ]; then
+        maliampi-refpkg-validate ${sv_h5ad} ${sv_registry} > sv_registry.validation.json
+    else
+        echo '{"skipped": true, "reason": "no sv_registry.parquet in refpkg"}' > sv_registry.validation.json
+        echo "WARNING: SV registry validation skipped — legacy refpkg without sv_registry.parquet" >&2
+    fi
     """
 }

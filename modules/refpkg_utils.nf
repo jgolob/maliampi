@@ -25,6 +25,7 @@ process ExtractRefpkg {
     import os
     import posixpath
     import re
+    import sys
     import tarfile
 
     from Bio import AlignIO
@@ -66,7 +67,7 @@ process ExtractRefpkg {
 
         registry_member = members.get('sv_registry.parquet')
         if registry_member is None:
-            fail('missing sv_registry.parquet')
+            print('WARNING: refpkg does not contain sv_registry.parquet; SV identity validation will be skipped', file=sys.stderr)
 
         for role in ('profile', 'tree', 'seq_info', 'taxonomy'):
             extract(role)
@@ -79,8 +80,12 @@ process ExtractRefpkg {
             out_h.write(extract('seq_info'))
         with open('taxonomy.csv', 'wb') as out_h:
             out_h.write(extract('taxonomy'))
-        with open('sv_registry.parquet', 'wb') as out_h:
-            out_h.write(tar_h.extractfile(registry_member).read())
+        if registry_member is not None:
+            with open('sv_registry.parquet', 'wb') as out_h:
+                out_h.write(tar_h.extractfile(registry_member).read())
+        else:
+            # Create empty placeholder so the output channel always emits
+            open('sv_registry.parquet', 'wb').close()
 
         have_fasta = bool(files.get('aln_fasta'))
         have_sto = bool(files.get('aln_sto'))

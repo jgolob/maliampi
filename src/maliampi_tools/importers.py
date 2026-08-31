@@ -3,8 +3,12 @@
 from __future__ import annotations
 
 import csv
+import gzip
 from collections import defaultdict
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
+from typing import IO
 
 import numpy as np
 import pandas as pd
@@ -13,20 +17,32 @@ from scipy import sparse
 from .sv import SvValidationError, build_sv_artifact, write_sv_h5ad
 
 
+@contextmanager
+def _open_maybe_gzipped(path: str | Path, *, newline: str | None = "") -> Iterator[IO[str]]:
+    """Open a file for reading text, transparently decompressing .gz files."""
+    p = Path(path)
+    handle = gzip.open(p, "rt", newline=newline) if p.suffix == ".gz" else p.open(newline=newline)  # noqa: SIM115
+    try:
+        yield handle
+    finally:
+        handle.close()
+
+
 def _fasta_records(path: str | Path) -> list[tuple[str, str]]:
     records: list[tuple[str, str]] = []
     identifier: str | None = None
     sequence: list[str] = []
-    for raw_line in Path(path).read_text().splitlines():
-        if raw_line.startswith(">"):
-            if identifier is not None:
-                records.append((identifier, "".join(sequence)))
-            identifier = raw_line[1:].split(maxsplit=1)[0]
-            sequence = []
-        else:
-            sequence.append(raw_line.strip())
-    if identifier is not None:
-        records.append((identifier, "".join(sequence)))
+    with _open_maybe_gzipped(path, newline=None) as handle:
+        for raw_line in handle.read().splitlines():
+            if raw_line.startswith(">"):
+                if identifier is not None:
+                    records.append((identifier, "".join(sequence)))
+                identifier = raw_line[1:].split(maxsplit=1)[0]
+                sequence = []
+            else:
+                sequence.append(raw_line.strip())
+        if identifier is not None:
+            records.append((identifier, "".join(sequence)))
     if not records or len({identifier for identifier, _ in records}) != len(records):
         raise SvValidationError("Legacy FASTA must contain one or more uniquely named sequences")
     return records
@@ -34,7 +50,7 @@ def _fasta_records(path: str | Path) -> list[tuple[str, str]]:
 
 def _long_rows(path: str | Path) -> list[tuple[str, str, int]]:
     rows: list[tuple[str, str, int]] = []
-    with Path(path).open(newline="") as handle:
+    with _open_maybe_gzipped(path) as handle:
         reader = csv.DictReader(handle)
         if not {"specimen", "sv", "count"}.issubset(reader.fieldnames or []):
             raise SvValidationError("Legacy long table requires specimen, sv, and count columns")
@@ -49,7 +65,7 @@ def _long_rows(path: str | Path) -> list[tuple[str, str, int]]:
 
 def _share_rows(path: str | Path) -> list[tuple[str, str, int]]:
     rows: list[tuple[str, str, int]] = []
-    with Path(path).open(newline="") as handle:
+    with _open_maybe_gzipped(path) as handle:
         reader = csv.DictReader(handle, delimiter="\t")
         fields = reader.fieldnames or []
         group = next((field for field in fields if field.lower() == "group"), None)
@@ -69,13 +85,13 @@ def _share_rows(path: str | Path) -> list[tuple[str, str, int]]:
 
 def _map_weight_rows(map_path: str | Path, weights_path: str | Path) -> list[tuple[str, str, int]]:
     specimen_for: dict[str, str] = {}
-    with Path(map_path).open(newline="") as handle:
+    with _open_maybe_gzipped(map_path) as handle:
         for row in csv.reader(handle):
             if len(row) != 2 or not all(row):
                 raise SvValidationError("Legacy map must be headerless specimen-SV ID,specimen")
             specimen_for[row[0]] = row[1]
     rows: list[tuple[str, str, int]] = []
-    with Path(weights_path).open(newline="") as handle:
+    with _open_maybe_gzipped(weights_path) as handle:
         for row in csv.reader(handle):
             if len(row) != 3 or row[1] not in specimen_for:
                 raise SvValidationError("Legacy weights/map pair is inconsistent")

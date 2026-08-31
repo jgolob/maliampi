@@ -115,6 +115,16 @@ def helpMessage() {
     Placement Options:
         --placer                        Placement engine: epang (default) or pplacer
         --legacy_redup                  Emit legacy pplacer-reduplicated output
+
+    Sub-pipelines (run any step independently):
+        nextflow run jgolob/maliampi/subworkflows/local/sv.nf --help
+        nextflow run jgolob/maliampi/subworkflows/local/place.nf --help
+        nextflow run jgolob/maliampi/subworkflows/local/taxonomy.nf --help
+        nextflow run jgolob/maliampi/subworkflows/local/stats.nf --help
+        nextflow run jgolob/maliampi/subworkflows/local/phylotypes.nf --help
+        nextflow run jgolob/maliampi/subworkflows/local/convert.nf --help
+        nextflow run jgolob/maliampi/subworkflows/local/validate_refpkg.nf --help
+        nextflow run jgolob/maliampi/subworkflows/local/goods.nf --help
     """.stripIndent()
 }
 

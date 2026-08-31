@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+import csv
 from pathlib import Path
 
-import pandas as pd
+import numpy as np
 from scipy import sparse
 
 from .sv import read_sv_h5ad
@@ -17,33 +18,55 @@ def export_legacy(
     artifact = read_sv_h5ad(h5ad)
     output = Path(output_dir)
     output.mkdir(parents=True, exist_ok=True)
-    var = artifact.var.copy()
+
+    sv_ids = artifact.var["sv_id"].to_numpy()
+    sequences = artifact.var["sequence"].to_numpy()
+    obs_names = artifact.obs_names.to_numpy()
+
+    # FASTA — streaming, no memory overhead
     with (output / "sv.fasta").open("w", encoding="ascii") as handle:
-        for sv_id, sequence in zip(var["sv_id"], var["sequence"], strict=True):
+        for sv_id, sequence in zip(sv_ids, sequences, strict=True):
             handle.write(f">{sv_id}\n{sequence}\n")
-    long_rows: list[dict[str, object]] = []
+
+    # Build long table directly from sparse COO coordinates — no list-of-dicts
     matrix = sparse.csr_matrix(artifact.X).tocoo()
-    for observation_index, sv_index, value in zip(matrix.row, matrix.col, matrix.data, strict=True):
-        count = int(value)
-        long_rows.append(
-            {
-                "specimen": artifact.obs_names[observation_index],
-                "sv_id": artifact.var_names[sv_index],
-                "abundance": count,
-            }
-        )
-    long = pd.DataFrame(long_rows).reindex(columns=("specimen", "sv_id", "abundance"))
-    long.to_csv(output / "sv.long.csv", index=False)
-    share = (
-        long.pivot(index="sv_id", columns="specimen", values="abundance").fillna(0).astype("int64")
-    )
-    share.to_csv(output / "sv.share.csv")
-    long.loc[:, ["sv_id", "specimen", "abundance"]].to_csv(
-        output / "sv.multiplicity.csv", index=False, header=False
-    )
+    specimens = obs_names[matrix.row]
+    svs = sv_ids[matrix.col]  # type: ignore[index]
+    counts = matrix.data.astype(np.int64)
+
+    # sv.long.csv — stream to disk
+    with (output / "sv.long.csv").open("w", newline="") as handle:
+        writer = csv.writer(handle)
+        writer.writerow(("specimen", "sv_id", "abundance"))
+        for specimen, sv_id, count in zip(specimens, svs, counts, strict=True):
+            writer.writerow((specimen, sv_id, int(count)))
+
+    # sv.multiplicity.csv — headerless, reordered columns for gappa
+    with (output / "sv.multiplicity.csv").open("w", newline="") as handle:
+        writer = csv.writer(handle)
+        for sv_id, specimen, count in zip(svs, specimens, counts, strict=True):
+            writer.writerow((sv_id, specimen, int(count)))
+
+    # sv.share.csv — pivot via sparse-to-dense on the original matrix (specimens x SVs)
+    # Only materialize the dense matrix, not a redundant DataFrame
+    with (output / "sv.share.csv").open("w", newline="") as handle:
+        writer = csv.writer(handle)
+        writer.writerow(["sv_id", *obs_names])
+        dense = matrix.tocsr().toarray()  # shape: (n_obs, n_var)
+        for var_idx, sv_id in enumerate(sv_ids):
+            writer.writerow([sv_id, *(int(v) for v in dense[:, var_idx])])
+
     if pplacer_reduplication:
-        multiplicities = long.groupby("sv_id", as_index=False)["abundance"].sum()
-        weights = multiplicities.rename(columns={"abundance": "weight"})
-        weights.to_csv(output / "sv.weights.csv", index=False)
-        mapping = long.assign(map=lambda frame: frame["sv_id"] + ":" + frame["specimen"])["map"]
-        mapping.to_csv(output / "sv.map.csv", index=False, header=False)
+        # sv.weights.csv — per-SV total abundance
+        totals = np.asarray(sparse.csr_matrix(artifact.X).sum(axis=0)).ravel().astype(np.int64)
+        with (output / "sv.weights.csv").open("w", newline="") as handle:
+            writer = csv.writer(handle)
+            writer.writerow(("sv_id", "weight"))
+            for sv_id, weight in zip(sv_ids, totals, strict=True):
+                writer.writerow((sv_id, int(weight)))
+
+        # sv.map.csv — headerless sv_id:specimen mapping
+        with (output / "sv.map.csv").open("w", newline="") as handle:
+            writer = csv.writer(handle)
+            for sv_id, specimen in zip(svs, specimens, strict=True):
+                writer.writerow((f"{sv_id}:{specimen}",))

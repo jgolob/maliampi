@@ -102,9 +102,11 @@ process ValidateRefpkg {
         required = ('profile', 'tree', 'seq_info', 'taxonomy')
         components = {role: component(role) for role in required}
         registry_member = members.get('sv_registry.parquet')
-        if registry_member is None:
-            fail('missing sv_registry.parquet')
-        components['sv_registry'] = tar_h.extractfile(registry_member).read()
+        if registry_member is not None:
+            components['sv_registry'] = tar_h.extractfile(registry_member).read()
+        else:
+            import sys
+            print('WARNING: refpkg does not contain sv_registry.parquet; SV identity validation will be skipped', file=sys.stderr)
         if files.get('aln_fasta'):
             components['aln_fasta'] = component('aln_fasta')
         if files.get('aln_sto'):

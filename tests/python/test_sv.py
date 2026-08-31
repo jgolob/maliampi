@@ -159,6 +159,30 @@ def test_legacy_long_import_immediately_creates_a_valid_h5ad(tmp_path):
     assert imported.n_vars == 2
 
 
+def test_legacy_long_import_gzipped(tmp_path):
+    """Gzipped FASTA and long CSV are transparently decompressed."""
+    import gzip
+
+    fasta_gz = tmp_path / "legacy.fasta.gz"
+    with gzip.open(fasta_gz, "wt") as f:
+        f.write(">old-1\nACGT\n>old-2\nACGTR\n")
+    long_gz = tmp_path / "legacy.long.csv.gz"
+    with gzip.open(long_gz, "wt") as f:
+        f.write("specimen,sv,count\nsample-1,old-1,2\nsample-1,old-1,3\nsample-2,old-2,5\n")
+    output = tmp_path / "sv.h5ad"
+    import_legacy_sv(
+        fasta_gz,
+        output,
+        project_id="project-a",
+        dataset_id="dataset-a",
+        long=long_gz,
+    )
+    imported = read_sv_h5ad(output)
+    assert imported.X.sum() == 10
+    assert imported.n_obs == 2
+    assert imported.n_vars == 2
+
+
 def test_refpkg_registry_preserves_full_hash_and_composite_id_identity(tmp_path):
     source = tmp_path / "sv.h5ad"
     write_sv_h5ad(artifact(), source)

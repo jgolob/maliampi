@@ -64,28 +64,59 @@ process ConvertAlnToFasta {
     """
 }
 
-process EPAngPlacement {
+process EPAngSplit {
     container "${params.container__epang}"
-    label 'mem_veryhigh'
-    publishDir "${params.output}/placement", mode: 'copy'
+    label 'io_limited'
 
     input:
     path refpkg_aln_fasta
     path combined_aln_fasta
-    path model
-    path ref_tree
+
+    output:
+    path 'reference.fasta', emit: reference
+    path 'query.fasta', emit: query
+
+    script:
+    """
+    epa-ng --split ${refpkg_aln_fasta} ${combined_aln_fasta}
+    """
+}
+
+process EPAngPlaceChunk {
+    container "${params.container__epang}"
+    label 'mem_veryhigh'
+    errorStrategy 'ignore'
+
+    input:
+    tuple path(reference_fasta), path(query_chunk), path(model), path(ref_tree)
+
+    output:
+    path 'epa_result.jplace', emit: jplace
+
+    script:
+    """
+    set -e
+    model=\$(cat ${model})
+    epa-ng -t ${ref_tree} -s ${reference_fasta} -q ${query_chunk} -m \$model \\
+      -T ${task.cpus} --baseball-heur
+    """
+}
+
+process MergeJplace {
+    container "${params.container__gappa}"
+    label 'multithread'
+    publishDir "${params.output}/placement", mode: 'copy'
+
+    input:
+    path '*.jplace'
 
     output:
     path 'dedup.jplace', emit: dedup_jplace
 
     script:
     """
-    set -e
-    epa-ng --split ${refpkg_aln_fasta} ${combined_aln_fasta}
-    model=\$(cat ${model})
-    epa-ng -t ${ref_tree} -s reference.fasta -q query.fasta -m \$model \\
-      -T ${task.cpus} --baseball-heur
-    mv epa_result.jplace dedup.jplace
+    gappa edit merge --jplace-path . --out-dir . --threads ${task.cpus}
+    mv merge.jplace dedup.jplace
     """
 }
 
@@ -114,7 +145,7 @@ process PplacerPlacement {
 
 process GappaSplit {
     container "${params.container__gappa}"
-    label 'multithread'
+    label 'mem_veryhigh'
     publishDir "${params.output}/placement", mode: 'copy'
 
     input:

@@ -1,9 +1,35 @@
+params.help = false
+params.manifest = null
+params.legacy_redup = false
+params.output = '.'
+
 nextflow.enable.dsl=2
 
 include { read_manifest } from '../../modules/manifest'
 include { output_failed; preprocess_wf } from '../../modules/preprocess'
 include { dada2_wf } from '../../modules/dada2'
 include { ExportSvPlacementInputs } from '../../modules/sv_h5ad'
+
+def helpMessage() {
+    log.info """
+    ─────────────────────────────────────
+    maliampi / sv
+    ─────────────────────────────────────
+    Generate sequence variants from raw reads using DADA2.
+
+    Usage:
+      nextflow run jgolob/maliampi/subworkflows/local/sv.nf [options]
+
+    Required:
+      --manifest      CSV file listing samples (columns: specimen, R1, R2;
+                        optional: batch, I1, I2)
+
+    Options:
+      --legacy_redup  Export legacy pplacer-compatible weight files (default: false)
+      --output        Output directory (default: .)
+      --help          Show this help message
+    """.stripIndent()
+}
 
 workflow sv {
     take:
@@ -43,9 +69,13 @@ workflow sv {
     failures = dada2_wf.out.failures
 }
 
-workflow sv_entry {
-    if (params.manifest == null) {
-        error 'Missing required --manifest'
+workflow {
+    if (params.help || params.manifest == null) {
+        helpMessage()
+        if (!params.help) {
+            error "Missing required parameter(s): --manifest"
+        }
+        return
     }
     sv(channel.fromPath(params.manifest, checkIfExists: true))
 }

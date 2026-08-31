@@ -18,6 +18,50 @@ jobs:
       - run: uv run ty check src
       - run: uv run pytest
 
+  entrypoint_help:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: nf-core/setup-nextflow@v2
+        with:
+          version: '26.04.6'
+      - name: main.nf --help
+        run: nextflow run main.nf --help
+      - name: Subworkflow --help smoke tests
+        run: |
+          for nf in \
+            subworkflows/local/place.nf \
+            subworkflows/local/sv.nf \
+            subworkflows/local/taxonomy.nf \
+            subworkflows/local/stats.nf \
+            subworkflows/local/phylotypes.nf \
+            subworkflows/local/convert.nf \
+            subworkflows/local/validate_refpkg.nf \
+            subworkflows/local/goods.nf \
+          ; do
+            echo "── Testing $nf --help ──"
+            nextflow run "$nf" --help
+          done
+      - name: Subworkflow missing-param errors
+        run: |
+          for nf in \
+            subworkflows/local/place.nf \
+            subworkflows/local/sv.nf \
+            subworkflows/local/taxonomy.nf \
+            subworkflows/local/stats.nf \
+            subworkflows/local/phylotypes.nf \
+            subworkflows/local/convert.nf \
+            subworkflows/local/validate_refpkg.nf \
+            subworkflows/local/goods.nf \
+          ; do
+            echo "── Testing $nf (no args) ──"
+            if nextflow run "$nf" 2>&1; then
+              echo "FAIL: $nf should have exited with error"
+              exit 1
+            fi
+            echo "OK: $nf correctly errored on missing params"
+          done
+
   workflow_static:
     runs-on: ubuntu-22.04
     steps:
@@ -32,6 +76,20 @@ jobs:
           test -f subworkflows/local/convert.nf
           test -f subworkflows/local/goods.nf
           test -f modules/swarm.nf
+      - name: Verify subworkflows have help messages
+        run: |
+          for nf in \
+            subworkflows/local/place.nf \
+            subworkflows/local/sv.nf \
+            subworkflows/local/taxonomy.nf \
+            subworkflows/local/stats.nf \
+            subworkflows/local/phylotypes.nf \
+            subworkflows/local/convert.nf \
+            subworkflows/local/validate_refpkg.nf \
+            subworkflows/local/goods.nf \
+          ; do
+            grep -q 'helpMessage' "$nf" || { echo "FAIL: $nf missing helpMessage"; exit 1; }
+          done
       - name: Reject retired live references
         run: |
           ! grep -R -n -E '[e]pang_place_classify|[p]placer_place_classify|golob/[f]astatools|golob/[d]ada2-pplacer|golob/[g]oodsfilter|pp_classi[f]er' \
